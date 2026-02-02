@@ -7,7 +7,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   
-  const { signOut, profileName } = useAuth(); // Não precisamos mais do 'role' aqui no layout
+  const { signOut, profileName } = useAuth();
   
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -66,7 +66,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
               <div className="h-6 w-px bg-gray-200 mx-2"></div>
 
-              {/* --- USUÁRIO (SIMPLIFICADO) --- */}
+              {/* USUÁRIO */}
               <div className="flex items-center gap-3 mr-2 bg-gray-50 px-3 py-2 rounded-lg border border-gray-100">
                  <span className="text-sm font-bold text-gray-700">
                     {profileName || 'Usuário'}
@@ -74,12 +74,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
                  <UserCircle size={24} className="text-gray-400" />
               </div>
 
+              {/* MUDANÇA AQUI: Botão Sair com texto */}
               <button 
                 onClick={handleLogout}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-red-500 hover:bg-red-50 hover:text-red-700 transition-colors"
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-red-500 hover:bg-red-50 hover:text-red-700 transition-colors font-medium"
                 title="Sair do sistema"
               >
                 <LogOut size={18} />
+                <span>Sair</span>
               </button>
             </nav>
 
@@ -104,7 +106,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
             <div className="md:hidden absolute top-20 right-4 z-50 w-auto min-w-[220px] bg-white rounded-xl shadow-2xl border border-gray-100 animate-in fade-in slide-in-from-top-2 duration-200">
               <div className="flex flex-col p-2 space-y-1">
-                {/* Info do Usuário no Mobile (Simplificado) */}
                 <div className="px-4 py-3 bg-blue-50 rounded-lg mb-2 border border-blue-100 flex items-center gap-3">
                     <UserCircle size={24} className="text-blue-500" />
                     <p className="font-bold text-gray-800 text-sm">{profileName || 'Usuário'}</p>
