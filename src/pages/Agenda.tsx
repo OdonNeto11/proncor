@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { 
   Calendar as CalendarIcon, Clock, CheckCircle2, 
-  Search, MessageCircle, AlertTriangle, X, ListChecks, Edit, Save, RefreshCw, AlertCircle, FileDown, Paperclip,
+  Search, MessageCircle, AlertTriangle, X, ListChecks, Edit, RefreshCw, AlertCircle, FileDown, 
   Hash, Activity, ChevronRight, Stethoscope, ArrowRightCircle, HelpCircle
 } from 'lucide-react';
 import { format, parseISO, isToday, isTomorrow, isSameDay, endOfMonth, setHours, setMinutes } from 'date-fns';
@@ -10,6 +10,7 @@ import DatePicker, { registerLocale } from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css"; 
 import { supabase } from '../lib/supabase';
 import { Toast } from '../components/ui/Toast';
+import { useAuth } from '../contexts/AuthContext';
 
 registerLocale('pt-BR', ptBR); 
 
@@ -51,6 +52,7 @@ type Agendamento = {
 type ModalView = 'details' | 'edit' | 'reschedule' | 'update_status' | 'confirm_status_update' | 'confirm_cancel';
 
 export function Agenda() {
+  const { role } = useAuth();
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -101,7 +103,7 @@ export function Agenda() {
 
   useEffect(() => { fetchAgendamentos(); }, [dataInicio, dataFim]);
 
-  // --- DISPONIBILIDADE NO REAGENDAMENTO (ATUALIZADA) ---
+  // --- DISPONIBILIDADE NO REAGENDAMENTO ---
   useEffect(() => {
     const fetchBookedTimesForReschedule = async () => {
       if (!reagendarDate) return;
@@ -111,7 +113,6 @@ export function Agenda() {
         .from('agendamentos')
         .select('hora_agendamento')
         .eq('data_agendamento', dateStr)
-        // AQUI ESTÁ A MUDANÇA: Bloqueia se for 'agendado' OU 'reagendado'
         .in('status', ['agendado', 'reagendado']);
 
       if (error) { console.error(error); return; }
@@ -246,18 +247,18 @@ export function Agenda() {
   const confirmarEdicao = async () => {
      if (!selectedAgendamento) return;
      try {
-        const { error } = await supabase.from('agendamentos').update({
-            numero_atendimento: editForm.numero_atendimento,
-            nome_paciente: editForm.nome,
-            telefone_paciente: editForm.telefone,
-            diagnostico: editForm.diagnostico,
-            procedimentos: editForm.procedimentos
-        }).eq('id', selectedAgendamento.id);
-        if (error) throw error;
-        setShowToast({ visible: true, message: 'Dados atualizados!' });
-        setSelectedAgendamento({...selectedAgendamento, ...editForm});
-        setViewMode('details');
-        fetchAgendamentos();
+       const { error } = await supabase.from('agendamentos').update({
+           numero_atendimento: editForm.numero_atendimento,
+           nome_paciente: editForm.nome,
+           telefone_paciente: editForm.telefone,
+           diagnostico: editForm.diagnostico,
+           procedimentos: editForm.procedimentos
+       }).eq('id', selectedAgendamento.id);
+       if (error) throw error;
+       setShowToast({ visible: true, message: 'Dados atualizados!' });
+       setSelectedAgendamento({...selectedAgendamento, ...editForm});
+       setViewMode('details');
+       fetchAgendamentos();
      } catch (e) { alert('Erro ao editar'); }
   };
   const abrirModal = (item: Agendamento) => {
@@ -435,9 +436,12 @@ export function Agenda() {
                     </div>
                   )}
 
-                  <button onClick={() => window.open(`https://wa.me/55${selectedAgendamento.telefone_paciente.replace(/\D/g, '')}`, '_blank')} className="w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-xl font-bold flex justify-center gap-2 transition-transform active:scale-95 shadow-sm">
-                    <MessageCircle /> WhatsApp
-                  </button>
+                  {/* SÓ MOSTRA O WHATSAPP SE FOR CHEFE */}
+                  {role === 'chefe' && (
+                    <button onClick={() => window.open(`https://wa.me/55${selectedAgendamento.telefone_paciente.replace(/\D/g, '')}`, '_blank')} className="w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-xl font-bold flex justify-center gap-2 transition-transform active:scale-95 shadow-sm">
+                        <MessageCircle /> WhatsApp
+                    </button>
+                  )}
                   
                   <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
                     <p className="text-xs font-bold text-gray-400 uppercase mb-1">Diagnóstico / Condutas</p>
@@ -445,10 +449,14 @@ export function Agenda() {
                   </div>
 
                   <div className="flex gap-2 pt-2">
-                      <button onClick={() => setViewMode('update_status')} className="flex-1 bg-blue-600 text-white font-medium py-3 rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm">
-                        <CheckCircle2 size={18} /> Atualizar Status
-                      </button>
+                      {/* SÓ MOSTRA O BOTÃO ATUALIZAR STATUS SE FOR CHEFE */}
+                      {role === 'chefe' && (
+                          <button onClick={() => setViewMode('update_status')} className="flex-1 bg-blue-600 text-white font-medium py-3 rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm">
+                            <CheckCircle2 size={18} /> Atualizar Status
+                          </button>
+                      )}
                       
+                      {/* REAGENDAR DISPONÍVEL PARA AMBOS (Desde que não esteja finalizado) */}
                       {!['cancelado', 'finalizado', 'encaminhado', 'retorno_pa'].includes(selectedAgendamento.status) && (
                           <button onClick={() => { setViewMode('reschedule'); setReagendarDate(new Date()); }} className="flex-1 bg-orange-50 text-orange-700 border border-orange-200 font-medium py-3 rounded-xl hover:bg-orange-100 transition-colors flex items-center justify-center gap-2 text-sm">
                             <AlertTriangle size={18} /> Reagendar
@@ -456,8 +464,9 @@ export function Agenda() {
                       )}
                   </div>
                   
-                  {!['cancelado', 'finalizado', 'encaminhado', 'retorno_pa'].includes(selectedAgendamento.status) && (
-                     <button onClick={() => setViewMode('confirm_cancel')} className="w-full text-xs text-red-400 hover:text-red-600 py-2 mt-2 font-medium">Cancelar agendamento</button>
+                  {/* SÓ MOSTRA O BOTÃO CANCELAR SE FOR CHEFE */}
+                  {!['cancelado', 'finalizado', 'encaminhado', 'retorno_pa'].includes(selectedAgendamento.status) && role === 'chefe' && (
+                      <button onClick={() => setViewMode('confirm_cancel')} className="w-full text-xs text-red-400 hover:text-red-600 py-2 mt-2 font-medium">Cancelar agendamento</button>
                   )}
                 </div>
               )}
