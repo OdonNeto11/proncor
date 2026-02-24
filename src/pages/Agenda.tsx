@@ -47,6 +47,7 @@ type Agendamento = {
   status: string;
   anexos: Anexo[] | null;
   medico_id: number | null;
+  crm_responsavel?: string;
 };
 
 type ModalView = 'details' | 'edit' | 'reschedule' | 'update_status' | 'confirm_status_update' | 'confirm_cancel';
@@ -65,6 +66,7 @@ export function Agenda() {
   const [selectedAgendamento, setSelectedAgendamento] = useState<Agendamento | null>(null);
   const [viewMode, setViewMode] = useState<ModalView>('details');
   const [showToast, setShowToast] = useState({ visible: false, message: '' });
+  const [errorMsg, setErrorMsg] = useState(''); // --- NOVO ESTADO DE ERRO ---
 
   const [reagendarDate, setReagendarDate] = useState<Date | null>(null);
   const [reagendarTime, setReagendarTime] = useState<Date | null>(null);
@@ -72,12 +74,15 @@ export function Agenda() {
   const [bookedTimes, setBookedTimes] = useState<string[]>([]);
   const [tempStatus, setTempStatus] = useState<string>('');
   
+  const [actionCrm, setActionCrm] = useState(''); 
+  
   const [editForm, setEditForm] = useState({ 
     numero_atendimento: '',
     nome: '', 
     telefone: '', 
     diagnostico: '',
-    procedimentos: [] as string[]
+    procedimentos: [] as string[],
+    crm_responsavel: ''
   });
 
   const fetchAgendamentos = async () => {
@@ -103,7 +108,6 @@ export function Agenda() {
 
   useEffect(() => { fetchAgendamentos(); }, [dataInicio, dataFim]);
 
-  // --- DISPONIBILIDADE NO REAGENDAMENTO ---
   useEffect(() => {
     const fetchBookedTimesForReschedule = async () => {
       if (!reagendarDate) return;
@@ -127,7 +131,12 @@ export function Agenda() {
         setReagendarTime(null);
         fetchBookedTimesForReschedule();
     }
-  }, [reagendarDate]);
+  }, [reagendarDate, viewMode]);
+
+  // Limpa o erro sempre que mudar de tela no modal
+  useEffect(() => {
+    setErrorMsg('');
+  }, [viewMode]);
 
   const checkIsDisabled = (timeStr: string) => {
     if (!reagendarDate) return true; 
@@ -149,7 +158,6 @@ export function Agenda() {
     setReagendarTime(newTime);
   };
 
-  // --- FILTROS ---
   const agendamentosFiltrados = agendamentos.filter(ag => {
     const termo = busca.toLowerCase();
     
@@ -183,11 +191,21 @@ export function Agenda() {
       setViewMode('confirm_status_update');
   };
 
+  const isValidCrm = (crm: string) => /^[0-9]{4,5}$/.test(crm);
+
   const executarAtualizacaoStatus = async () => {
+    setErrorMsg('');
     if (!tempStatus || !selectedAgendamento) return;
+    if (!isValidCrm(actionCrm)) {
+        setErrorMsg("Informe um CRM válido");
+        return;
+    }
 
     try {
-        const { error } = await supabase.from('agendamentos').update({ status: tempStatus }).eq('id', selectedAgendamento.id);
+        const { error } = await supabase.from('agendamentos').update({ 
+          status: tempStatus,
+          crm_responsavel: actionCrm 
+        }).eq('id', selectedAgendamento.id);
         if (error) throw error;
         
         setShowToast({ visible: true, message: `Status alterado para: ${STATUS_CONFIG[tempStatus]?.label}` });
@@ -195,11 +213,20 @@ export function Agenda() {
         setSelectedAgendamento({ ...selectedAgendamento, status: tempStatus });
         setSelectedAgendamento(null);
         fetchAgendamentos();
-    } catch (e) { alert('Erro ao atualizar status'); }
+    } catch (e) { setErrorMsg('Erro de comunicação com o banco de dados. Tente novamente.'); }
   };
 
   const confirmarReagendamento = async () => {
-    if (!reagendarDate || !reagendarTime) return alert("Preencha data e hora!");
+    setErrorMsg('');
+    if (!reagendarDate || !reagendarTime) {
+        setErrorMsg("Preencha a nova data e o novo horário.");
+        return;
+    }
+    if (!isValidCrm(actionCrm)) {
+        setErrorMsg("Informe um CRM válido.");
+        return;
+    }
+
     try {
       const dataStr = format(reagendarDate, 'yyyy-MM-dd');
       const horaStr = format(reagendarTime, 'HH:mm');
@@ -210,14 +237,15 @@ export function Agenda() {
         data_agendamento: dataStr,
         hora_agendamento: horaStr,
         diagnostico: novoDiagnostico,
-        status: 'reagendado'
+        status: 'reagendado',
+        crm_responsavel: actionCrm 
       }).eq('id', selectedAgendamento!.id);
       
       if (error) throw error;
       setShowToast({ visible: true, message: 'Reagendado com sucesso!' });
       setSelectedAgendamento(null);
       fetchAgendamentos();
-    } catch (error) { alert("Erro ao reagendar, tente novamente."); }
+    } catch (error) { setErrorMsg("Erro ao salvar reagendamento no banco. Tente novamente."); }
   };
 
   const handlePhoneEditChange = (valor: string) => {
@@ -228,10 +256,12 @@ export function Agenda() {
     else if (value.length > 0) value = value.replace(/^(\d*)/, "($1");
     setEditForm(prev => ({ ...prev, telefone: value }));
   };
+  
   const handleNumeroAtendimentoEditChange = (valor: string) => {
     const value = valor.replace(/\D/g, ""); 
     setEditForm(prev => ({ ...prev, numero_atendimento: value }));
   };
+  
   const toggleProcedimentoEdit = (opcao: string) => {
     setEditForm(prev => {
         const jaExiste = prev.procedimentos.includes(opcao);
@@ -244,37 +274,50 @@ export function Agenda() {
         return { ...prev, procedimentos: novosProcedimentos };
     });
   };
+
   const confirmarEdicao = async () => {
+     setErrorMsg('');
      if (!selectedAgendamento) return;
+     if (!isValidCrm(editForm.crm_responsavel)) {
+         setErrorMsg("Informe um CRM válido.");
+         return;
+     }
+
      try {
        const { error } = await supabase.from('agendamentos').update({
            numero_atendimento: editForm.numero_atendimento,
            nome_paciente: editForm.nome,
            telefone_paciente: editForm.telefone,
            diagnostico: editForm.diagnostico,
-           procedimentos: editForm.procedimentos
+           procedimentos: editForm.procedimentos,
+           crm_responsavel: editForm.crm_responsavel 
        }).eq('id', selectedAgendamento.id);
        if (error) throw error;
        setShowToast({ visible: true, message: 'Dados atualizados!' });
        setSelectedAgendamento({...selectedAgendamento, ...editForm});
        setViewMode('details');
        fetchAgendamentos();
-     } catch (e) { alert('Erro ao editar'); }
+     } catch (e) { setErrorMsg('Erro ao salvar os dados no banco. Tente novamente.'); }
   };
+
   const abrirModal = (item: Agendamento) => {
     setSelectedAgendamento(item);
     setViewMode('details');
     setReagendarDate(null);
     setReagendarTime(null);
     setReagendarMotivo('');
+    setActionCrm(''); 
+    setErrorMsg('');
     setEditForm({ 
         numero_atendimento: item.numero_atendimento || '',
         nome: item.nome_paciente, 
         telefone: item.telefone_paciente, 
         diagnostico: item.diagnostico || '',
-        procedimentos: item.procedimentos || []
+        procedimentos: item.procedimentos || [],
+        crm_responsavel: '' 
     });
   };
+
   const limparFiltros = () => {
     setDataInicio(new Date()); 
     setDataFim(endOfMonth(new Date())); 
@@ -436,7 +479,6 @@ export function Agenda() {
                     </div>
                   )}
 
-                  {/* SÓ MOSTRA O WHATSAPP SE FOR CHEFE */}
                   {role === 'chefe' && (
                     <button onClick={() => window.open(`https://wa.me/55${selectedAgendamento.telefone_paciente.replace(/\D/g, '')}`, '_blank')} className="w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-xl font-bold flex justify-center gap-2 transition-transform active:scale-95 shadow-sm">
                         <MessageCircle /> WhatsApp
@@ -449,14 +491,12 @@ export function Agenda() {
                   </div>
 
                   <div className="flex gap-2 pt-2">
-                      {/* SÓ MOSTRA O BOTÃO ATUALIZAR STATUS SE FOR CHEFE */}
                       {role === 'chefe' && (
                           <button onClick={() => setViewMode('update_status')} className="flex-1 bg-blue-600 text-white font-medium py-3 rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm">
                             <CheckCircle2 size={18} /> Atualizar Status
                           </button>
                       )}
                       
-                      {/* REAGENDAR DISPONÍVEL PARA AMBOS (Desde que não esteja finalizado) */}
                       {!['cancelado', 'finalizado', 'encaminhado', 'retorno_pa'].includes(selectedAgendamento.status) && (
                           <button onClick={() => { setViewMode('reschedule'); setReagendarDate(new Date()); }} className="flex-1 bg-orange-50 text-orange-700 border border-orange-200 font-medium py-3 rounded-xl hover:bg-orange-100 transition-colors flex items-center justify-center gap-2 text-sm">
                             <AlertTriangle size={18} /> Reagendar
@@ -464,14 +504,12 @@ export function Agenda() {
                       )}
                   </div>
                   
-                  {/* SÓ MOSTRA O BOTÃO CANCELAR SE FOR CHEFE */}
                   {!['cancelado', 'finalizado', 'encaminhado', 'retorno_pa'].includes(selectedAgendamento.status) && role === 'chefe' && (
                       <button onClick={() => setViewMode('confirm_cancel')} className="w-full text-xs text-red-400 hover:text-red-600 py-2 mt-2 font-medium">Cancelar agendamento</button>
                   )}
                 </div>
               )}
 
-              {/* TELA DE SELEÇÃO DE STATUS */}
               {viewMode === 'update_status' && (
                   <div className="space-y-3 animate-in slide-in-from-right-4 duration-300">
                       <p className="text-sm text-gray-600 mb-2">Selecione o novo status:</p>
@@ -502,7 +540,6 @@ export function Agenda() {
                   </div>
               )}
 
-              {/* TELA DE CONFIRMAÇÃO DE STATUS (NOVA) */}
               {viewMode === 'confirm_status_update' && tempStatus && (
                   <div className="text-center space-y-6 animate-in zoom-in-95 duration-200">
                       <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
@@ -512,6 +549,19 @@ export function Agenda() {
                               <span className="text-lg font-bold">{STATUS_CONFIG[tempStatus].label}</span>
                           </div>
                       </div>
+                      
+                      <div className="text-left mt-4">
+                        <label className="text-sm font-medium text-gray-700 mb-1 block">Seu CRM (obrigatório)</label>
+                        <input type="text" className="w-full h-11 border border-gray-200 bg-gray-50 rounded-xl px-3 outline-none" placeholder="Apenas números. Ex.: 55123" value={actionCrm} onChange={e => setActionCrm(e.target.value.replace(/\D/g, '').slice(0, 5))} />
+                      </div>
+
+                      {errorMsg && (
+                        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm flex items-center gap-2 animate-in fade-in">
+                          <AlertCircle size={18} className="flex-shrink-0" />
+                          <span className="font-semibold text-left">{errorMsg}</span>
+                        </div>
+                      )}
+
                       <div className="flex gap-3">
                           <button onClick={() => setViewMode('update_status')} className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-200">Voltar</button>
                           <button onClick={executarAtualizacaoStatus} className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 shadow-md shadow-blue-200">Confirmar</button>
@@ -519,7 +569,6 @@ export function Agenda() {
                   </div>
               )}
 
-              {/* ... Outras views (Edit, Reschedule, Cancel) sem mudanças ... */}
               {viewMode === 'edit' && (
                 <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
                    <div><label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-1"><Hash size={14} /> Nº Atendimento</label><input type="text" className="w-full h-11 border border-gray-200 bg-gray-50 rounded-xl px-3 outline-none font-mono" value={editForm.numero_atendimento} onChange={e => handleNumeroAtendimentoEditChange(e.target.value)} maxLength={10} /></div>
@@ -527,6 +576,16 @@ export function Agenda() {
                    <div><label className="text-sm font-medium text-gray-700 mb-1 block">Telefone</label><input type="tel" className="w-full h-11 border border-gray-200 bg-gray-50 rounded-xl px-3 outline-none" value={editForm.telefone} onChange={e => handlePhoneEditChange(e.target.value)} maxLength={15} /></div>
                    <div><label className="text-sm font-medium text-gray-700 mb-1 block">Diagnóstico / Condutas</label><textarea className="w-full border border-gray-200 bg-gray-50 rounded-xl p-3 outline-none text-sm" rows={3} value={editForm.diagnostico} onChange={e => setEditForm({...editForm, diagnostico: e.target.value})} /></div>
                    <div><label className="text-sm font-medium text-gray-700 mb-2 block">Procedimentos</label><div className="flex flex-wrap gap-2">{OPCOES_PROCEDIMENTOS.map((proc) => {const isSelected = editForm.procedimentos.includes(proc); return (<button key={proc} onClick={() => toggleProcedimentoEdit(proc)} className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all flex items-center gap-1.5 ${isSelected ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-white text-slate-500 border-slate-200'}`}><Activity size={14} /> {proc}</button>)})}</div></div>
+                   
+                   <div><label className="text-sm font-medium text-gray-700 mb-1 block text-blue-600">Seu CRM (obrigatório para salvar)</label><input type="text" className="w-full h-11 border border-blue-200 bg-blue-50 rounded-xl px-3 outline-none" value={editForm.crm_responsavel} onChange={e => setEditForm({...editForm, crm_responsavel: e.target.value.replace(/\D/g, '').slice(0, 5)})} placeholder="Apenas números. Ex.: 55123" /></div>
+
+                   {errorMsg && (
+                      <div className="mb-2 p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm flex items-center gap-2 animate-in fade-in">
+                        <AlertCircle size={18} className="flex-shrink-0" />
+                        <span className="font-semibold">{errorMsg}</span>
+                      </div>
+                   )}
+
                    <div className="flex gap-2 pt-2"><button onClick={() => setViewMode('details')} className="flex-1 bg-gray-100 text-gray-600 py-2 rounded-xl text-sm font-medium">Cancelar</button><button onClick={confirmarEdicao} className="flex-1 bg-blue-600 text-white py-2 rounded-xl text-sm hover:bg-blue-700 font-medium">Salvar</button></div>
                 </div>
               )}
@@ -539,6 +598,16 @@ export function Agenda() {
                         <div><label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Novo Horário</label>{!reagendarDate ? (<div className="h-10 flex items-center text-gray-400 text-sm italic">Selecione uma data primeiro.</div>) : (<div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-1">{HORARIOS_FIXOS.map((horario) => { const isDisabled = checkIsDisabled(horario); const isSelected = reagendarTime && format(reagendarTime, 'HH:mm') === horario; return (<button key={horario} type="button" disabled={isDisabled} onClick={() => handleSelectRescheduleTime(horario)} className={`py-1.5 px-1 rounded-md text-xs font-semibold border transition-all ${isDisabled ? 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed' : isSelected ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:border-blue-400 hover:text-blue-600'}`}>{horario}</button>);})}</div>)}</div>
                     </div>
                     <div><label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Motivo</label><textarea className="w-full border border-gray-200 bg-gray-50 rounded-xl p-3 outline-none text-sm" rows={2} placeholder="Ex.: Paciente pediu para remarcar." value={reagendarMotivo} onChange={e => setReagendarMotivo(e.target.value)} /></div>
+                    
+                    <div><label className="text-xs font-bold text-blue-600 uppercase mb-1 block">Seu CRM (Obrigatório)</label><input type="text" className="w-full h-11 border border-blue-200 bg-blue-50 rounded-xl px-3 outline-none" placeholder="Apenas números. Ex.: 55123" value={actionCrm} onChange={e => setActionCrm(e.target.value.replace(/\D/g, '').slice(0, 5))} /></div>
+
+                    {errorMsg && (
+                      <div className="mb-2 p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm flex items-center gap-2 animate-in fade-in">
+                        <AlertCircle size={18} className="flex-shrink-0" />
+                        <span className="font-semibold">{errorMsg}</span>
+                      </div>
+                    )}
+
                     <div className="flex gap-2 pt-2"><button onClick={() => setViewMode('details')} className="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl text-sm font-medium">Voltar</button><button onClick={confirmarReagendamento} className="flex-1 bg-orange-600 text-white py-3 rounded-xl text-sm hover:bg-orange-700 font-medium">Confirmar</button></div>
                  </div>
               )}
@@ -548,6 +617,19 @@ export function Agenda() {
                   <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto bg-red-100 text-red-600"><AlertCircle size={32} /></div>
                   <h3 className="text-xl font-bold text-gray-800">Tem certeza?</h3>
                   <p className="text-gray-500 text-sm">Você está prestes a cancelar este agendamento.</p>
+                  
+                  <div className="text-left mt-4">
+                    <label className="text-sm font-medium text-gray-700 mb-1 block">Seu CRM (obrigatório)</label>
+                    <input type="text" className="w-full h-11 border border-gray-200 bg-gray-50 rounded-xl px-3 outline-none" placeholder="Apenas números. Ex.: 55123" value={actionCrm} onChange={e => setActionCrm(e.target.value.replace(/\D/g, '').slice(0, 5))} />
+                  </div>
+
+                  {errorMsg && (
+                    <div className="mb-2 p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm flex items-center gap-2 animate-in fade-in">
+                      <AlertCircle size={18} className="flex-shrink-0" />
+                      <span className="font-semibold text-left">{errorMsg}</span>
+                    </div>
+                  )}
+
                   <div className="flex gap-3 pt-2"><button onClick={() => setViewMode('details')} className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-200">Voltar</button><button onClick={() => { setTempStatus('cancelado'); executarAtualizacaoStatus(); }} className="flex-1 text-white py-3 rounded-xl font-semibold bg-red-600 hover:bg-red-700">Sim, Cancelar</button></div>
                 </div>
               )}
