@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 
 export function Home() {
   const navigate = useNavigate();
-
+ 
   return (
     <div className="max-w-6xl mx-auto py-10">
       <div className="text-center mb-16">
