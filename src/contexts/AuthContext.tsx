@@ -2,13 +2,15 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 
-type UserRole = 'chefe' | 'plantonista' | null;
+export type StatusAcesso = 'aprovado' | 'pendente' | 'carregando';
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
-  role: UserRole;
-  profileName: string | null; // <--- NOVO: Guardar o nome
+  roleId: number | null;
+  permissoes: string[];
+  profileName: string | null;
+  statusAcesso: StatusAcesso;
   signIn: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
   loading: boolean;
@@ -19,73 +21,96 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [role, setRole] = useState<UserRole>(null);
-  const [profileName, setProfileName] = useState<string | null>(null); // <--- Estado do Nome
+  const [roleId, setRoleId] = useState<number | null>(null);
+  const [permissoes, setPermissoes] = useState<string[]>([]);
+  const [profileName, setProfileName] = useState<string | null>(null);
+  const [statusAcesso, setStatusAcesso] = useState<StatusAcesso>('carregando');
   const [loading, setLoading] = useState(true);
 
   const fetchUserProfile = async (userId: string, userEmail?: string) => {
     try {
-      // <--- MUDANÇA: Agora buscamos 'role' E 'nome'
-      const { data, error } = await supabase
+      const { data: profileData } = await supabase
         .from('profiles')
-        .select('role, nome') 
+        .select('role_id, nome') 
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
-      if (error || !data) {
-        setRole('plantonista');
-        // Se não tiver perfil, tenta pegar a primeira parte do email (ex: 'plantonista' de 'plantonista@proncor...')
+      if (!profileData || !profileData.role_id) {
+        setRoleId(null);
+        setPermissoes([]);
         setProfileName(userEmail?.split('@')[0] || 'Usuário'); 
-      } else {
-        setRole(data.role as UserRole);
-        // Se o nome no banco for nulo, usa o email formatado
-        setProfileName(data.nome || userEmail?.split('@')[0] || 'Usuário'); 
+        setStatusAcesso('pendente');
+        return;
       }
+
+      setRoleId(profileData.role_id);
+      setProfileName(profileData.nome || userEmail?.split('@')[0] || 'Usuário'); 
+
+      const { data: permData } = await supabase
+        .from('role_permissoes')
+        .select('permissoes(nome)')
+        .eq('role_id', profileData.role_id);
+
+      const listaPermissoes = permData 
+        ? permData.map((p: any) => p.permissoes?.nome).filter(Boolean)
+        : [];
+        
+      setPermissoes(listaPermissoes);
+      setStatusAcesso('aprovado');
     } catch (error) {
-      console.error('Erro ao buscar perfil:', error);
-      setRole('plantonista');
-      setProfileName('Usuário');
+      console.error('Erro Auth:', error);
+      setStatusAcesso('pendente');
     }
   };
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchUserProfile(session.user.id, session.user.email);
+    // Busca inicial
+    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+      setSession(initialSession);
+      setUser(initialSession?.user ?? null);
+      
+      if (initialSession?.user) {
+        fetchUserProfile(initialSession.user.id, initialSession.user.email).finally(() => {
+          setLoading(false);
+        });
+      } else {
+        setLoading(false);
+        setStatusAcesso('pendente');
       }
-      setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchUserProfile(session.user.id, session.user.email);
+    // Escuta mudanças
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+      setSession(currentSession);
+      setUser(currentSession?.user ?? null);
+      
+      if (currentSession?.user) {
+        fetchUserProfile(currentSession.user.id, currentSession.user.email).finally(() => {
+          setLoading(false);
+        });
       } else {
-        setRole(null);
-        setProfileName(null);
+        setRoleId(null);
+        setPermissoes([]);
+        setLoading(false);
+        setStatusAcesso('pendente');
       }
-      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
   const signOut = async () => {
+    setLoading(true);
     await supabase.auth.signOut();
-    setRole(null);
-    setProfileName(null);
+    setRoleId(null);
+    setPermissoes([]);
+    setLoading(false);
   };
   
-  const signIn = async (email: string) => { 
-      // logica antiga mantida
-  };
+  const signIn = async (email: string) => {};
 
   return (
-    // <--- Exportamos profileName aqui
-    <AuthContext.Provider value={{ user, session, role, profileName, signIn, signOut, loading }}>
+    <AuthContext.Provider value={{ user, session, roleId, permissoes, profileName, statusAcesso, signIn, signOut, loading }}>
       {children}
     </AuthContext.Provider>
   );
@@ -93,8 +118,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (context === undefined) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 };

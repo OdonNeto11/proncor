@@ -1,59 +1,80 @@
+import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-
-// IMPORTS DE CONTEXTO E PROTEÇÃO
-import { AuthProvider } from './contexts/AuthContext';
-import { ProtectedRoute } from './components/ProtectedRoute';
-
-import { Layout } from './components/Layout'; 
-
+import { Layout } from './components/Layout';
 import { Login } from './pages/Login';
+import { Home } from './pages/Home';
 import { Agenda } from './pages/Agenda';
 import { Agendar } from './pages/Agendar';
-import { Home } from './pages/Home'; // <--- IMPORTANTE: Importar a Home aqui
+import { Dashboard } from './pages/Dashboard';
+import { AcessoRestrito } from './pages/AcessoRestrito';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 
-function App() {
+function AuthGuard({ children, permission }: { children: React.ReactNode, permission?: string }) {
+  const { user, roleId, permissoes, loading } = useAuth();
+
+  // Spinner de carregamento
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  // Se não tem usuário logado
+  if (!user) return <Navigate to="/login" replace />;
+
+  // Se tem usuário mas não tem perfil (role_id null), manda para acesso restrito
+  if (roleId === null) return <AcessoRestrito />;
+
+  // Se a rota exige permissão e o usuário não tem, volta para a Home
+  if (permission && !permissoes.includes(permission)) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+export default function App() {
   return (
     <AuthProvider>
       <Routes>
-        
-        {/* Rota Pública (Login) */}
         <Route path="/login" element={<Login />} />
 
-        {/* --- ROTAS PROTEGIDAS --- */}
-        
-        {/* Rota Raiz (Início) - Agora aponta para HOME de verdade */}
         <Route path="/" element={
-          <ProtectedRoute>
+          <AuthGuard>
             <Layout>
-               <Home /> {/* <--- TROCAMOS Agenda POR Home */}
+              <Home />
             </Layout>
-          </ProtectedRoute>
+          </AuthGuard>
         } />
-        
-        {/* Rota Agenda */}
+
         <Route path="/agenda" element={
-          <ProtectedRoute>
+          <AuthGuard>
             <Layout>
               <Agenda />
             </Layout>
-          </ProtectedRoute>
+          </AuthGuard>
         } />
 
-        {/* Rota Novo Agendamento */}
         <Route path="/novo" element={
-          <ProtectedRoute>
+          <AuthGuard>
             <Layout>
               <Agendar />
             </Layout>
-          </ProtectedRoute>
+          </AuthGuard>
         } />
 
-        {/* Rota Coringa */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="/dashboard" element={
+          <AuthGuard permission="acessar_dashboard">
+            <Layout>
+              <Dashboard />
+            </Layout>
+          </AuthGuard>
+        } />
 
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AuthProvider>
   );
 }
-
-export default App;

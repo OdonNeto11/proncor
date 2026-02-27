@@ -11,6 +11,7 @@ import { Textarea } from '../components/ui/Textarea';
 import { Card } from '../components/ui/Card';
 import { Toast } from '../components/ui/Toast';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 
 registerLocale('pt-BR', ptBR);
 
@@ -24,6 +25,7 @@ const HORARIOS_FIXOS = [
 const OPCOES_PROCEDIMENTOS = ["Exames", "RX", "Tomografia"];
 
 export function Agendar() {
+  const { permissoes } = useAuth();
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [selectedTime, setSelectedTime] = useState<Date | null>(null);
   const [bookedTimes, setBookedTimes] = useState<string[]>([]);
@@ -53,7 +55,7 @@ export function Agendar() {
         .from('agendamentos')
         .select('hora_agendamento')
         .eq('data_agendamento', dateStr)
-        .in('status', ['agendado', 'reagendado']);
+        .in('status_id', [1, 2]); // IDs 1 (agendado) e 2 (reagendado)
 
       if (error) { console.error(error); return; }
 
@@ -197,7 +199,7 @@ export function Agendar() {
         telefone_paciente: formData.telefone_paciente,
         diagnostico: formData.diagnostico,
         procedimentos: formData.procedimentos,
-        status: 'agendado',
+        status_id: 1, // NOVO: Usando ID 1 (agendado) em vez de string
         anexos: listaAnexos,
         crm_responsavel: formData.crm_responsavel
       }]);
@@ -222,6 +224,16 @@ export function Agendar() {
         setLoading(false); 
     }
   };
+
+  if (!permissoes.includes('criar_agendamento')) {
+    return (
+      <div className="max-w-4xl mx-auto text-center py-20 bg-white rounded-xl border border-red-100 shadow-sm mt-8">
+        <AlertCircle size={48} className="text-red-400 mx-auto mb-4" />
+        <h2 className="text-2xl font-bold text-slate-800 mb-2">Acesso Negado</h2>
+        <p className="text-slate-500">O seu perfil não tem permissão para registrar novos agendamentos.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto animate-in fade-in duration-500">
@@ -278,7 +290,7 @@ export function Agendar() {
                                 className={`
                                     py-2 px-1 rounded-lg text-sm font-semibold border transition-all duration-200
                                     ${isDisabled 
-                                        ? 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed decoration-slate-300'
+                                        ? 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed'
                                         : isSelected
                                             ? 'bg-blue-600 text-white border-blue-600 shadow-md transform scale-105'
                                             : 'bg-white text-slate-600 border-slate-200 hover:border-blue-400 hover:text-blue-600 hover:shadow-sm'
@@ -299,7 +311,6 @@ export function Agendar() {
 
           <div className="h-px bg-slate-100 my-2"></div>
 
-          {/* CRM REMOVIDO DA DIV E ALINHADO COM OS DEMAIS INPUTS */}
           <Input 
              label="Seu CRM" 
              name="crm_responsavel" 
