@@ -14,13 +14,6 @@ import { useAuth } from '../contexts/AuthContext';
 
 registerLocale('pt-BR', ptBR); 
 
-const HORARIOS_FIXOS = [
-  "07:30", "08:00", "08:30", "09:00",
-  "15:00", "15:30", "16:00", "16:30",
-  "17:00", "17:30", "19:30", "20:00",
-  "20:30", "21:00"
-];
-
 const OPCOES_PROCEDIMENTOS = ["Exames", "RX", "Tomografia"];
 
 const STATUS_CONFIG: Record<number, { label: string, color: string, border: string, icon: any }> = {
@@ -64,6 +57,9 @@ export function Agenda() {
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
   const [loading, setLoading] = useState(true);
   
+  // NOVO: Estado para armazenar os horários dinâmicos do banco (para o Modal de Reagendamento)
+  const [horariosDisponiveis, setHorariosDisponiveis] = useState<string[]>([]);
+  
   const [busca, setBusca] = useState('');
   const [filtroStatus, setFiltroStatus] = useState('padrao'); 
   
@@ -91,6 +87,22 @@ export function Agenda() {
     procedimentos: [] as string[],
     crm_responsavel: ''
   });
+
+  // NOVO: Busca os horários configurados no banco ao carregar a tela
+  useEffect(() => {
+    const fetchHorarios = async () => {
+      const { data, error } = await supabase
+        .from('config_horarios')
+        .select('horario')
+        .eq('ativo', true)
+        .order('horario', { ascending: true });
+        
+      if (data && !error) {
+        setHorariosDisponiveis(data.map(h => h.horario.substring(0, 5)));
+      }
+    };
+    fetchHorarios();
+  }, []);
 
   const fetchAgendamentos = async () => {
     setLoading(true);
@@ -402,7 +414,6 @@ export function Agenda() {
                             </span>
                         </div>
                         
-                        {/* AQUI FOI INSERIDA A NOVA LINHA MOSTRANDO O ATENDIMENTO E O CRM */}
                         <div className="flex gap-2 items-center mb-1">
                             {item.numero_atendimento && (
                                 <span className="text-[10px] font-semibold text-gray-500">#{item.numero_atendimento}</span>
@@ -609,7 +620,26 @@ export function Agenda() {
                     <div className="bg-orange-50 p-4 rounded-xl border border-orange-100"><p className="text-sm text-orange-800 text-center font-medium">Selecione a nova data e horário</p></div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div><label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Nova Data</label><div className="relative"><CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10" size={20} /><DatePicker selected={reagendarDate} onChange={(d: Date | null) => setReagendarDate(d)} minDate={new Date()} locale="pt-BR" dateFormat="dd/MM/yyyy" placeholderText="Selecione o dia" popperPlacement="bottom-start" className="custom-datepicker-input" onFocus={(e) => e.target.blur()} /></div></div>
-                        <div><label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Novo Horário</label>{!reagendarDate ? (<div className="h-10 flex items-center text-gray-400 text-sm italic">Selecione uma data primeiro.</div>) : (<div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-1">{HORARIOS_FIXOS.map((horario) => { const isDisabled = checkIsDisabled(horario); const isSelected = reagendarTime && format(reagendarTime, 'HH:mm') === horario; return (<button key={horario} type="button" disabled={isDisabled} onClick={() => handleSelectRescheduleTime(horario)} className={`py-1.5 px-1 rounded-md text-xs font-semibold border transition-all ${isDisabled ? 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed' : isSelected ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:border-blue-400 hover:text-blue-600'}`}>{horario}</button>);})}</div>)}</div>
+                        <div>
+                           <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Novo Horário</label>
+                           {!reagendarDate ? (
+                              <div className="h-10 flex items-center text-gray-400 text-sm italic">Selecione uma data primeiro.</div>
+                           ) : horariosDisponiveis.length === 0 ? (
+                              <div className="h-10 flex items-center text-gray-400 text-sm italic">Carregando horários...</div>
+                           ) : (
+                              <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-1">
+                                  {horariosDisponiveis.map((horario) => { 
+                                      const isDisabled = checkIsDisabled(horario); 
+                                      const isSelected = reagendarTime && format(reagendarTime, 'HH:mm') === horario; 
+                                      return (
+                                          <button key={horario} type="button" disabled={isDisabled} onClick={() => handleSelectRescheduleTime(horario)} className={`py-1.5 px-1 rounded-md text-xs font-semibold border transition-all ${isDisabled ? 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed' : isSelected ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:border-blue-400 hover:text-blue-600'}`}>
+                                              {horario}
+                                          </button>
+                                      );
+                                  })}
+                              </div>
+                           )}
+                        </div>
                     </div>
                     <div><label className="text-xs font-bold text-gray-500 uppercase mb-1 block">Motivo</label><textarea className="w-full border border-gray-200 bg-gray-50 rounded-xl p-3 outline-none text-sm" rows={2} placeholder="Ex.: Paciente pediu para remarcar." value={reagendarMotivo} onChange={e => setReagendarMotivo(e.target.value)} /></div>
                     

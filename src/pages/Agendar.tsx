@@ -15,13 +15,6 @@ import { useAuth } from '../contexts/AuthContext';
 
 registerLocale('pt-BR', ptBR);
 
-const HORARIOS_FIXOS = [
-  "07:30", "08:00", "08:30", "09:00",
-  "15:00", "15:30", "16:00", "16:30",
-  "17:00", "17:30", "19:30", "20:00",
-  "20:30", "21:00"
-];
-
 const OPCOES_PROCEDIMENTOS = ["Exames", "RX", "Tomografia"];
 
 export function Agendar() {
@@ -29,6 +22,9 @@ export function Agendar() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [selectedTime, setSelectedTime] = useState<Date | null>(null);
   const [bookedTimes, setBookedTimes] = useState<string[]>([]);
+  
+  // NOVO: Estado para armazenar os horários dinâmicos do banco
+  const [horariosDisponiveis, setHorariosDisponiveis] = useState<string[]>([]);
   
   const [formData, setFormData] = useState({
     numero_atendimento: '', 
@@ -45,6 +41,23 @@ export function Agendar() {
   
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [errorMsg, setErrorMsg] = useState(''); 
+
+  // NOVO: Busca os horários configurados no banco
+  useEffect(() => {
+    const fetchHorarios = async () => {
+      const { data, error } = await supabase
+        .from('config_horarios')
+        .select('horario')
+        .eq('ativo', true)
+        .order('horario', { ascending: true });
+        
+      if (data && !error) {
+        // Formata de 'HH:mm:ss' para 'HH:mm'
+        setHorariosDisponiveis(data.map(h => h.horario.substring(0, 5)));
+      }
+    };
+    fetchHorarios();
+  }, []);
 
   useEffect(() => {
     const fetchBookedTimes = async () => {
@@ -199,7 +212,7 @@ export function Agendar() {
         telefone_paciente: formData.telefone_paciente,
         diagnostico: formData.diagnostico,
         procedimentos: formData.procedimentos,
-        status_id: 1, // NOVO: Usando ID 1 (agendado) em vez de string
+        status_id: 1, 
         anexos: listaAnexos,
         crm_responsavel: formData.crm_responsavel
       }]);
@@ -276,34 +289,38 @@ export function Agendar() {
                     {selectedTime && <span className="text-xs font-normal text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">Selecionado: {format(selectedTime, 'HH:mm')}</span>}
                 </label>
                 
-                <div className={`grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 p-2 rounded-xl ${errors.hora_agendamento ? 'bg-red-50 border border-red-200' : ''}`}>
-                    {HORARIOS_FIXOS.map((horario) => {
-                        const isDisabled = checkIsDisabled(horario);
-                        const isSelected = selectedTime && format(selectedTime, 'HH:mm') === horario;
+                {horariosDisponiveis.length === 0 ? (
+                  <p className="text-sm text-gray-500 italic">Carregando horários...</p>
+                ) : (
+                  <div className={`grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 p-2 rounded-xl ${errors.hora_agendamento ? 'bg-red-50 border border-red-200' : ''}`}>
+                      {horariosDisponiveis.map((horario) => {
+                          const isDisabled = checkIsDisabled(horario);
+                          const isSelected = selectedTime && format(selectedTime, 'HH:mm') === horario;
 
-                        return (
-                            <button
-                                key={horario}
-                                type="button"
-                                disabled={isDisabled}
-                                onClick={() => handleSelectTime(horario)}
-                                className={`
-                                    py-2 px-1 rounded-lg text-sm font-semibold border transition-all duration-200
-                                    ${isDisabled 
-                                        ? 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed'
-                                        : isSelected
-                                            ? 'bg-blue-600 text-white border-blue-600 shadow-md transform scale-105'
-                                            : 'bg-white text-slate-600 border-slate-200 hover:border-blue-400 hover:text-blue-600 hover:shadow-sm'
-                                    }
-                                `}
-                            >
-                                <div className="flex items-center justify-center gap-1">
-                                    {horario}
-                                </div>
-                            </button>
-                        );
-                    })}
-                </div>
+                          return (
+                              <button
+                                  key={horario}
+                                  type="button"
+                                  disabled={isDisabled}
+                                  onClick={() => handleSelectTime(horario)}
+                                  className={`
+                                      py-2 px-1 rounded-lg text-sm font-semibold border transition-all duration-200
+                                      ${isDisabled 
+                                          ? 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed'
+                                          : isSelected
+                                              ? 'bg-blue-600 text-white border-blue-600 shadow-md transform scale-105'
+                                              : 'bg-white text-slate-600 border-slate-200 hover:border-blue-400 hover:text-blue-600 hover:shadow-sm'
+                                      }
+                                  `}
+                              >
+                                  <div className="flex items-center justify-center gap-1">
+                                      {horario}
+                                  </div>
+                              </button>
+                          );
+                      })}
+                  </div>
+                )}
                 {errors.hora_agendamento && <span className="text-xs text-red-500 mt-1 block font-medium">{errors.hora_agendamento}</span>}
             </div>
 

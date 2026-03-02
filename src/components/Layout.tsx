@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react'; 
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Calendar, ClipboardList, Home as HomeIcon, Menu, X, LogOut, UserCircle, LayoutDashboard } from 'lucide-react';
+import { Calendar, ClipboardList, Home as HomeIcon, Menu, X, LogOut, UserCircle, Settings } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   
-  const { signOut, profileName, permissoes } = useAuth();
+  const { signOut, profileName, permissoes, roleId } = useAuth();
   
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -33,14 +33,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
             
-            {/* LOGO */}
             <div className="flex items-center gap-3">
               <Link to="/" className="flex-shrink-0 hover:opacity-90 transition-opacity">
                 <img src="/logo.png" alt="Hospital Proncor" className="h-12 w-auto object-contain" />
               </Link>
             </div>
             
-            {/* MENU DESKTOP */}
             <nav className="hidden md:flex items-center gap-2 text-sm font-medium text-slate-600">
               <Link to="/" className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 ${isActive('/') ? 'text-blue-700 bg-blue-50 font-semibold' : 'hover:text-blue-600 hover:bg-gray-50'}`}>
                 <HomeIcon size={18} /> Início
@@ -54,17 +52,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <ClipboardList size={18} /> Ver Agenda
               </Link>
 
-              {/* LINK DASHBOARD - MOVIDO PARA O FIM (Antes da barra separadora) */}
-              {(permissoes.includes('acessar_dashboard')) && (
+              {roleId === 1 && (
                 <Link 
-                  to="/dashboard" 
+                  to="/admin" 
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 ${
-                    isActive('/dashboard') 
+                    isActive('/admin') 
                       ? 'text-blue-700 bg-blue-50 font-semibold' 
                       : 'hover:text-blue-600 hover:bg-gray-50'
                   }`}
                 >
-                  <LayoutDashboard size={18} /> Dashboard
+                  <Settings size={18} /> Administração
                 </Link>
               )}
 
@@ -88,7 +85,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        {/* MENU MOBILE */}
         {isMobileMenuOpen && (
           <>
             <div className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm md:hidden" onClick={() => setIsMobileMenuOpen(false)} />
@@ -111,18 +107,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   <ClipboardList size={18} /> Ver Agenda
                 </Link>
 
-                {/* LINK DASHBOARD MOBILE - MOVIDO PARA O FIM (Antes do sair) */}
-                {(permissoes.includes('acessar_dashboard')) && (
+                {roleId === 1 && (
                   <Link 
-                    to="/dashboard" 
+                    to="/admin" 
                     onClick={handleNavigation} 
                     className={`flex items-center gap-3 px-4 py-3 rounded-lg whitespace-nowrap transition-colors ${
-                      isActive('/dashboard') 
+                      isActive('/admin') 
                         ? 'bg-blue-50 text-blue-700 font-semibold' 
                         : 'text-gray-600 hover:bg-gray-50'
                     }`}
                   >
-                    <LayoutDashboard size={18} /> Dashboard
+                    <Settings size={18} /> Administração
                   </Link>
                 )}
                 
