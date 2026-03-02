@@ -64,39 +64,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    // Busca inicial
-    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+    let mounted = true;
+
+    const initializeAuth = async () => {
+      // 1. Garante que a tela fique bloqueada pelo Spinner no App.tsx
+      setLoading(true); 
+      
+      const { data: { session: initialSession } } = await supabase.auth.getSession();
+      
+      if (!mounted) return;
+
       setSession(initialSession);
       setUser(initialSession?.user ?? null);
       
       if (initialSession?.user) {
-        fetchUserProfile(initialSession.user.id, initialSession.user.email).finally(() => {
-          setLoading(false);
-        });
+        // 2. Aguarda pacientemente buscar o roleId ANTES de liberar o loading
+        await fetchUserProfile(initialSession.user.id, initialSession.user.email);
       } else {
-        setLoading(false);
         setStatusAcesso('pendente');
       }
-    });
+      
+      // 3. Somente aqui, com tudo em mãos, liberamos a interface
+      if (mounted) setLoading(false);
+    };
 
-    // Escuta mudanças
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+    initializeAuth();
+
+    // Escuta mudanças de aba/login
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, currentSession) => {
+      if (!mounted) return;
+      
+      setLoading(true); // Trava a tela se a sessão mudar
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
       
       if (currentSession?.user) {
-        fetchUserProfile(currentSession.user.id, currentSession.user.email).finally(() => {
-          setLoading(false);
-        });
+        await fetchUserProfile(currentSession.user.id, currentSession.user.email);
       } else {
         setRoleId(null);
         setPermissoes([]);
-        setLoading(false);
         setStatusAcesso('pendente');
       }
+      
+      if (mounted) setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signOut = async () => {
@@ -104,6 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
     setRoleId(null);
     setPermissoes([]);
+    setStatusAcesso('pendente'); // Ajustado para pendente ao sair
     setLoading(false);
   };
   
