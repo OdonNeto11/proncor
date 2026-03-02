@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 
@@ -25,9 +25,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [permissoes, setPermissoes] = useState<string[]>([]);
   const [profileName, setProfileName] = useState<string | null>(null);
   const [statusAcesso, setStatusAcesso] = useState<StatusAcesso>('carregando');
-  
-  // Inicia como true apenas para o carregamento inicial (First Load)
   const [loading, setLoading] = useState(true);
+
+  // O PULO DO GATO: Controla se o perfil já foi carregado imune ao problema de "amnésia" do React
+  const profileLoadedRef = useRef(false);
 
   const fetchUserProfile = async (userId: string, userEmail?: string) => {
     try {
@@ -42,6 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setPermissoes([]);
         setProfileName(userEmail?.split('@')[0] || 'Usuário'); 
         setStatusAcesso('pendente');
+        profileLoadedRef.current = false;
         return;
       }
 
@@ -59,66 +61,66 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
       setPermissoes(listaPermissoes);
       setStatusAcesso('aprovado');
+      profileLoadedRef.current = true;
     } catch (error) {
       console.error('Erro Auth:', error);
       setStatusAcesso('pendente');
+      profileLoadedRef.current = false;
     }
   };
 
   useEffect(() => {
     let mounted = true;
 
-    // 1. CARREGAMENTO INICIAL DA PÁGINA
     const initializeAuth = async () => {
       try {
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        const { data: { session: initialSession } } = await supabase.auth.getSession();
 
-        if (currentSession?.user) {
-          await fetchUserProfile(currentSession.user.id, currentSession.user.email);
+        if (initialSession?.user) {
+          await fetchUserProfile(initialSession.user.id, initialSession.user.email);
           if (mounted) {
-            setSession(currentSession);
-            setUser(currentSession.user);
+            setSession(initialSession);
+            setUser(initialSession.user);
           }
         } else {
           if (mounted) setStatusAcesso('pendente');
         }
-      } catch (err) {
-        console.error("Erro ao inicializar sessão:", err);
-        if (mounted) setStatusAcesso('pendente');
+      } catch (error) {
+         if (mounted) setStatusAcesso('pendente');
       } finally {
-        // Libera a tela. A partir daqui, atualizações de token em background não travam mais o sistema.
         if (mounted) setLoading(false);
       }
     };
 
     initializeAuth();
 
-    // 2. ESCUTADOR DE EVENTOS (Background / Login / Logout)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
       if (!mounted) return;
-      
-      // Ignora evento inicial (já tratado acima)
-      if (event === 'INITIAL_SESSION') return;
-      
-      // LOGOUT: Limpa estado silenciosamente.
+
       if (event === 'SIGNED_OUT') {
         setSession(null);
         setUser(null);
         setRoleId(null);
         setPermissoes([]);
         setStatusAcesso('pendente');
+        profileLoadedRef.current = false;
         return;
       }
 
       if (currentSession?.user) {
-        // ATUALIZAÇÃO SILENCIOSA: Atualiza variáveis sem piscar a tela
-        setSession(currentSession);
-        setUser(currentSession.user);
-        
-        // LOGIN NOVO: Aqui sim travamos a tela rapidinho para buscar o perfil e permissões
-        if (event === 'SIGNED_IN') {
+        // Se a referência diz que já carregamos o perfil, é só uma troca de aba ou renovação.
+        // Fazemos tudo em background (silenciosamente) sem tocar na tela de loading!
+        if (profileLoadedRef.current) {
+          setSession(currentSession);
+          setUser(currentSession.user);
+          fetchUserProfile(currentSession.user.id, currentSession.user.email); 
+        } else {
+          // Se não tem perfil carregado, é um login real acontecendo agora.
+          // Aqui travamos a tela para não dar a "piscada" do acesso restrito.
           setLoading(true);
           await fetchUserProfile(currentSession.user.id, currentSession.user.email);
+          setSession(currentSession);
+          setUser(currentSession.user);
           setLoading(false);
         }
       }
@@ -133,6 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     setLoading(true);
     await supabase.auth.signOut();
+    profileLoadedRef.current = false;
     setRoleId(null);
     setPermissoes([]);
     setStatusAcesso('pendente'); 
@@ -141,6 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(false);
   };
   
+  // (Lembrando que coloquei signInWithOtp aqui, se você usar senha no seu login, troque para signInWithPassword)
   const signIn = async (email: string) => {
     setLoading(true);
     const { error } = await supabase.auth.signInWithOtp({ email });
