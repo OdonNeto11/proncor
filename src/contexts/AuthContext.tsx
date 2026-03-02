@@ -25,21 +25,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [permissoes, setPermissoes] = useState<string[]>([]);
   const [profileName, setProfileName] = useState<string | null>(null);
   const [statusAcesso, setStatusAcesso] = useState<StatusAcesso>('carregando');
+  
+  // Inicia como true apenas para o carregamento inicial (First Load)
   const [loading, setLoading] = useState(true);
-
-  // Força bruta para evitar que o cache corrompido congele a aplicação
-  const limparCacheSupabase = () => {
-    if (typeof window !== 'undefined') {
-      const chavesParaRemover = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && (key.startsWith('sb-') || key.includes('supabase'))) {
-          chavesParaRemover.push(key);
-        }
-      }
-      chavesParaRemover.forEach(k => localStorage.removeItem(k));
-    }
-  };
 
   const fetchUserProfile = async (userId: string, userEmail?: string) => {
     try {
@@ -80,77 +68,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
+    // 1. CARREGAMENTO INICIAL DA PÁGINA
     const initializeAuth = async () => {
       try {
-        setLoading(true); 
-        const { data, error } = await supabase.auth.getSession();
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
 
-        if (error) throw error; // Joga direto pro catch para limpar tudo
-
-        if (!mounted) return;
-
-        if (data?.session?.user) {
-          await fetchUserProfile(data.session.user.id, data.session.user.email);
-          setSession(data.session);
-          setUser(data.session.user);
+        if (currentSession?.user) {
+          await fetchUserProfile(currentSession.user.id, currentSession.user.email);
+          if (mounted) {
+            setSession(currentSession);
+            setUser(currentSession.user);
+          }
         } else {
-          setSession(null);
-          setUser(null);
-          setRoleId(null);
-          setPermissoes([]);
-          setStatusAcesso('pendente');
+          if (mounted) setStatusAcesso('pendente');
         }
       } catch (err) {
-        console.warn("Sessão corrompida. Executando limpeza bruta do cache...");
-        limparCacheSupabase();
-        
-        if (mounted) {
-          setSession(null);
-          setUser(null);
-          setStatusAcesso('pendente');
-        }
+        console.error("Erro ao inicializar sessão:", err);
+        if (mounted) setStatusAcesso('pendente');
       } finally {
+        // Libera a tela. A partir daqui, atualizações de token em background não travam mais o sistema.
         if (mounted) setLoading(false);
       }
     };
 
     initializeAuth();
 
+    // 2. ESCUTADOR DE EVENTOS (Background / Login / Logout)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
       if (!mounted) return;
       
-      // PULO DO GATO: Evita o conflito com a busca inicial
+      // Ignora evento inicial (já tratado acima)
       if (event === 'INITIAL_SESSION') return;
       
-      try {
-        setLoading(true); 
+      // LOGOUT: Limpa estado silenciosamente.
+      if (event === 'SIGNED_OUT') {
+        setSession(null);
+        setUser(null);
+        setRoleId(null);
+        setPermissoes([]);
+        setStatusAcesso('pendente');
+        return;
+      }
 
-        // Se detectou logout nativo do supabase, passa a vassoura
-        if (event === 'SIGNED_OUT') {
-          limparCacheSupabase();
-          setSession(null);
-          setUser(null);
-          setRoleId(null);
-          setPermissoes([]);
-          setStatusAcesso('pendente');
-          return;
-        }
+      if (currentSession?.user) {
+        // ATUALIZAÇÃO SILENCIOSA: Atualiza variáveis sem piscar a tela
+        setSession(currentSession);
+        setUser(currentSession.user);
         
-        if (currentSession?.user) {
+        // LOGIN NOVO: Aqui sim travamos a tela rapidinho para buscar o perfil e permissões
+        if (event === 'SIGNED_IN') {
+          setLoading(true);
           await fetchUserProfile(currentSession.user.id, currentSession.user.email);
-          setSession(currentSession);
-          setUser(currentSession.user);
-        } else {
-          setSession(null);
-          setUser(null);
-          setRoleId(null);
-          setPermissoes([]);
-          setStatusAcesso('pendente');
+          setLoading(false);
         }
-      } catch (err) {
-        console.error("Erro no AuthStateChange:", err);
-      } finally {
-        if (mounted) setLoading(false);
       }
     });
 
@@ -161,21 +131,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = async () => {
-    try {
-      setLoading(true);
-      await supabase.auth.signOut();
-    } catch (err) {
-      console.error("Erro silencioso no signOut:", err);
-    } finally {
-      // Garante que o usuário consiga sair MESMO se a API do Supabase cair
-      limparCacheSupabase();
-      setRoleId(null);
-      setPermissoes([]);
-      setStatusAcesso('pendente'); 
-      setSession(null);
-      setUser(null);
-      setLoading(false);
-    }
+    setLoading(true);
+    await supabase.auth.signOut();
+    setRoleId(null);
+    setPermissoes([]);
+    setStatusAcesso('pendente'); 
+    setSession(null);
+    setUser(null);
+    setLoading(false);
   };
   
   const signIn = async (email: string) => {
