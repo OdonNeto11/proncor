@@ -27,6 +27,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [statusAcesso, setStatusAcesso] = useState<StatusAcesso>('carregando');
   const [loading, setLoading] = useState(true);
 
+  // Força bruta para evitar que o cache corrompido congele a aplicação
+  const limparCacheSupabase = () => {
+    if (typeof window !== 'undefined') {
+      const chavesParaRemover = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('sb-') || key.includes('supabase'))) {
+          chavesParaRemover.push(key);
+        }
+      }
+      chavesParaRemover.forEach(k => localStorage.removeItem(k));
+    }
+  };
+
   const fetchUserProfile = async (userId: string, userEmail?: string) => {
     try {
       const { data: profileData } = await supabase
@@ -67,46 +81,77 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let mounted = true;
 
     const initializeAuth = async () => {
-      // 1. Garante que a tela fique bloqueada pelo Spinner no App.tsx
-      setLoading(true); 
-      
-      const { data: { session: initialSession } } = await supabase.auth.getSession();
-      
-      if (!mounted) return;
+      try {
+        setLoading(true); 
+        const { data, error } = await supabase.auth.getSession();
 
-      setSession(initialSession);
-      setUser(initialSession?.user ?? null);
-      
-      if (initialSession?.user) {
-        // 2. Aguarda pacientemente buscar o roleId ANTES de liberar o loading
-        await fetchUserProfile(initialSession.user.id, initialSession.user.email);
-      } else {
-        setStatusAcesso('pendente');
+        if (error) throw error; // Joga direto pro catch para limpar tudo
+
+        if (!mounted) return;
+
+        if (data?.session?.user) {
+          await fetchUserProfile(data.session.user.id, data.session.user.email);
+          setSession(data.session);
+          setUser(data.session.user);
+        } else {
+          setSession(null);
+          setUser(null);
+          setRoleId(null);
+          setPermissoes([]);
+          setStatusAcesso('pendente');
+        }
+      } catch (err) {
+        console.warn("Sessão corrompida. Executando limpeza bruta do cache...");
+        limparCacheSupabase();
+        
+        if (mounted) {
+          setSession(null);
+          setUser(null);
+          setStatusAcesso('pendente');
+        }
+      } finally {
+        if (mounted) setLoading(false);
       }
-      
-      // 3. Somente aqui, com tudo em mãos, liberamos a interface
-      if (mounted) setLoading(false);
     };
 
     initializeAuth();
 
-    // Escuta mudanças de aba/login
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, currentSession) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
       if (!mounted) return;
       
-      setLoading(true); // Trava a tela se a sessão mudar
-      setSession(currentSession);
-      setUser(currentSession?.user ?? null);
+      // PULO DO GATO: Evita o conflito com a busca inicial
+      if (event === 'INITIAL_SESSION') return;
       
-      if (currentSession?.user) {
-        await fetchUserProfile(currentSession.user.id, currentSession.user.email);
-      } else {
-        setRoleId(null);
-        setPermissoes([]);
-        setStatusAcesso('pendente');
+      try {
+        setLoading(true); 
+
+        // Se detectou logout nativo do supabase, passa a vassoura
+        if (event === 'SIGNED_OUT') {
+          limparCacheSupabase();
+          setSession(null);
+          setUser(null);
+          setRoleId(null);
+          setPermissoes([]);
+          setStatusAcesso('pendente');
+          return;
+        }
+        
+        if (currentSession?.user) {
+          await fetchUserProfile(currentSession.user.id, currentSession.user.email);
+          setSession(currentSession);
+          setUser(currentSession.user);
+        } else {
+          setSession(null);
+          setUser(null);
+          setRoleId(null);
+          setPermissoes([]);
+          setStatusAcesso('pendente');
+        }
+      } catch (err) {
+        console.error("Erro no AuthStateChange:", err);
+      } finally {
+        if (mounted) setLoading(false);
       }
-      
-      if (mounted) setLoading(false);
     });
 
     return () => {
@@ -116,15 +161,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = async () => {
-    setLoading(true);
-    await supabase.auth.signOut();
-    setRoleId(null);
-    setPermissoes([]);
-    setStatusAcesso('pendente'); // Ajustado para pendente ao sair
-    setLoading(false);
+    try {
+      setLoading(true);
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error("Erro silencioso no signOut:", err);
+    } finally {
+      // Garante que o usuário consiga sair MESMO se a API do Supabase cair
+      limparCacheSupabase();
+      setRoleId(null);
+      setPermissoes([]);
+      setStatusAcesso('pendente'); 
+      setSession(null);
+      setUser(null);
+      setLoading(false);
+    }
   };
   
-  const signIn = async (email: string) => {};
+  const signIn = async (email: string) => {
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithOtp({ email });
+    if (error) {
+      setLoading(false);
+      throw error;
+    }
+  };
 
   return (
     <AuthContext.Provider value={{ user, session, roleId, permissoes, profileName, statusAcesso, signIn, signOut, loading }}>
