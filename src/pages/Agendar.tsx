@@ -4,6 +4,7 @@ import DatePicker, { registerLocale } from 'react-datepicker';
 import { ptBR } from 'date-fns/locale';
 import "react-datepicker/dist/react-datepicker.css";
 import { format, isSameDay, setHours, setMinutes } from 'date-fns';
+import { Link } from 'react-router-dom';
 
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -250,6 +251,23 @@ export function Agendar() {
 
   return (
     <div className="max-w-4xl mx-auto animate-in fade-in duration-500">
+      
+      {/* SUB-CABEÇALHO DO MÓDULO PA */}
+      <div className="flex items-center gap-6 mb-8 border-b border-gray-200 px-2">
+        <Link 
+          to="/novo" 
+          className={`pb-3 text-sm font-bold border-b-2 transition-colors ${window.location.pathname === '/novo' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300'}`}
+        >
+          Novo Agendamento
+        </Link>
+        <Link 
+          to="/agenda" 
+          className={`pb-3 text-sm font-bold border-b-2 transition-colors ${window.location.pathname === '/agenda' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300'}`}
+        >
+          Ver Agenda
+        </Link>
+      </div>
+
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-800 mb-2">Novo Agendamento</h1>
         <p className="text-gray-600">Preencha os dados a seguir:</p>

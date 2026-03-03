@@ -1,86 +1,76 @@
-import { Calendar, ClipboardList, ArrowRight } from 'lucide-react';
-import { Card } from '../components/ui/Card';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext'; // <--- IMPORTADO
+import React from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { Building2, Stethoscope, ClipboardList, AlertCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export function Home() {
-  const navigate = useNavigate();
-  const { permissoes } = useAuth(); // <--- CONSUMINDO PERMISSÕES
+  const { profileName, setores, roleId } = useAuth();
+
+  const isAcessoPendente = roleId === null || !setores || setores.length === 0;
 
   return (
-    <div className="max-w-6xl mx-auto py-10">
-      <div className="text-center mb-16">
-        <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-4">
-          Sistema de Teleconsultas
+    <div className="max-w-6xl mx-auto animate-in fade-in duration-500">
+      
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-800 mb-2">
+          Olá, {profileName ? profileName.split(' ')[0] : 'Profissional'}
         </h1>
-        <p className="text-xl text-gray-600">
-          Agendamento de Teleconsultas e Retornos
-        </p>
+        <p className="text-gray-600">Selecione o seu ambiente de trabalho para iniciar.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-        
-        {/* CARD NOVO AGENDAMENTO - Só aparece se tiver permissão */}
-        {permissoes.includes('criar_agendamento') && (
-          <Card
-            onClick={() => navigate('/novo')}
-            className="cursor-pointer group hover:shadow-lg transition-shadow border-t-4 border-t-blue-500"
-          >
-            <div className="flex flex-col items-center text-center p-8">
-              <div className="bg-blue-100 p-6 rounded-full mb-6 group-hover:bg-blue-200 transition-colors">
-                <Calendar className="text-blue-600" size={48} />
-              </div>
-              <h2 className="text-2xl font-bold text-gray-800 mb-3">
-                Novo Agendamento
-              </h2>
-              <p className="text-gray-600 mb-6">
-                Registre um novo retorno médico para um paciente
-              </p>
-              <div className="flex items-center gap-2 text-blue-600 font-semibold group-hover:gap-4 transition-all">
-                Acessar
-                <ArrowRight size={20} />
-              </div>
-            </div>
-          </Card>
-        )}
-
-        {/* CARD VER AGENDA - Só aparece se tiver permissão */}
-        {permissoes.includes('visualizar_agenda') && (
-          <Card
-            onClick={() => navigate('/agenda')}
-            className="cursor-pointer group hover:shadow-lg transition-shadow border-t-4 border-t-green-500"
-          >
-            <div className="flex flex-col items-center text-center p-8">
-              <div className="bg-green-100 p-6 rounded-full mb-6 group-hover:bg-green-200 transition-colors">
-                <ClipboardList className="text-green-600" size={48} />
-              </div>
-              <h2 className="text-2xl font-bold text-gray-800 mb-3">
-                Ver Agenda
-              </h2>
-              <p className="text-gray-600 mb-6">
-                Visualize e gerencie todos os agendamentos registrados
-              </p>
-              <div className="flex items-center gap-2 text-green-600 font-semibold group-hover:gap-4 transition-all">
-                Acessar
-                <ArrowRight size={20} />
-              </div>
-            </div>
-          </Card>
-        )}
-      </div>
-
-      <div className="mt-16 text-center">
-        <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-none">
-          <div className="p-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">
-              Sistema de Teleconsulta e Retornos
-            </h3>
-            <p className="text-gray-600">
-              Gerencie retornos médicos online após exames de forma centralizada e eficiente.
-            </p>
+      {isAcessoPendente ? (
+        <div className="bg-white rounded-2xl border border-dashed border-gray-300 p-12 text-center max-w-2xl mx-auto mt-12 shadow-sm">
+          <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
+             <AlertCircle size={40} className="text-gray-400" />
           </div>
-        </Card>
-      </div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-3">Sem setor vinculado</h2>
+          <p className="text-gray-500 leading-relaxed">
+            Seu usuário foi autenticado, mas você ainda não possui um ambiente de trabalho definido no sistema.
+            <br/><br/>
+            Por favor, contate a administração do sistema para liberar o seu acesso aos menus.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          
+          {setores.filter(Boolean).map(setor => {
+            
+            let rota = '/';
+            let Icone = Building2;
+            let cor = 'bg-blue-50 text-blue-600';
+            let hoverCor = 'hover:border-blue-400';
+
+            if (setor.sigla === 'PA') {
+                rota = '/novo'; 
+                Icone = Stethoscope;
+                cor = 'bg-emerald-50 text-emerald-600';
+                hoverCor = 'hover:border-emerald-400';
+            } else if (setor.sigla === 'AMB') {
+                rota = '/ambulatorio'; 
+                Icone = ClipboardList;
+                cor = 'bg-purple-50 text-purple-600';
+                hoverCor = 'hover:border-purple-400';
+            }
+
+            return (
+              <Link 
+                key={setor.id} 
+                to={rota}
+                className={`bg-white p-8 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all group flex flex-col items-center text-center ${hoverCor}`}
+              >
+                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform ${cor}`}>
+                   <Icone size={32} />
+                </div>
+                <h3 className="text-xl font-bold text-gray-800 mb-2">{setor.nome}</h3>
+                <span className="text-xs font-bold bg-gray-100 text-gray-500 px-3 py-1 rounded-full tracking-wider">
+                    {setor.sigla}
+                </span>
+              </Link>
+            )
+          })}
+          
+        </div>
+      )}
     </div>
   );
 }

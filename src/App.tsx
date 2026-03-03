@@ -5,11 +5,12 @@ import { Login } from './pages/Login';
 import { Home } from './pages/Home';
 import { Agenda } from './pages/Agenda';
 import { Agendar } from './pages/Agendar';
-import { AcessoRestrito } from './pages/AcessoRestrito';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Admin } from './pages/Admin';
+import { Ambulatorio } from './pages/Ambulatorio';
+import { NovoAmbulatorio } from './pages/NovoAmbulatorio';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 
-function AuthGuard({ children, permission }: { children: React.ReactNode, permission?: string }) {
+function AuthGuard({ children, permission, requireProfile = true }: { children: React.ReactNode, permission?: string, requireProfile?: boolean }) {
   const { user, roleId, permissoes, loading } = useAuth();
   
   const [isHanging, setIsHanging] = useState(false);
@@ -37,13 +38,8 @@ function AuthGuard({ children, permission }: { children: React.ReactNode, permis
         
         {isHanging && (
           <div className="text-center animate-in fade-in duration-500 max-w-sm px-4">
-            <p className="text-slate-600 mb-4 font-medium">
-              Sua sessão expirou.
-            </p>
-            <button 
-              onClick={forceClearCache}
-              className="w-full px-4 py-3 bg-blue-100 text-blue-700 rounded-xl hover:bg-blue-200 hover:text-blue-800 font-bold transition-colors shadow-sm"
-            >
+            <p className="text-slate-600 mb-4 font-medium">Sua sessão expirou.</p>
+            <button onClick={forceClearCache} className="w-full px-4 py-3 bg-blue-100 text-blue-700 rounded-xl hover:bg-blue-200 hover:text-blue-800 font-bold transition-colors shadow-sm">
               Atualizar Sessão
             </button>
           </div>
@@ -52,8 +48,12 @@ function AuthGuard({ children, permission }: { children: React.ReactNode, permis
     );
   }
 
+  // Se não logou, vai pro Login
   if (!user) return <Navigate to="/login" replace />;
-  if (roleId === null) return <AcessoRestrito />;
+  
+  // Se a rota exige perfil e ele não tem, joga de volta pra Home limpa
+  if (requireProfile && roleId === null) return <Navigate to="/" replace />;
+  
   if (permission && !permissoes.includes(permission)) {
     return <Navigate to="/" replace />;
   }
@@ -68,7 +68,7 @@ export default function App() {
         <Route path="/login" element={<Login />} />
 
         <Route path="/" element={
-          <AuthGuard>
+          <AuthGuard requireProfile={false}>
             <Layout>
               <Home />
             </Layout>
@@ -95,6 +95,22 @@ export default function App() {
           <AuthGuard>
             <Layout>
               <Admin />
+            </Layout>
+          </AuthGuard>
+        } />
+
+        <Route path="/ambulatorio" element={
+          <AuthGuard>
+            <Layout>
+              <Ambulatorio />
+            </Layout>
+          </AuthGuard>
+        } />
+
+        <Route path="/novo-ambulatorio" element={
+          <AuthGuard>
+            <Layout>
+              <NovoAmbulatorio />
             </Layout>
           </AuthGuard>
         } />

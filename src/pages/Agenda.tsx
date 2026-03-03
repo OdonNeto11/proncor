@@ -11,6 +11,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import { supabase } from '../lib/supabase';
 import { Toast } from '../components/ui/Toast';
 import { useAuth } from '../contexts/AuthContext';
+import { Link } from 'react-router-dom';
 
 registerLocale('pt-BR', ptBR); 
 
@@ -53,11 +54,10 @@ type Agendamento = {
 type ModalView = 'details' | 'edit' | 'reschedule' | 'update_status' | 'confirm_status_update' | 'confirm_cancel';
 
 export function Agenda() {
-  const { permissoes } = useAuth();
+  const { permissoes, user } = useAuth();
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // NOVO: Estado para armazenar os horários dinâmicos do banco (para o Modal de Reagendamento)
   const [horariosDisponiveis, setHorariosDisponiveis] = useState<string[]>([]);
   
   const [busca, setBusca] = useState('');
@@ -88,7 +88,6 @@ export function Agenda() {
     crm_responsavel: ''
   });
 
-  // NOVO: Busca os horários configurados no banco ao carregar a tela
   useEffect(() => {
     const fetchHorarios = async () => {
       const { data, error } = await supabase
@@ -229,6 +228,27 @@ export function Agenda() {
         
         if (error) throw error;
         
+        if (tempStatusId === 6) {
+           const examesParaAmbulatorio = selectedAgendamento.procedimentos && selectedAgendamento.procedimentos.length > 0
+             ? selectedAgendamento.procedimentos
+             : ['Avaliação pós-PA'];
+
+           const { error: ambError } = await supabase.from('encaminhamentos_ambulatorio').insert([{
+             numero_atendimento: selectedAgendamento.numero_atendimento || '',
+             nome_paciente: selectedAgendamento.nome_paciente,
+             telefone_paciente: selectedAgendamento.telefone_paciente,
+             plano_saude: 'Oriundo do PA',
+             exames_especialidades: examesParaAmbulatorio,
+             observacoes: `Diagnóstico prévio: ${selectedAgendamento.diagnostico || 'Não informado.'}`,
+             status_id: 1, 
+             criado_por: user?.id,
+             origem: 'PA', // <-- NOVO: Gravando origem do gatilho
+             crm_solicitante: actionCrm // <-- NOVO: Gravando o CRM direto na coluna
+           }]);
+
+           if (ambError) console.error("Erro ao integrar com ambulatório:", ambError);
+        }
+
         setShowToast({ visible: true, message: `Status alterado para: ${STATUS_CONFIG[tempStatusId]?.label}` });
         
         setSelectedAgendamento(null);
@@ -347,6 +367,22 @@ export function Agenda() {
 
   return (
     <div className="max-w-6xl mx-auto animate-in fade-in duration-500 pb-20">
+      
+      {/* SUB-CABEÇALHO DO MÓDULO PA */}
+      <div className="flex items-center gap-6 mb-8 border-b border-gray-200 px-2">
+        <Link 
+          to="/novo" 
+          className={`pb-3 text-sm font-bold border-b-2 transition-colors ${window.location.pathname === '/novo' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300'}`}
+        >
+          Novo Agendamento
+        </Link>
+        <Link 
+          to="/agenda" 
+          className={`pb-3 text-sm font-bold border-b-2 transition-colors ${window.location.pathname === '/agenda' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300'}`}
+        >
+          Ver Agenda
+        </Link>
+      </div>
       
       {/* HEADER */}
       <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm mb-8">
