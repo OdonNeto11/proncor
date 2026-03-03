@@ -3,16 +3,23 @@ import { Link } from 'react-router-dom';
 import { 
   ClipboardList, User, FileText, Hash, Building2, Plus, Trash2, AlertCircle, Activity, Phone 
 } from 'lucide-react';
+
+// IMPORTAÇÕES DA NOSSA ARQUITETURA
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Textarea } from '../../components/ui/Textarea';
 import { Card } from '../../components/ui/Card';
 import { Toast } from '../../components/ui/Toast';
+import { maskPhone, capitalizeName } from '../../utils/formUtils';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePermissoes } from '../../hooks/usePermissoes';
 
 export function NovoAmbulatorio() {
   const { user } = useAuth();
+  
+  // TRAZENDO O HOOK DE PERMISSÕES PARA O AMBULATÓRIO
+  const { podeCriarAmb } = usePermissoes();
   
   const [formData, setFormData] = useState({
     numero_atendimento: '',
@@ -20,7 +27,7 @@ export function NovoAmbulatorio() {
     telefone_paciente: '',
     plano_saude: '',
     observacoes: '',
-    crm_solicitante: '' // <-- NOVO
+    crm_solicitante: '' 
   });
 
   const [exames, setExames] = useState<string[]>(['']);
@@ -29,19 +36,32 @@ export function NovoAmbulatorio() {
   const [showToast, setShowToast] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  // PROTEÇÃO DE PÁGINA: Se não tem a permissão, bloqueia a renderização total
+  if (!podeCriarAmb) {
+    return (
+      <div className="max-w-4xl mx-auto text-center py-20 bg-white rounded-xl border border-red-100 shadow-sm mt-8 animate-in zoom-in-95 duration-300">
+        <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
+          <AlertCircle size={48} className="text-red-400" />
+        </div>
+        <h2 className="text-2xl font-bold text-slate-800 mb-2">Acesso Negado</h2>
+        <p className="text-slate-500 max-w-sm mx-auto">
+          O seu perfil não tem permissão para criar novos encaminhamentos manuais para o Ambulatório.
+        </p>
+        <Link to="/" className="inline-block mt-8 px-6 py-2 bg-slate-100 text-slate-600 rounded-lg font-bold hover:bg-slate-200 transition-colors">
+          Voltar para Início
+        </Link>
+      </div>
+    );
+  }
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ ...prev, [name]: name === 'nome_paciente' ? capitalizeName(value) : value }));
     setErrorMsg('');
   };
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value.replace(/\D/g, "").substring(0, 11);
-    if (value.length > 10) value = value.replace(/^(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
-    else if (value.length > 6) value = value.replace(/^(\d{2})(\d{4})(\d{0,4})/, "($1) $2-$3");
-    else if (value.length > 2) value = value.replace(/^(\d{2})(\d{0,5})/, "($1) $2");
-    else if (value.length > 0) value = value.replace(/^(\d*)/, "($1");
-    setFormData(prev => ({ ...prev, telefone_paciente: value }));
+    setFormData(prev => ({ ...prev, telefone_paciente: maskPhone(e.target.value) }));
     setErrorMsg('');
   };
 
@@ -86,6 +106,12 @@ export function NovoAmbulatorio() {
       return;
     }
 
+    if (!formData.crm_solicitante || !/^[0-9]{4,5}$/.test(formData.crm_solicitante)) {
+      setErrorMsg('Favor preencher um CRM válido (4 ou 5 números).');
+      setLoading(false);
+      return;
+    }
+
     const examesPreenchidos = exames.filter(e => e.trim() !== '');
 
     if (examesPreenchidos.length === 0) {
@@ -104,8 +130,8 @@ export function NovoAmbulatorio() {
         observacoes: formData.observacoes,
         criado_por: user?.id,
         status_id: 1,
-        origem: 'MANUAL', // <-- NOVO: Gravando origem manual
-        crm_solicitante: formData.crm_solicitante // <-- NOVO: Gravando CRM
+        origem: 'MANUAL', 
+        crm_solicitante: formData.crm_solicitante 
       }]);
       
       if (error) throw error;
@@ -123,7 +149,11 @@ export function NovoAmbulatorio() {
       setExames(['']);
       
     } catch (error: any) { 
-      setErrorMsg('Erro ao salvar no banco: ' + error.message);
+      if (error.code === '42501') {
+        setErrorMsg('Você não tem permissão no banco de dados para criar encaminhamentos.');
+      } else {
+        setErrorMsg('Erro ao salvar no banco: ' + error.message);
+      }
     } finally { 
       setLoading(false); 
     }
@@ -132,13 +162,16 @@ export function NovoAmbulatorio() {
   return (
     <div className="max-w-4xl mx-auto animate-in fade-in duration-500">
       
+      {/* NAVEGAÇÃO COM TRAVA DE VISUALIZAÇÃO NO LINK DE NOVO */}
       <div className="flex items-center gap-6 mb-8 border-b border-gray-200 px-2">
-        <Link 
-          to="/novo-ambulatorio" 
-          className={`pb-3 text-sm font-bold border-b-2 transition-colors ${window.location.pathname === '/novo-ambulatorio' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300'}`}
-        >
-          Novo Encaminhamento
-        </Link>
+        {podeCriarAmb && (
+          <Link 
+            to="/novo-ambulatorio" 
+            className={`pb-3 text-sm font-bold border-b-2 transition-colors ${window.location.pathname === '/novo-ambulatorio' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300'}`}
+          >
+            Novo Encaminhamento
+          </Link>
+        )}
         <Link 
           to="/ambulatorio" 
           className={`pb-3 text-sm font-bold border-b-2 transition-colors ${window.location.pathname === '/ambulatorio' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300'}`}
@@ -157,7 +190,7 @@ export function NovoAmbulatorio() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Input label="Nome do Paciente" name="nome_paciente" value={formData.nome_paciente} onChange={handleChange} icon={<User size={20} />} required />
-            <Input label="Nº do Atendimento" name="numero_atendimento" value={formData.numero_atendimento} onChange={(e) => { const val = e.target.value.replace(/\D/g, ""); setFormData(prev => ({ ...prev, numero_atendimento: val })); setErrorMsg(''); }} icon={<Hash size={20} />} required />
+            <Input label="Nº do Atendimento" name="numero_atendimento" value={formData.numero_atendimento} onChange={(e) => { const val = e.target.value.replace(/\D/g, ""); setFormData(prev => ({ ...prev, numero_atendimento: val })); setErrorMsg(''); }} icon={<Hash size={20} />} maxLength={10} required />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -15,14 +15,17 @@ import { SelectAutocomplete } from '../../components/ui/SelectAutocomplete';
 
 import { maskPhone, validateFields, capitalizeName } from '../../utils/formUtils';
 import { supabase } from '../../lib/supabase';
-import { useAuth } from '../../contexts/AuthContext';
+// IMPORTAÇÕES CORRIGIDAS:
+import { usePermissoes } from '../../hooks/usePermissoes'; 
 
 registerLocale('pt-BR', ptBR);
 
 const OPCOES_PROCEDIMENTOS = ["Exames", "RX", "Tomografia"];
 
 export function Agendar() {
-  const { permissoes } = useAuth();
+  // TROCA DA LÓGICA DE PERMISSÃO:
+  const { podeCriarPA } = usePermissoes(); 
+  
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [selectedTime, setSelectedTime] = useState<Date | null>(null);
   const [bookedTimes, setBookedTimes] = useState<string[]>([]);
@@ -44,6 +47,7 @@ export function Agendar() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [errorMsg, setErrorMsg] = useState(''); 
 
+  // ... (Efeitos de busca de horários e lógica de bloqueio permanecem iguais)
   useEffect(() => {
     const fetchHorarios = async () => {
       const { data, error } = await supabase
@@ -130,12 +134,11 @@ export function Agendar() {
     return { nome: file.name, url: data.publicUrl };
   };
 
-  const handleSubmit = async (e: FormEvent) => {
+const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setErrorMsg('');
     
-    // PLANO DE SAÚDE NÃO É MAIS OBRIGATÓRIO AQUI
     const camposObrigatorios = ['numero_atendimento', 'nome_paciente', 'telefone_paciente', 'crm_responsavel'];
     const { errors: valErrors } = validateFields(formData, camposObrigatorios);
     
@@ -145,6 +148,12 @@ export function Agendar() {
     if (formData.telefone_paciente && formData.telefone_paciente.length < 14) {
       novosErros.telefone_paciente = 'Telefone inválido';
     }
+
+    // --- ADICIONE ESTA VALIDAÇÃO AQUI ---
+    if (!formData.crm_responsavel || !/^[0-9]{4,5}$/.test(formData.crm_responsavel)) {
+      novosErros.crm_responsavel = 'Favor preencher um CRM válido (4 ou 5 números)';
+    }
+    // ------------------------------------
 
     if (Object.keys(novosErros).length > 0) {
       setErrors(novosErros);
@@ -191,12 +200,20 @@ export function Agendar() {
     }
   };
 
-  if (!permissoes.includes('criar_agendamento')) {
+  // BLOQUEIO DE ACESSO USANDO O HOOK:
+  if (!podeCriarPA) {
     return (
-      <div className="max-w-4xl mx-auto text-center py-20 bg-white rounded-xl border border-red-100 shadow-sm mt-8">
-        <AlertCircle size={48} className="text-red-400 mx-auto mb-4" />
+      <div className="max-w-4xl mx-auto text-center py-20 bg-white rounded-xl border border-red-100 shadow-sm mt-8 animate-in zoom-in-95 duration-300">
+        <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
+          <AlertCircle size={48} className="text-red-400" />
+        </div>
         <h2 className="text-2xl font-bold text-slate-800 mb-2">Acesso Negado</h2>
-        <p className="text-slate-500">O seu perfil não tem permissão para registrar novos agendamentos.</p>
+        <p className="text-slate-500 max-w-sm mx-auto">
+          O seu perfil não tem permissão para registrar novos agendamentos no Pronto Atendimento.
+        </p>
+        <Link to="/" className="inline-block mt-8 px-6 py-2 bg-slate-100 text-slate-600 rounded-lg font-bold hover:bg-slate-200 transition-colors">
+          Voltar para Início
+        </Link>
       </div>
     );
   }
@@ -205,10 +222,10 @@ export function Agendar() {
     <div className="max-w-4xl mx-auto animate-in fade-in duration-500">
       
       <div className="flex items-center gap-6 mb-8 border-b border-gray-200 px-2">
-        <Link to="/novo" className={`pb-3 text-sm font-bold border-b-2 transition-colors ${window.location.pathname === '/novo' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300'}`}>
+        <Link to="/novo" className="pb-3 text-sm font-bold border-b-2 border-blue-600 text-blue-600">
           Novo Agendamento
         </Link>
-        <Link to="/agenda" className={`pb-3 text-sm font-bold border-b-2 transition-colors ${window.location.pathname === '/agenda' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300'}`}>
+        <Link to="/agenda" className="pb-3 text-sm font-bold border-b-2 border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300 transition-colors">
           Ver Agenda
         </Link>
       </div>
@@ -220,7 +237,7 @@ export function Agendar() {
 
       <Card>
         <form onSubmit={handleSubmit} className="space-y-6 p-6" noValidate>
-          
+          {/* ... O restante do formulário permanece igual ... */}
           <div className="flex flex-col gap-6">
             <div className="w-full">
                 <label className="text-sm font-semibold text-slate-700 mb-2 block">Selecione a Data <span className="text-red-500">*</span></label>
@@ -313,15 +330,15 @@ export function Agendar() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-<SelectAutocomplete 
-  label="Plano de Saúde (Opcional)"
-  placeholder="Ex: Unimed, Cassems..."
-  tableName="planos_saude" // VOCÊ DEFINE A TABELA AQUI
-  columnName="nome"        // VOCÊ DEFINE A COLUNA AQUI
-  value={formData.plano_saude}
-  onChange={(val) => setFormData({ ...formData, plano_saude: val })}
-  error={errors.plano_saude}
-/>
+            <SelectAutocomplete 
+              label="Plano de Saúde (Opcional)"
+              placeholder="Ex: Unimed, Cassems..."
+              tableName="planos_saude"
+              columnName="nome"
+              value={formData.plano_saude}
+              onChange={(val) => setFormData({ ...formData, plano_saude: val })}
+              error={errors.plano_saude}
+            />
 
             <Input 
               label="Seu CRM" 
@@ -381,19 +398,18 @@ export function Agendar() {
                         )
                     })}
                 </div>
-                <p className="text-[10px] text-slate-400 mt-1.5 ml-1">Selecione os procedimentos adicionais, se houver.</p>
             </div>
           </div>
 
           <div className="w-full">
             <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Anexos (Máx: 5)</label>
             <div className="border-2 border-dashed border-slate-300 rounded-xl bg-slate-50 p-6 hover:bg-white hover:border-blue-400 transition-colors relative text-center">
-               <input type="file" multiple onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept=".pdf,image/*" />
-               <div className="flex flex-col items-center justify-center gap-2 text-slate-500">
-                  <Upload size={32} className="text-blue-400" />
-                  <p className="text-sm font-medium">Clique ou arraste arquivos aqui</p>
-                  <p className="text-xs text-slate-400">PDF ou Imagens</p>
-               </div>
+                <input type="file" multiple onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept=".pdf,image/*" />
+                <div className="flex flex-col items-center justify-center gap-2 text-slate-500">
+                   <Upload size={32} className="text-blue-400" />
+                   <p className="text-sm font-medium">Clique ou arraste arquivos aqui</p>
+                   <p className="text-xs text-slate-400">PDF ou Imagens</p>
+                </div>
             </div>
             {arquivos.length > 0 && (
                 <div className="mt-3 space-y-2">

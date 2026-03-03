@@ -1,11 +1,14 @@
 import React from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePermissoes } from '../../hooks/usePermissoes';
 import { Building2, Stethoscope, ClipboardList, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export function Home() {
   const { profileName, setores, roleId } = useAuth();
+  const { podeVerPA, podeVerAmb } = usePermissoes();
 
+  // REGRA 2: Existe na profile, mas não possui setores vinculados ou roleId nulo
   const isAcessoPendente = roleId === null || !setores || setores.length === 0;
 
   return (
@@ -19,6 +22,7 @@ export function Home() {
       </div>
 
       {isAcessoPendente ? (
+        /* TELA DE ACESSO PENDENTE (REGRA 2) */
         <div className="bg-white rounded-2xl border border-dashed border-gray-300 p-12 text-center max-w-2xl mx-auto mt-12 shadow-sm">
           <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
              <AlertCircle size={40} className="text-gray-400" />
@@ -31,26 +35,33 @@ export function Home() {
           </p>
         </div>
       ) : (
+        /* GRID DE SETORES COM FILTRO DE PERMISSÃO */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           
           {setores.filter(Boolean).map(setor => {
-            
-            let rota = '/';
+            let rota = '';
             let Icone = Building2;
             let cor = 'bg-blue-50 text-blue-600';
             let hoverCor = 'hover:border-blue-400';
+            let temPermissaoParaAcessar = false;
 
+            // Lógica baseada na Sigla do Setor e no Hook usePermissoes
             if (setor.sigla === 'PA') {
                 rota = '/novo'; 
                 Icone = Stethoscope;
                 cor = 'bg-emerald-50 text-emerald-600';
                 hoverCor = 'hover:border-emerald-400';
+                temPermissaoParaAcessar = podeVerPA; // pa_visualizar_agendamentos
             } else if (setor.sigla === 'AMB') {
                 rota = '/ambulatorio'; 
                 Icone = ClipboardList;
                 cor = 'bg-purple-50 text-purple-600';
                 hoverCor = 'hover:border-purple-400';
+                temPermissaoParaAcessar = podeVerAmb; // amb_visualizar_encaminhamentos
             }
+
+            // Só renderiza o card se houver permissão explícita no Hook
+            if (!temPermissaoParaAcessar) return null;
 
             return (
               <Link 
@@ -68,7 +79,6 @@ export function Home() {
               </Link>
             )
           })}
-          
         </div>
       )}
     </div>
