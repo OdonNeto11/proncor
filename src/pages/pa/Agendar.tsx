@@ -1,5 +1,5 @@
 import React, { useState, FormEvent, useEffect } from 'react';
-import { Calendar, Clock, User, Phone, FileText, Upload, Paperclip, Trash2, Hash, Activity, AlertCircle } from 'lucide-react';
+import { Calendar, User, Phone, FileText, Upload, Paperclip, Trash2, Hash, Activity, AlertCircle } from 'lucide-react';
 import DatePicker, { registerLocale } from 'react-datepicker';
 import { ptBR } from 'date-fns/locale';
 import "react-datepicker/dist/react-datepicker.css";
@@ -11,6 +11,9 @@ import { Input } from '../../components/ui/Input';
 import { Textarea } from '../../components/ui/Textarea';
 import { Card } from '../../components/ui/Card';
 import { Toast } from '../../components/ui/Toast';
+import { SelectAutocomplete } from '../../components/ui/SelectAutocomplete';
+
+import { maskPhone, validateFields, capitalizeName } from '../../utils/formUtils';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -23,14 +26,13 @@ export function Agendar() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [selectedTime, setSelectedTime] = useState<Date | null>(null);
   const [bookedTimes, setBookedTimes] = useState<string[]>([]);
-  
-  // NOVO: Estado para armazenar os horários dinâmicos do banco
   const [horariosDisponiveis, setHorariosDisponiveis] = useState<string[]>([]);
   
   const [formData, setFormData] = useState({
     numero_atendimento: '', 
     nome_paciente: '',
     telefone_paciente: '',
+    plano_saude: '', 
     diagnostico: '',
     procedimentos: [] as string[],
     crm_responsavel: '' 
@@ -39,11 +41,9 @@ export function Agendar() {
   const [arquivos, setArquivos] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [showToast, setShowToast] = useState(false);
-  
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [errorMsg, setErrorMsg] = useState(''); 
 
-  // NOVO: Busca os horários configurados no banco
   useEffect(() => {
     const fetchHorarios = async () => {
       const { data, error } = await supabase
@@ -53,7 +53,6 @@ export function Agendar() {
         .order('horario', { ascending: true });
         
       if (data && !error) {
-        // Formata de 'HH:mm:ss' para 'HH:mm'
         setHorariosDisponiveis(data.map(h => h.horario.substring(0, 5)));
       }
     };
@@ -69,13 +68,10 @@ export function Agendar() {
         .from('agendamentos')
         .select('hora_agendamento')
         .eq('data_agendamento', dateStr)
-        .in('status_id', [1, 2]); // IDs 1 (agendado) e 2 (reagendado)
+        .in('status_id', [1, 2]);
 
-      if (error) { console.error(error); return; }
-
-      if (data) {
-        const times = data.map(item => item.hora_agendamento.substring(0, 5));
-        setBookedTimes(times);
+      if (data && !error) {
+        setBookedTimes(data.map(item => item.hora_agendamento.substring(0, 5)));
       }
     };
     setBookedTimes([]); 
@@ -90,8 +86,7 @@ export function Agendar() {
       const [hora, minuto] = timeStr.split(':').map(Number);
       const dataHoraOpcao = new Date(selectedDate);
       dataHoraOpcao.setHours(hora, minuto, 0, 0);
-      const agora = new Date();
-      if (dataHoraOpcao.getTime() < agora.getTime() - 60000) return true;
+      return dataHoraOpcao.getTime() < new Date().getTime() - 60000;
     }
     return false;
   };
@@ -99,49 +94,17 @@ export function Agendar() {
   const handleSelectTime = (timeStr: string) => {
     if (!selectedDate) return;
     const [h, m] = timeStr.split(':').map(Number);
-    const newTime = setHours(setMinutes(new Date(selectedDate), m), h);
-    setSelectedTime(newTime);
+    setSelectedTime(setHours(setMinutes(new Date(selectedDate), m), h));
     if(errors.hora_agendamento) setErrors({...errors, hora_agendamento: ''});
-  };
-  
-  const handleNumeroAtendimentoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, ""); 
-    setFormData(prev => ({ ...prev, numero_atendimento: value }));
-    if (errors.numero_atendimento) setErrors(prev => ({ ...prev, numero_atendimento: '' }));
-  };
-
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value.replace(/\D/g, "").substring(0, 11);
-    if (value.length > 10) value = value.replace(/^(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
-    else if (value.length > 6) value = value.replace(/^(\d{2})(\d{4})(\d{0,4})/, "($1) $2-$3");
-    else if (value.length > 2) value = value.replace(/^(\d{2})(\d{0,5})/, "($1) $2");
-    else if (value.length > 0) value = value.replace(/^(\d*)/, "($1");
-    setFormData(prev => ({ ...prev, telefone_paciente: value }));
-    if (errors.telefone_paciente) setErrors(prev => ({ ...prev, telefone_paciente: '' }));
-  };
-
-  const handleCrmChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, '').slice(0, 5);
-    setFormData(prev => ({ ...prev, crm_responsavel: value }));
-    if (errors.crm_responsavel) setErrors(prev => ({ ...prev, crm_responsavel: '' }));
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
   };
 
   const toggleProcedimento = (opcao: string) => {
     setFormData(prev => {
-        const jaExiste = prev.procedimentos.includes(opcao);
-        let novosProcedimentos;
-        if (jaExiste) {
-            novosProcedimentos = prev.procedimentos.filter(p => p !== opcao);
-        } else {
-            novosProcedimentos = [...prev.procedimentos, opcao];
-        }
-        return { ...prev, procedimentos: novosProcedimentos };
+      const jaExiste = prev.procedimentos.includes(opcao);
+      const novosProcedimentos = jaExiste 
+        ? prev.procedimentos.filter(p => p !== opcao)
+        : [...prev.procedimentos, opcao];
+      return { ...prev, procedimentos: novosProcedimentos };
     });
   };
 
@@ -167,26 +130,20 @@ export function Agendar() {
     return { nome: file.name, url: data.publicUrl };
   };
 
-  const isValidCrm = (crm: string) => /^[0-9]{4,5}$/.test(crm);
-
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setErrorMsg('');
     
-    const novosErros: Record<string, string> = {};
+    // PLANO DE SAÚDE NÃO É MAIS OBRIGATÓRIO AQUI
+    const camposObrigatorios = ['numero_atendimento', 'nome_paciente', 'telefone_paciente', 'crm_responsavel'];
+    const { errors: valErrors } = validateFields(formData, camposObrigatorios);
+    
+    const novosErros: Record<string, string> = { ...valErrors };
     if (!selectedDate) novosErros.data_agendamento = 'Data obrigatória';
     if (!selectedTime) novosErros.hora_agendamento = 'Selecione um horário';
-    if (!formData.numero_atendimento) novosErros.numero_atendimento = 'Nº Atendimento obrigatório'; 
-    if (!formData.nome_paciente) novosErros.nome_paciente = 'Nome obrigatório';
-    if (!formData.telefone_paciente || formData.telefone_paciente.length < 14) novosErros.telefone_paciente = 'Telefone inválido';
-    if (!isValidCrm(formData.crm_responsavel)) novosErros.crm_responsavel = 'CRM inválido';
-    
-    if (selectedTime) {
-      const timeStr = format(selectedTime, 'HH:mm');
-      if (bookedTimes.includes(timeStr)) {
-        novosErros.hora_agendamento = 'Este horário acabou de ser ocupado.';
-      }
+    if (formData.telefone_paciente && formData.telefone_paciente.length < 14) {
+      novosErros.telefone_paciente = 'Telefone inválido';
     }
 
     if (Object.keys(novosErros).length > 0) {
@@ -202,8 +159,9 @@ export function Agendar() {
         const uploads = await Promise.all(arquivos.map(file => uploadArquivoUnico(file)));
         listaAnexos.push(...uploads);
       }
-      const dataFormatada = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '';
-      const horaFormatada = selectedTime ? format(selectedTime, 'HH:mm') : '';
+      
+      const dataFormatada = format(selectedDate!, 'yyyy-MM-dd');
+      const horaFormatada = format(selectedTime!, 'HH:mm');
 
       const { error } = await supabase.from('agendamentos').insert([{
         data_agendamento: dataFormatada,
@@ -211,6 +169,7 @@ export function Agendar() {
         numero_atendimento: formData.numero_atendimento, 
         nome_paciente: formData.nome_paciente,
         telefone_paciente: formData.telefone_paciente,
+        plano_saude: formData.plano_saude, 
         diagnostico: formData.diagnostico,
         procedimentos: formData.procedimentos,
         status_id: 1, 
@@ -221,14 +180,7 @@ export function Agendar() {
       if (error) throw error;
       
       setShowToast(true);
-      setFormData({ 
-        numero_atendimento: '', 
-        nome_paciente: '', 
-        telefone_paciente: '', 
-        diagnostico: '', 
-        procedimentos: [],
-        crm_responsavel: ''
-      });
+      setFormData({ numero_atendimento: '', nome_paciente: '', telefone_paciente: '', plano_saude: '', diagnostico: '', procedimentos: [], crm_responsavel: '' });
       setSelectedTime(null);
       setArquivos([]);
       setBookedTimes([...bookedTimes, horaFormatada]);
@@ -252,18 +204,11 @@ export function Agendar() {
   return (
     <div className="max-w-4xl mx-auto animate-in fade-in duration-500">
       
-      {/* SUB-CABEÇALHO DO MÓDULO PA */}
       <div className="flex items-center gap-6 mb-8 border-b border-gray-200 px-2">
-        <Link 
-          to="/novo" 
-          className={`pb-3 text-sm font-bold border-b-2 transition-colors ${window.location.pathname === '/novo' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300'}`}
-        >
+        <Link to="/novo" className={`pb-3 text-sm font-bold border-b-2 transition-colors ${window.location.pathname === '/novo' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300'}`}>
           Novo Agendamento
         </Link>
-        <Link 
-          to="/agenda" 
-          className={`pb-3 text-sm font-bold border-b-2 transition-colors ${window.location.pathname === '/agenda' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300'}`}
-        >
+        <Link to="/agenda" className={`pb-3 text-sm font-bold border-b-2 transition-colors ${window.location.pathname === '/agenda' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300'}`}>
           Ver Agenda
         </Link>
       </div>
@@ -277,7 +222,6 @@ export function Agendar() {
         <form onSubmit={handleSubmit} className="space-y-6 p-6" noValidate>
           
           <div className="flex flex-col gap-6">
-            
             <div className="w-full">
                 <label className="text-sm font-semibold text-slate-700 mb-2 block">Selecione a Data <span className="text-red-500">*</span></label>
                 <div className="relative max-w-sm">
@@ -293,8 +237,7 @@ export function Agendar() {
                         locale="pt-BR"
                         dateFormat="dd/MM/yyyy"
                         placeholderText="Selecione o dia"
-                        popperPlacement="bottom-start"
-                        className={`custom-datepicker-input ${errors.data_agendamento ? '!border-red-500 !ring-red-100' : ''}`}
+                        className={`w-full pl-10 pr-4 py-3 rounded-xl border ${errors.data_agendamento ? 'border-red-500' : 'border-slate-200'} outline-none focus:ring-4 focus:ring-blue-500/10`}
                         onFocus={(e) => e.target.blur()}
                     />
                 </div>
@@ -341,28 +284,63 @@ export function Agendar() {
                 )}
                 {errors.hora_agendamento && <span className="text-xs text-red-500 mt-1 block font-medium">{errors.hora_agendamento}</span>}
             </div>
-
           </div>
 
           <div className="h-px bg-slate-100 my-2"></div>
 
-          <Input 
-             label="Seu CRM" 
-             name="crm_responsavel" 
-             value={formData.crm_responsavel} 
-             onChange={handleCrmChange} 
-             icon={<User size={20} />} 
-             error={errors.crm_responsavel}
-             placeholder="Apenas números (Ex: 12345)"
-             maxLength={5}
-             required
-          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Input 
+              label="Nome do Paciente" 
+              name="nome_paciente" 
+              value={formData.nome_paciente} 
+              onChange={(e) => setFormData({ ...formData, nome_paciente: capitalizeName(e.target.value) })} 
+              icon={<User size={20} />} 
+              error={errors.nome_paciente} 
+              required
+            />
+
+            <Input 
+              label="Telefone / WhatsApp" 
+              name="telefone_paciente" 
+              value={formData.telefone_paciente} 
+              onChange={(e) => setFormData({ ...formData, telefone_paciente: maskPhone(e.target.value) })} 
+              placeholder="(xx) xxxxx-xxxx" 
+              maxLength={15} 
+              icon={<Phone size={20} />} 
+              error={errors.telefone_paciente} 
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+<SelectAutocomplete 
+  label="Plano de Saúde (Opcional)"
+  placeholder="Ex: Unimed, Cassems..."
+  tableName="planos_saude" // VOCÊ DEFINE A TABELA AQUI
+  columnName="nome"        // VOCÊ DEFINE A COLUNA AQUI
+  value={formData.plano_saude}
+  onChange={(val) => setFormData({ ...formData, plano_saude: val })}
+  error={errors.plano_saude}
+/>
+
+            <Input 
+              label="Seu CRM" 
+              name="crm_responsavel" 
+              value={formData.crm_responsavel} 
+              onChange={(e) => setFormData({ ...formData, crm_responsavel: e.target.value.replace(/\D/g, '').slice(0, 5) })} 
+              icon={<User size={20} />} 
+              error={errors.crm_responsavel}
+              placeholder="Apenas números"
+              maxLength={5}
+              required
+            />
+          </div>
 
           <Input 
              label="Número do Atendimento" 
              name="numero_atendimento" 
              value={formData.numero_atendimento} 
-             onChange={handleNumeroAtendimentoChange} 
+             onChange={(e) => setFormData({ ...formData, numero_atendimento: e.target.value.replace(/\D/g, '').slice(0, 10) })} 
              icon={<Hash size={20} />} 
              error={errors.numero_atendimento}
              placeholder="Somente números"
@@ -370,34 +348,12 @@ export function Agendar() {
              required
           />
 
-          <Input 
-             label="Nome do Paciente" 
-             name="nome_paciente" 
-             value={formData.nome_paciente} 
-             onChange={handleChange} 
-             icon={<User size={20} />} 
-             error={errors.nome_paciente} 
-             required
-          />
-
-          <Input 
-             label="Telefone / WhatsApp" 
-             name="telefone_paciente" 
-             value={formData.telefone_paciente} 
-             onChange={handlePhoneChange} 
-             placeholder="(xx) xxxxx-xxxx" 
-             maxLength={15} 
-             icon={<Phone size={20} />} 
-             error={errors.telefone_paciente} 
-             required
-          />
-          
           <div className="space-y-3">
             <Textarea 
                 label="Diagnóstico / Condutas" 
                 name="diagnostico" 
                 value={formData.diagnostico} 
-                onChange={handleChange} 
+                onChange={(e) => setFormData({ ...formData, diagnostico: e.target.value })} 
                 rows={3} 
                 icon={<FileText size={20} />} 
             />
