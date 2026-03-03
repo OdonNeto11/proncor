@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { Building2, Stethoscope, ClipboardList, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 

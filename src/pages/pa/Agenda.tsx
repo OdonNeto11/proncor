@@ -8,9 +8,9 @@ import { format, parseISO, isToday, isTomorrow, isSameDay, endOfMonth, setHours,
 import { ptBR } from 'date-fns/locale';
 import DatePicker, { registerLocale } from 'react-datepicker'; 
 import "react-datepicker/dist/react-datepicker.css"; 
-import { supabase } from '../lib/supabase';
-import { Toast } from '../components/ui/Toast';
-import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../../lib/supabase';
+import { Toast } from '../../components/ui/Toast';
+import { useAuth } from '../../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 
 registerLocale('pt-BR', ptBR); 

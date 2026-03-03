@@ -1,22 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/Layout';
-import { Login } from './pages/Login';
-import { Home } from './pages/Home';
-import { Agenda } from './pages/Agenda';
-import { Agendar } from './pages/Agendar';
-import { Admin } from './pages/Admin';
-import { Ambulatorio } from './pages/Ambulatorio';
-import { NovoAmbulatorio } from './pages/NovoAmbulatorio';
+
+// CAMINHOS GEOGRÁFICOS CORRIGIDOS
+import { Login } from './pages/core/Login';
+import { Home } from './pages/core/Home';
+import { Admin } from './pages/core/Admin';
+import { Agenda } from './pages/pa/Agenda';
+import { Agendar } from './pages/pa/Agendar';
+import { Ambulatorio as FilaAmbulatorio } from './pages/ambulatorio/FilaAmbulatorio'; 
+import { NovoAmbulatorio } from './pages/ambulatorio/NovoAmbulatorio';
+
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 function AuthGuard({ children, permission, requireProfile = true }: { children: React.ReactNode, permission?: string, requireProfile?: boolean }) {
   const { user, roleId, permissoes, loading } = useAuth();
-  
   const [isHanging, setIsHanging] = useState(false);
 
   useEffect(() => {
-    let timeout: NodeJS.Timeout;
+    let timeout: any;
     if (loading) {
       timeout = setTimeout(() => setIsHanging(true), 5000);
     } else {
@@ -35,7 +37,6 @@ function AuthGuard({ children, permission, requireProfile = true }: { children: 
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 space-y-6">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        
         {isHanging && (
           <div className="text-center animate-in fade-in duration-500 max-w-sm px-4">
             <p className="text-slate-600 mb-4 font-medium">Sua sessão expirou.</p>
@@ -48,15 +49,9 @@ function AuthGuard({ children, permission, requireProfile = true }: { children: 
     );
   }
 
-  // Se não logou, vai pro Login
   if (!user) return <Navigate to="/login" replace />;
-  
-  // Se a rota exige perfil e ele não tem, joga de volta pra Home limpa
   if (requireProfile && roleId === null) return <Navigate to="/" replace />;
-  
-  if (permission && !permissoes.includes(permission)) {
-    return <Navigate to="/" replace />;
-  }
+  if (permission && !permissoes.includes(permission)) return <Navigate to="/" replace />;
 
   return <>{children}</>;
 }
@@ -102,7 +97,7 @@ export default function App() {
         <Route path="/ambulatorio" element={
           <AuthGuard>
             <Layout>
-              <Ambulatorio />
+              <FilaAmbulatorio />
             </Layout>
           </AuthGuard>
         } />

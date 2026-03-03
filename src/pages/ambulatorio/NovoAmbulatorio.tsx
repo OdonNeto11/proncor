@@ -3,13 +3,13 @@ import { Link } from 'react-router-dom';
 import { 
   ClipboardList, User, FileText, Hash, Building2, Plus, Trash2, AlertCircle, Activity, Phone 
 } from 'lucide-react';
-import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
-import { Textarea } from '../components/ui/Textarea';
-import { Card } from '../components/ui/Card';
-import { Toast } from '../components/ui/Toast';
-import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
+import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
+import { Textarea } from '../../components/ui/Textarea';
+import { Card } from '../../components/ui/Card';
+import { Toast } from '../../components/ui/Toast';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 
 export function NovoAmbulatorio() {
   const { user } = useAuth();

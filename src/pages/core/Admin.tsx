@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../lib/supabase';
 import { Clock, Plus, Trash2, CheckCircle2, XCircle, Settings, LayoutDashboard, ArrowLeft, AlertCircle } from 'lucide-react';
-import { Toast } from '../components/ui/Toast';
+import { Toast } from '../../components/ui/Toast';
 import { Dashboard } from './Dashboard';
 
 type Horario = {

@@ -6,13 +6,13 @@ import "react-datepicker/dist/react-datepicker.css";
 import { format, isSameDay, setHours, setMinutes } from 'date-fns';
 import { Link } from 'react-router-dom';
 
-import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
-import { Textarea } from '../components/ui/Textarea';
-import { Card } from '../components/ui/Card';
-import { Toast } from '../components/ui/Toast';
-import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
+import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
+import { Textarea } from '../../components/ui/Textarea';
+import { Card } from '../../components/ui/Card';
+import { Toast } from '../../components/ui/Toast';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 
 registerLocale('pt-BR', ptBR);
 
