@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
-  ClipboardList, Search, CheckCircle2, AlertCircle, Activity, 
+  ClipboardList, Search, CheckCircle2, AlertCircle, 
   Hash, Phone, HelpCircle, XCircle, Edit, FileText, User 
-} from 'lucide-react'; // CORRIGIDO: Era lucide-react
+} from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '../../lib/supabase';
@@ -19,7 +19,8 @@ import { ActionListItem } from '../../components/ui/ActionListItem';
 import { SelectAutocomplete } from '../../components/ui/SelectAutocomplete';
 import { Toast } from '../../components/ui/Toast';
 
-// LAYOUTS DE MODAL COMPARTILHADOS
+// COMPONENTES COMPARTILHADOS (O NOVO CARD ENTRA AQUI)
+import { AtendimentoCard } from '../../components/shared/AtendimentoCard';
 import { ModalDetalhesLayout } from '../../components/shared/ModalDetalhesLayout';
 import { ModalConfirmacaoCancelamentoLayout } from '../../components/shared/ModalConfirmacaoCancelamentoLayout';
 import { ModalAtualizarStatusLayout } from '../../components/shared/ModalAtualizarStatusLayout';
@@ -28,8 +29,9 @@ import { ModalAtualizarStatusLayout } from '../../components/shared/ModalAtualiz
 import { maskPhone, capitalizeName } from '../../utils/formUtils';
 import { usePermissoes } from '../../hooks/usePermissoes';
 
+// RÓTULO DO STATUS 1 ALTERADO PARA REFLETIR A REALIDADE DO AMBULATÓRIO
 const STATUS_CONFIG_AMB: Record<number, { label: string, color: string, border: string, icon: any }> = {
-  1: { label: 'Pendente', color: 'bg-slate-100 text-slate-700', border: 'border-slate-200', icon: ClipboardList },
+  1: { label: 'Aguardando Agendamento', color: 'bg-orange-100 text-orange-700', border: 'border-orange-200', icon: ClipboardList },
   3: { label: 'Cancelado', color: 'bg-red-100 text-red-700', border: 'border-red-200', icon: XCircle },
   4: { label: 'Não Atende', color: 'bg-gray-100 text-gray-600', border: 'border-gray-200', icon: HelpCircle },
   5: { label: 'Finalizado', color: 'bg-emerald-100 text-emerald-700', border: 'border-emerald-200', icon: CheckCircle2 },
@@ -92,6 +94,7 @@ export function Ambulatorio() {
   const abrirDetalhes = (item: any) => {
     setSelectedEnc(item);
     setViewMode('details');
+    setErrorMsg('');
     setEditForm({
       numero_atendimento: item.numero_atendimento || '',
       nome_paciente: item.nome_paciente || '',
@@ -189,39 +192,39 @@ export function Ambulatorio() {
         </div>
       </Card>
 
+      {/* RENDERIZAÇÃO USANDO O NOVO ATENDIMENTO CARD */}
       {loading ? (
         <div className="text-center py-20 text-slate-400 font-bold">Buscando registros...</div>
+      ) : listaFiltrada.length === 0 ? (
+        <Card className="text-center py-20 border-dashed shadow-none">
+            <AlertCircle size={48} className="text-slate-300 mx-auto mb-4" />
+            <p className="text-slate-500 font-medium">Nenhum registro encontrado.</p>
+        </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {listaFiltrada.map((item: any) => (
-            <Card key={item.id} hoverable onClick={() => abrirDetalhes(item)} className="flex flex-col group hover:border-purple-300">
-              <div className="flex justify-between items-start mb-4">
-                <span className="text-[10px] font-bold bg-purple-50 text-purple-600 px-2 py-1 rounded-md uppercase">
-                  {format(parseISO(item.created_at), "dd MMM · HH:mm", { locale: ptBR })}
-                </span>
-                <span className="text-xs font-mono font-bold text-slate-400">#{item.numero_atendimento}</span>
-              </div>
-              <h3 className="font-bold text-slate-800 text-lg mb-1">{item.nome_paciente}</h3>
-              <p className="text-[10px] font-semibold text-purple-600 bg-purple-50 inline-block px-1.5 py-0.5 rounded-md mb-4 w-fit">
-                {item.plano_saude}
-              </p>
-              <div className="space-y-2 mb-4 flex-1">
-                <div className="flex flex-wrap gap-1">
-                  {item.exames_especialidades.map((ex: string, i: number) => (
-                    <span key={i} className="bg-slate-50 text-slate-700 text-[10px] font-bold px-2 py-1 rounded-md border border-slate-200 flex items-center gap-1">
-                      <Activity size={10} className="text-purple-500" /> {ex}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <div className="mt-auto pt-3 border-t border-slate-50 flex justify-between items-center">
-                <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full border ${item.status?.agrupamento === 'sucesso' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
-                  {item.status?.nome}
-                </span>
-                <span className="text-xs font-bold text-purple-600">Ver Detalhes &rarr;</span>
-              </div>
-            </Card>
-          ))}
+          {listaFiltrada.map((item: any) => {
+            const statusConfig = STATUS_CONFIG_AMB[item.status_id] || STATUS_CONFIG_AMB[1];
+            
+            return (
+<AtendimentoCard 
+                key={item.id}
+                id={item.id}
+                onClick={() => abrirDetalhes(item)}
+                indicadorCor={statusConfig.color.split(' ')[0].replace('bg-', 'bg-opacity-100 bg-')} 
+                badgeTopLeft={format(parseISO(item.created_at), "dd MMM · HH:mm", { locale: ptBR })}
+                badgeTopRight={statusConfig.label}
+                badgeTopRightColorClasses={`${statusConfig.color} ${statusConfig.border}`}
+                numeroAtendimento={item.numero_atendimento}
+                nomePaciente={item.nome_paciente}
+                telefone={item.telefone_paciente}
+                planoSaude={item.plano_saude}
+                crm={item.crm_solicitante}
+                origem={item.origem} // <--- ADICIONE ESTA LINHA AQUI!
+                tagsLabel="Exames/Especialidades"
+                tags={item.exames_especialidades}
+              />
+            );
+          })}
         </div>
       )}
 
@@ -241,7 +244,7 @@ export function Ambulatorio() {
           }
           infoBoxes={[
             { label: 'Solicitado em', value: format(parseISO(selectedEnc.created_at), "dd/MM · HH:mm"), theme: 'purple' },
-            { label: 'Origem', value: selectedEnc.origem, theme: 'slate' },
+            { label: 'Origem', value: selectedEnc.origem, theme: selectedEnc.origem === 'PA' ? 'blue' : 'slate' },
             { label: 'Atendimento', value: `#${selectedEnc.numero_atendimento}`, theme: 'slate' }
           ]}
           statusLabel={STATUS_CONFIG_AMB[selectedEnc.status_id]?.label}
@@ -266,10 +269,20 @@ export function Ambulatorio() {
             <Input label="Nº Atendimento" value={editForm.numero_atendimento} onChange={e => setEditForm({ ...editForm, numero_atendimento: e.target.value.replace(/\D/g, '') })} maxLength={10} />
             <Input label="Paciente" value={editForm.nome_paciente} onChange={e => setEditForm({ ...editForm, nome_paciente: capitalizeName(e.target.value) })} />
             <Input label="WhatsApp" value={editForm.telefone_paciente} onChange={e => setEditForm({ ...editForm, telefone_paciente: maskPhone(e.target.value) })} maxLength={15} />
-            <SelectAutocomplete label="Plano de Saúde" tableName="planos_saude" columnName="nome" value={editForm.plano_saude} onChange={val => setEditForm({ ...editForm, plano_saude: val })} />
+            
+            <div className="relative z-50">
+              <SelectAutocomplete 
+                label="Plano de Saúde" 
+                tableName="planos_saude" 
+                columnName="nome" 
+                value={editForm.plano_saude} 
+                onChange={val => setEditForm({ ...editForm, plano_saude: val })} 
+              />
+            </div>
+
             <Textarea label="Observações" value={editForm.observacoes} onChange={e => setEditForm({ ...editForm, observacoes: e.target.value })} />
             {errorMsg && <p className="text-red-500 text-xs font-bold">{errorMsg}</p>}
-            <div className="flex gap-2 pt-4">
+            <div className="flex gap-2 pt-4 border-t border-slate-100">
               <Button variant="secondary" fullWidth onClick={() => setViewMode('details')}>Voltar</Button>
               <Button variant="primary" fullWidth onClick={confirmarEdicao}>Salvar</Button>
             </div>

@@ -10,6 +10,7 @@ import { Input } from '../../components/ui/Input';
 import { Textarea } from '../../components/ui/Textarea';
 import { Card } from '../../components/ui/Card';
 import { Toast } from '../../components/ui/Toast';
+import { SelectAutocomplete } from '../../components/ui/SelectAutocomplete'; // <-- IMPORT DO AUTOCOMPLETE
 import { maskPhone, capitalizeName } from '../../utils/formUtils';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -95,7 +96,7 @@ export function NovoAmbulatorio() {
     setErrorMsg('');
 
     if (!formData.nome_paciente.trim() || !formData.numero_atendimento.trim() || !formData.plano_saude.trim() || !formData.telefone_paciente.trim()) {
-      setErrorMsg('Por favor, preencha todos os campos obrigatórios.');
+      setErrorMsg('Por favor, preencha todos os campos obrigatórios (incluindo o Plano de Saúde).');
       setLoading(false);
       return;
     }
@@ -106,8 +107,9 @@ export function NovoAmbulatorio() {
       return;
     }
 
-    if (!formData.crm_solicitante || !/^[0-9]{4,5}$/.test(formData.crm_solicitante)) {
-      setErrorMsg('Favor preencher um CRM válido (4 ou 5 números).');
+    // REGRA NOVA: Valida o CRM apenas se ele tiver sido preenchido
+    if (formData.crm_solicitante && !/^[0-9]{4,5}$/.test(formData.crm_solicitante)) {
+      setErrorMsg('Se informado, o CRM deve conter 4 ou 5 números.');
       setLoading(false);
       return;
     }
@@ -131,7 +133,7 @@ export function NovoAmbulatorio() {
         criado_por: user?.id,
         status_id: 1,
         origem: 'MANUAL', 
-        crm_solicitante: formData.crm_solicitante 
+        crm_solicitante: formData.crm_solicitante || null // Se tiver vazio, manda nulo pro banco
       }]);
       
       if (error) throw error;
@@ -160,9 +162,8 @@ export function NovoAmbulatorio() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto animate-in fade-in duration-500">
+    <div className="max-w-4xl mx-auto animate-in fade-in duration-500 pb-20">
       
-      {/* NAVEGAÇÃO COM TRAVA DE VISUALIZAÇÃO NO LINK DE NOVO */}
       <div className="flex items-center gap-6 mb-8 border-b border-gray-200 px-2">
         {podeCriarAmb && (
           <Link 
@@ -181,7 +182,7 @@ export function NovoAmbulatorio() {
       </div>
 
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">Encaminhar ao Ambulatório</h1>
+        <h1 className="text-3xl font-bold text-gray-800 mb-2">Encaminhamento Ambulatório</h1>
         <p className="text-gray-600">Preencha os dados para que o setor Concierge realize o agendamento no laboratório/especialista.</p>
       </div>
 
@@ -189,19 +190,30 @@ export function NovoAmbulatorio() {
         <form onSubmit={handleSubmit} className="space-y-6 p-6" noValidate>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Input label="Nome do Paciente" name="nome_paciente" value={formData.nome_paciente} onChange={handleChange} icon={<User size={20} />} required />
-            <Input label="Nº do Atendimento" name="numero_atendimento" value={formData.numero_atendimento} onChange={(e) => { const val = e.target.value.replace(/\D/g, ""); setFormData(prev => ({ ...prev, numero_atendimento: val })); setErrorMsg(''); }} icon={<Hash size={20} />} maxLength={10} required />
+            <Input label="Nome do Paciente *" name="nome_paciente" value={formData.nome_paciente} onChange={handleChange} icon={<User size={20} />} required />
+            <Input label="Nº do Atendimento *" name="numero_atendimento" value={formData.numero_atendimento} onChange={(e) => { const val = e.target.value.replace(/\D/g, ""); setFormData(prev => ({ ...prev, numero_atendimento: val })); setErrorMsg(''); }} icon={<Hash size={20} />} maxLength={10} required />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Input label="Telefone / WhatsApp" name="telefone_paciente" value={formData.telefone_paciente} onChange={handlePhoneChange} placeholder="(xx) xxxxx-xxxx" icon={<Phone size={20} />} maxLength={15} required />
-            <Input label="Plano de Saúde" name="plano_saude" value={formData.plano_saude} onChange={handleChange} placeholder="Ex: Unimed, Cassems, Bradesco..." icon={<Building2 size={20} />} required />
+            <Input label="Telefone / WhatsApp *" name="telefone_paciente" value={formData.telefone_paciente} onChange={handlePhoneChange} placeholder="(xx) xxxxx-xxxx" icon={<Phone size={20} />} maxLength={15} required />
+            
+            {/* NOVO CAMPO: Select Autocomplete com z-index alto para a lista suspensa */}
+            <div className="relative z-50">
+              <SelectAutocomplete 
+                label="Plano de Saúde *" 
+                tableName="planos_saude" 
+                columnName="nome" 
+                value={formData.plano_saude} 
+                onChange={val => { setFormData({ ...formData, plano_saude: val }); setErrorMsg(''); }} 
+                placeholder="Ex: Unimed, Cassems..."
+              />
+            </div>
           </div>
 
           <div className="h-px bg-slate-100 my-2"></div>
 
           <Input 
-            label="Seu CRM (Obrigatório)" 
+            label="Seu CRM (Opcional)" 
             name="crm_solicitante" 
             value={formData.crm_solicitante} 
             onChange={handleCrmChange} 

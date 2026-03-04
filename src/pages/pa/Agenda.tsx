@@ -229,7 +229,7 @@ export function Agenda() {
              numero_atendimento: selectedAgendamento.numero_atendimento || '',
              nome_paciente: selectedAgendamento.nome_paciente,
              telefone_paciente: selectedAgendamento.telefone_paciente,
-             plano_saude: 'Oriundo do PA',
+             plano_saude: '',
              exames_especialidades: examesParaAmbulatorio,
              observacoes: `Diagnóstico prévio: ${selectedAgendamento.diagnostico || 'Não informado.'}`,
              status_id: 1, 
