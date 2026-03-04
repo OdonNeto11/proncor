@@ -25,7 +25,7 @@ export function Home() {
         /* TELA DE ACESSO PENDENTE (REGRA 2) */
         <div className="bg-white rounded-2xl border border-dashed border-gray-300 p-12 text-center max-w-2xl mx-auto mt-12 shadow-sm">
           <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
-             <AlertCircle size={40} className="text-gray-400" />
+              <AlertCircle size={40} className="text-gray-400" />
           </div>
           <h2 className="text-2xl font-bold text-gray-800 mb-3">Sem setor vinculado</h2>
           <p className="text-gray-500 leading-relaxed">
@@ -51,13 +51,14 @@ export function Home() {
                 Icone = Stethoscope;
                 cor = 'bg-emerald-50 text-emerald-600';
                 hoverCor = 'hover:border-emerald-400';
-                temPermissaoParaAcessar = podeVerPA; // pa_visualizar_agendamentos
+                temPermissaoParaAcessar = podeVerPA;
             } else if (setor.sigla === 'AMB') {
-                rota = '/ambulatorio'; 
+                // AJUSTE: Agora aponta para o formulário de novo encaminhamento
+                rota = '/novo-ambulatorio'; 
                 Icone = ClipboardList;
                 cor = 'bg-purple-50 text-purple-600';
                 hoverCor = 'hover:border-purple-400';
-                temPermissaoParaAcessar = podeVerAmb; // amb_visualizar_encaminhamentos
+                temPermissaoParaAcessar = podeVerAmb;
             }
 
             // Só renderiza o card se houver permissão explícita no Hook
@@ -73,7 +74,7 @@ export function Home() {
                    <Icone size={32} />
                 </div>
                 <h3 className="text-xl font-bold text-gray-800 mb-2">{setor.nome}</h3>
-                <span className="text-xs font-bold bg-gray-100 text-gray-500 px-3 py-1 rounded-full tracking-wider">
+                <span className="text-slate-400 text-xs font-bold bg-gray-100 px-3 py-1 rounded-full tracking-wider">
                     {setor.sigla}
                 </span>
               </Link>

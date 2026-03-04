@@ -161,13 +161,20 @@ export function DashPA({ onBack }: DashPAProps) {
           </Link>
           <ChevronRight size={14} className="text-slate-400" />
           
-          {/* Mude o "/administracao" abaixo para a rota real do seu menu de administração (ex: "/usuarios") */}
-        <Link to="/admin" className="hover:text-blue-600 transition-colors">
-          Administração
-        </Link>
+          {/* O segredo está no state={{ reset: Date.now() }} */}
+          <Link 
+            to="/admin" 
+            state={{ reset: Date.now() }} 
+            className="hover:text-blue-600 transition-colors"
+          >
+            Administração
+          </Link>
           
           <ChevronRight size={14} className="text-slate-400" />
-          <button onClick={onBack} className="hover:text-blue-600 transition-colors font-medium">
+          <button 
+            onClick={onBack} 
+            className="hover:text-blue-600 transition-colors font-medium"
+          >
             Dashboards
           </button>
           <ChevronRight size={14} className="text-slate-400" />

@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/Layout';
 
-// CAMINHOS GEOGRÁFICOS CORRIGIDOS
+// CAMINHOS GEOGRÁFICOS E ARQUITETURA ATUALIZADA
 import { Login } from './pages/core/Login';
 import { Home } from './pages/core/Home';
-import { Admin } from './pages/administracao/Admin';
+import { Admin } from './pages/administracao/Admin'; // Nova localização da ponte administrativa
 import { Agenda } from './pages/pa/Agenda';
 import { Agendar } from './pages/pa/Agendar';
 import { Ambulatorio as FilaAmbulatorio } from './pages/ambulatorio/FilaAmbulatorio'; 
@@ -70,6 +70,7 @@ export default function App() {
           </AuthGuard>
         } />
 
+        {/* PRONTO ATENDIMENTO */}
         <Route path="/agenda" element={
           <AuthGuard>
             <Layout>
@@ -86,6 +87,7 @@ export default function App() {
           </AuthGuard>
         } />
 
+        {/* ADMINISTRAÇÃO (HUB, DASHBOARDS E HORÁRIOS) */}
         <Route path="/admin" element={
           <AuthGuard>
             <Layout>
@@ -94,18 +96,19 @@ export default function App() {
           </AuthGuard>
         } />
 
-        <Route path="/ambulatorio" element={
-          <AuthGuard>
-            <Layout>
-              <FilaAmbulatorio />
-            </Layout>
-          </AuthGuard>
-        } />
-
+        {/* AMBULATÓRIO - PRONCOR */}
         <Route path="/novo-ambulatorio" element={
           <AuthGuard>
             <Layout>
               <NovoAmbulatorio />
+            </Layout>
+          </AuthGuard>
+        } />
+
+        <Route path="/ambulatorio" element={
+          <AuthGuard>
+            <Layout>
+              <FilaAmbulatorio />
             </Layout>
           </AuthGuard>
         } />
