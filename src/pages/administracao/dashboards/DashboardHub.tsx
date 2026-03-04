@@ -1,21 +1,19 @@
 import React, { useState } from 'react';
-import { Navigate, Link } from 'react-router-dom'; // <-- IMPORT ADICIONADO AQUI TAMBÉM
-import { useAuth } from "../../contexts/AuthContext";
-import { Card } from '../../components/ui/Card';
+import { Navigate, Link } from 'react-router-dom';
+import { useAuth } from "../../../contexts/AuthContext";
+import { Card } from '../../../components/ui/Card';
 import { LayoutDashboard, Activity, Building2, ChevronRight, Home } from 'lucide-react';
+import { usePermissoes } from '../../../hooks/usePermissoes';
 
-// IMPORTAÇÃO DOS SUB-DASHBOARDS
-import { DashPA } from '../administracao/dashboards/DashPA';
-import { usePermissoes } from '../../hooks/usePermissoes';
+import { DashPA } from './DashPA';
 
-export function Dashboard() {
+export function DashboardHub() { // Nome padronizado como DashboardHub
   const { loading: authLoading } = useAuth();
   const { podeAcessarDashboard } = usePermissoes();
   
   const [currentView, setCurrentView] = useState<'menu' | 'pa'>('menu');
 
   if (authLoading) return null;
-  
   if (!podeAcessarDashboard) return <Navigate to="/" replace />;
 
   if (currentView === 'pa') {
@@ -24,20 +22,15 @@ export function Dashboard() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20 mt-4">
-      
-{/* BREADCRUMB PARA O MENU PRINCIPAL DE DASHBOARDS */}
       <nav className="flex items-center space-x-2 text-sm text-slate-500 font-medium mb-2">
         <Link to="/" className="hover:text-blue-600 flex items-center gap-1 transition-colors">
           <Home size={14} />
           <span>Home</span>
         </Link>
         <ChevronRight size={14} className="text-slate-400" />
-        
-        {/* Mude o "/administracao" abaixo para a rota real do seu menu */}
-      <Link to="/admin" state={{ reset: Date.now() }} className="hover:text-blue-600 transition-colors">
+        <Link to="/admin" state={{ reset: Date.now() }} className="hover:text-blue-600 transition-colors">
           Administração
         </Link>   
-        
         <ChevronRight size={14} className="text-slate-400" />
         <span className="text-slate-800 font-bold">Dashboards</span>
       </nav>

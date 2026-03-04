@@ -5,7 +5,7 @@ import { Layout } from './components/Layout';
 // CAMINHOS GEOGRÁFICOS CORRIGIDOS
 import { Login } from './pages/core/Login';
 import { Home } from './pages/core/Home';
-import { Admin } from './pages/core/Admin';
+import { Admin } from './pages/administracao/Admin';
 import { Agenda } from './pages/pa/Agenda';
 import { Agendar } from './pages/pa/Agendar';
 import { Ambulatorio as FilaAmbulatorio } from './pages/ambulatorio/FilaAmbulatorio'; 
