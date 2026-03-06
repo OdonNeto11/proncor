@@ -154,7 +154,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <div className="text-center md:text-left">
               {/* NOME DO SEU SISTEMA */}
               <p className="text-sm font-bold text-slate-700 dark:text-slate-200 tracking-tight">
-                PGFH <span className="text-slate-400 dark:text-slate-500 font-medium">| Portal de Gestão e Fluxo Hospitalar</span>
+                SGFH <span className="text-slate-400 dark:text-slate-500 font-medium">| Sistema de Gestão e Fluxo Hospitalar</span>
               </p>
               {/* SUA PROPRIEDADE */}
               <p className="text-[10px] text-slate-400 dark:text-slate-600 mt-1 uppercase tracking-[0.1em]">
