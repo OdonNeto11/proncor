@@ -11,10 +11,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const { signOut, profileName, roleId } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  // LÓGICA DE PERSISTÊNCIA E PADRÃO DARK
   const [isDark, setIsDark] = useState(() => {
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme) return savedTheme === 'dark';
-    return true; 
+    return true; // PADRÃO DARK MODE ATIVO
   });
 
   useEffect(() => {
@@ -48,7 +49,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </Link>
             </div>
             
-            {/* DESKTOP NAV */}
+            {/* NAVEGAÇÃO DESKTOP */}
             <nav className="hidden md:flex items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-300">
               <Link to="/" className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 ${isActive('/') ? 'text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 font-semibold' : 'hover:text-blue-600 hover:bg-gray-50 dark:hover:bg-slate-800'}`}>
                 <HomeIcon size={18} /> Início
@@ -69,7 +70,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <button 
                 onClick={() => setIsDark(!isDark)}
                 className="p-2 mr-2 rounded-lg bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-yellow-400 hover:ring-2 hover:ring-blue-400 transition-all"
-                title={isDark ? "Mudar para modo claro" : "Mudar para modo escuro"}
               >
                 {isDark ? <Sun size={18} /> : <Moon size={18} />}
               </button>
@@ -85,12 +85,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </button>
             </nav>
 
-            {/* MOBILE CONTROLS (TEMA FIXO + HAMBÚRGUER) */}
+            {/* CONTROLES MOBILE (TEMA FIXO + HAMBÚRGUER) */}
             <div className="flex items-center gap-2 md:hidden">
               <button 
                 onClick={() => setIsDark(!isDark)}
                 className="p-2.5 rounded-lg bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-yellow-400 transition-all active:scale-95"
-                title={isDark ? "Mudar para modo claro" : "Mudar para modo escuro"}
               >
                 {isDark ? <Sun size={20} /> : <Moon size={20} />}
               </button>
@@ -106,7 +105,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        {/* MOBILE MENU (REMOVIDO O BOTÃO DE TEMA DAQUI POIS AGORA ESTÁ FIXO NO HEADER) */}
+        {/* MENU MOBILE */}
         {isMobileMenuOpen && (
           <>
             <div className="fixed inset-0 z-40 bg-black/20 dark:bg-black/40 backdrop-blur-sm md:hidden" onClick={() => setIsMobileMenuOpen(false)} />
@@ -143,10 +142,45 @@ export function Layout({ children }: { children: React.ReactNode }) {
         )}
       </header>
 
-      <main className="flex-1 overflow-y-auto overflow-x-hidden bg-gray-50 dark:bg-slate-950 scroll-smooth w-full transition-colors duration-300">
-        <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto pb-20">
+      <main className="flex-1 overflow-y-auto overflow-x-hidden bg-gray-50 dark:bg-slate-950 scroll-smooth w-full transition-colors duration-300 flex flex-col">
+        <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto flex-1 w-full">
             {children}
         </div>
+
+{/* RODAPÉ: PROPRIEDADE E NOME DO SISTEMA */}
+        <footer className="w-full py-6 px-4 sm:px-6 lg:px-8 border-t border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 transition-colors duration-300">
+          <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            
+            <div className="text-center md:text-left">
+              {/* NOME DO SEU SISTEMA */}
+              <p className="text-sm font-bold text-slate-700 dark:text-slate-200 tracking-tight">
+                PGFH <span className="text-slate-400 dark:text-slate-500 font-medium">| Portal de Gestão e Fluxo Hospitalar</span>
+              </p>
+              {/* SUA PROPRIEDADE */}
+              <p className="text-[10px] text-slate-400 dark:text-slate-600 mt-1 uppercase tracking-[0.1em]">
+                © {new Date().getFullYear()} Desenvolvido por [Odon Neto]
+              </p>
+            </div>
+
+            <div className="flex items-center gap-6">
+              {/* STATUS DE OPERAÇÃO NO CLIENTE */}
+              <div className="flex items-center gap-2 cursor-default">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]"></div>
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                  Unidade Proncor Ativa
+                </span>
+              </div>
+              
+              <div className="h-4 w-px bg-gray-200 dark:bg-slate-800"></div>
+              
+              {/* IDENTIFICADOR DA RELEASE */}
+              <span className="text-[10px] font-mono text-slate-300 dark:text-slate-700">
+                SYS.REV.2026_BETA
+              </span>
+            </div>
+
+          </div>
+        </footer>
       </main>
     </div>
   );
