@@ -2,82 +2,75 @@ import React from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePermissoes } from '../../hooks/usePermissoes';
 import { Building2, Stethoscope, ClipboardList, AlertCircle } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+
+import { Card } from '../../components/ui/Card';
+import { Title, Description } from '../../components/ui/Typography';
 
 export function Home() {
   const { profileName, setores, roleId } = useAuth();
   const { podeVerPA, podeVerAmb } = usePermissoes();
+  const navigate = useNavigate();
 
-  // REGRA 2: Existe na profile, mas não possui setores vinculados ou roleId nulo
   const isAcessoPendente = roleId === null || !setores || setores.length === 0;
 
   return (
     <div className="max-w-6xl mx-auto animate-in fade-in duration-500">
       
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">
-          Olá, {profileName ? profileName.split(' ')[0] : 'Profissional'}
-        </h1>
-        <p className="text-gray-600">Selecione o seu ambiente de trabalho para iniciar.</p>
+        {/* Se você mudar a cor no Typography.tsx, aqui muda sozinho */}
+        <Title>Olá, {profileName ? profileName.split(' ')[0] : 'Profissional'}</Title>
+        <Description>Selecione o seu ambiente de trabalho para iniciar.</Description>
       </div>
 
       {isAcessoPendente ? (
-        /* TELA DE ACESSO PENDENTE (REGRA 2) */
-        <div className="bg-white rounded-2xl border border-dashed border-gray-300 p-12 text-center max-w-2xl mx-auto mt-12 shadow-sm">
-          <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
-              <AlertCircle size={40} className="text-gray-400" />
+        <Card className="p-12 text-center max-w-2xl mx-auto mt-12 border-dashed border-gray-300 dark:border-slate-700">
+          <div className="w-20 h-20 bg-gray-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6">
+              <AlertCircle size={40} className="text-gray-400 dark:text-slate-500" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-3">Sem setor vinculado</h2>
-          <p className="text-gray-500 leading-relaxed">
+          <Title className="text-2xl mb-3">Sem setor vinculado</Title>
+          <Description className="leading-relaxed">
             Seu usuário foi autenticado, mas você ainda não possui um ambiente de trabalho definido no sistema.
-            <br/><br/>
-            Por favor, contate a administração do sistema para liberar o seu acesso aos menus.
-          </p>
-        </div>
+          </Description>
+        </Card>
       ) : (
-        /* GRID DE SETORES COM FILTRO DE PERMISSÃO */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          
           {setores.filter(Boolean).map(setor => {
             let rota = '';
             let Icone = Building2;
-            let cor = 'bg-blue-50 text-blue-600';
-            let hoverCor = 'hover:border-blue-400';
+            let cor = 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400';
             let temPermissaoParaAcessar = false;
 
-            // Lógica baseada na Sigla do Setor e no Hook usePermissoes
             if (setor.sigla === 'PA') {
                 rota = '/novo'; 
                 Icone = Stethoscope;
-                cor = 'bg-emerald-50 text-emerald-600';
-                hoverCor = 'hover:border-emerald-400';
+                cor = 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400';
                 temPermissaoParaAcessar = podeVerPA;
             } else if (setor.sigla === 'AMB') {
-                // AJUSTE: Agora aponta para o formulário de novo encaminhamento
                 rota = '/novo-ambulatorio'; 
                 Icone = ClipboardList;
-                cor = 'bg-purple-50 text-purple-600';
-                hoverCor = 'hover:border-purple-400';
+                cor = 'bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400';
                 temPermissaoParaAcessar = podeVerAmb;
             }
 
-            // Só renderiza o card se houver permissão explícita no Hook
             if (!temPermissaoParaAcessar) return null;
 
             return (
-              <Link 
+              <Card 
                 key={setor.id} 
-                to={rota}
-                className={`bg-white p-8 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all group flex flex-col items-center text-center ${hoverCor}`}
+                hoverable 
+                onClick={() => navigate(rota)}
+                className="flex flex-col items-center text-center p-8 group transition-all duration-300"
               >
                 <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform ${cor}`}>
                    <Icone size={32} />
                 </div>
-                <h3 className="text-xl font-bold text-gray-800 mb-2">{setor.nome}</h3>
-                <span className="text-slate-400 text-xs font-bold bg-gray-100 px-3 py-1 rounded-full tracking-wider">
+                {/* Aqui também usamos o Title para garantir padronização */}
+                <Title className="text-xl mb-2">{setor.nome}</Title>
+                <span className="text-slate-400 dark:text-slate-500 text-xs font-bold bg-gray-100 dark:bg-slate-800 px-3 py-1 rounded-full tracking-wider">
                     {setor.sigla}
                 </span>
-              </Link>
+              </Card>
             )
           })}
         </div>

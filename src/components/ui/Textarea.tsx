@@ -1,8 +1,7 @@
 import React from 'react';
 
-// Adicionamos 'icon' aqui também
 interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
-  label: string;
+  label?: string;
   error?: string;
   icon?: React.ReactNode;
 }
@@ -10,32 +9,38 @@ interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement
 export function Textarea({ label, error, icon, className = '', ...props }: TextareaProps) {
   return (
     <div className="flex flex-col gap-1.5 w-full">
-      <label className="text-sm font-semibold text-slate-700">
-        {label} {props.required && <span className="text-red-500">*</span>}
-      </label>
+      {label && (
+        <label className="text-sm font-bold text-slate-700 dark:text-slate-300 transition-colors">
+          {label} {props.required && <span className="text-red-500">*</span>}
+        </label>
+      )}
       
       <div className="relative">
-        {/* Ícone no textarea geralmente fica no topo */}
         {icon && (
-          <div className="absolute left-3 top-3 text-slate-400 pointer-events-none">
-            {icon}
+          <div className="absolute left-4 top-4 text-slate-400 dark:text-slate-500 pointer-events-none">
+            {React.isValidElement(icon) ? React.cloneElement(icon as React.ReactElement, { size: 18 }) : icon}
           </div>
         )}
-
+        
         <textarea 
           className={`
-            w-full min-h-[80px] rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm 
-            placeholder:text-slate-400 focus:border-blue-500 focus:outline-none 
-            focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-50
-            ${icon ? 'pl-10' : ''} /* Padding para não escrever em cima do ícone */
-            ${error ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''} 
+            w-full rounded-xl border px-4 py-3 text-sm transition-all min-h-[100px]
+            bg-white dark:bg-slate-800 
+            border-slate-200 dark:border-slate-700
+            text-slate-900 dark:text-slate-100
+            placeholder:text-slate-400 dark:placeholder:text-slate-500
+            focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none 
+            focus:ring-4 focus:ring-blue-500/10 dark:focus:ring-blue-400/10
+            disabled:cursor-not-allowed disabled:opacity-50
+            ${icon ? 'pl-11' : ''} 
+            ${error ? 'border-red-500 focus:border-red-500 focus:ring-red-500/10' : ''} 
             ${className}
           `}
           {...props}
         />
       </div>
-
-      {error && <span className="text-xs text-red-500 font-medium">{error}</span>}
+      
+      {error && <span className="text-xs text-red-500 font-bold mt-1">{error}</span>}
     </div>
   );
 }

@@ -18,7 +18,7 @@ interface ModalDetalhesLayoutProps {
   statusClasses: { color: string; border: string };
   tagsLabel?: string;
   tags?: string[];
-  customContent?: ReactNode; // NOVO: Para injetar os Anexos do PA
+  customContent?: ReactNode; 
   phoneForWhats?: string;
   obsLabel?: string;
   obsText?: string;
@@ -33,10 +33,23 @@ export function ModalDetalhesLayout({
   actionButtons, footerButtons
 }: ModalDetalhesLayoutProps) {
 
+  // Função ajustada para não quebrar com os espaços das classes dark:
   const getBoxTheme = (theme: InfoBox['theme']) => {
-    if (theme === 'blue') return 'bg-blue-50 border-blue-100 text-blue-600 value-blue-900';
-    if (theme === 'purple') return 'bg-purple-50 border-purple-100 text-purple-600 value-purple-900';
-    return 'bg-slate-100 border-slate-200 text-slate-500 value-slate-700'; 
+    if (theme === 'blue') return {
+      container: 'bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-900/50',
+      label: 'text-blue-600 dark:text-blue-400',
+      value: 'text-blue-900 dark:text-blue-100'
+    };
+    if (theme === 'purple') return {
+      container: 'bg-purple-50 dark:bg-purple-900/20 border-purple-100 dark:border-purple-900/50',
+      label: 'text-purple-600 dark:text-purple-400',
+      value: 'text-purple-900 dark:text-purple-100'
+    };
+    return {
+      container: 'bg-slate-100 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700',
+      label: 'text-slate-500 dark:text-slate-400',
+      value: 'text-slate-700 dark:text-slate-200'
+    }; 
   };
 
   return (
@@ -46,13 +59,11 @@ export function ModalDetalhesLayout({
         {infoBoxes.length > 0 && (
           <div className="flex gap-2 text-center">
             {infoBoxes.map((box, idx) => {
-              const themeClasses = getBoxTheme(box.theme);
-              const textColor = themeClasses.split(' ')[2]; 
-              const valueColor = themeClasses.split(' ')[3].replace('value-', 'text-'); 
+              const theme = getBoxTheme(box.theme);
               return (
-                <div key={idx} className={`flex-1 p-2 rounded-xl border ${themeClasses.split(' ').slice(0,2).join(' ')}`}>
-                  <span className={`text-[10px] font-bold uppercase block ${textColor}`}>{box.label}</span>
-                  <div className={`font-bold text-sm ${valueColor}`}>{box.value}</div>
+                <div key={idx} className={`flex-1 p-2 rounded-xl border ${theme.container}`}>
+                  <span className={`text-[10px] font-bold uppercase block ${theme.label}`}>{box.label}</span>
+                  <div className={`font-bold text-sm ${theme.value}`}>{box.value}</div>
                 </div>
               );
             })}
@@ -64,12 +75,12 @@ export function ModalDetalhesLayout({
         </div>
 
         {tags && tags.length > 0 && (
-          <div className="bg-white border border-slate-200 p-4 rounded-xl">
-            {tagsLabel && <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">{tagsLabel}</p>}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-xl">
+            {tagsLabel && <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">{tagsLabel}</p>}
             <div className="flex flex-wrap gap-2">
                 {tags.map((tag, idx) => (
-                    <span key={idx} className="flex items-center gap-1 text-xs font-semibold bg-slate-50 text-slate-700 px-2 py-1 rounded-md border border-slate-200">
-                        <Activity size={12} className="text-slate-400" /> {tag}
+                    <span key={idx} className="flex items-center gap-1 text-xs font-semibold bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700">
+                        <Activity size={12} className="text-slate-400 dark:text-slate-500" /> {tag}
                     </span>
                 ))}
             </div>
@@ -85,11 +96,11 @@ export function ModalDetalhesLayout({
         )}
 
         {obsText && (
-          <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-            <p className="text-xs font-bold text-slate-400 uppercase mb-1">{obsLabel || 'Observações'}</p>
-            <p className="text-sm text-slate-700 whitespace-pre-line">{obsText}</p>
+          <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
+            <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">{obsLabel || 'Observações'}</p>
+            <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-line">{obsText}</p>
             {obsFooter && (
-              <div className="mt-2 pt-2 border-t border-slate-200">
+              <div className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
                 {obsFooter}
               </div>
             )}

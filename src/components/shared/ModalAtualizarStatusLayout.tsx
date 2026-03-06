@@ -7,7 +7,7 @@ interface ModalAtualizarStatusLayoutProps {
   onClose: () => void;
   nomePaciente: string;
   theme?: 'blue' | 'purple';
-  children: ReactNode; // Aqui vão entrar os ActionListItems
+  children: ReactNode; 
 }
 
 export function ModalAtualizarStatusLayout({
@@ -18,8 +18,7 @@ export function ModalAtualizarStatusLayout({
   children
 }: ModalAtualizarStatusLayoutProps) {
 
-  // Prevenindo problemas do Tailwind com classes dinâmicas
-  const textTheme = theme === 'purple' ? 'text-purple-600' : 'text-blue-600';
+  const textTheme = theme === 'purple' ? 'text-purple-600 dark:text-purple-400' : 'text-blue-600 dark:text-blue-400';
 
   return (
     <Modal 
@@ -29,11 +28,10 @@ export function ModalAtualizarStatusLayout({
     >
       <div className="space-y-3 animate-in slide-in-from-right-4 duration-300">
         
-        <p className="text-sm text-slate-600 mb-2">
+        <p className="text-sm text-slate-600 dark:text-slate-300 mb-2">
           Selecione o novo status para <strong className={textTheme}>{nomePaciente}</strong>:
         </p>
         
-        {/* Renderiza a lista de botões (ActionListItems) passados pela tela */}
         {children}
 
         <Button variant="secondary" fullWidth onClick={onClose} className="mt-4">

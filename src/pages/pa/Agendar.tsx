@@ -12,10 +12,11 @@ import { Textarea } from '../../components/ui/Textarea';
 import { Card } from '../../components/ui/Card';
 import { Toast } from '../../components/ui/Toast';
 import { SelectAutocomplete } from '../../components/ui/SelectAutocomplete';
+// INJETADO OS COMPONENTES DE TEXTO
+import { Title, Description, themeClasses } from '../../components/ui/Typography'; 
 
 import { maskPhone, validateFields, capitalizeName } from '../../utils/formUtils';
 import { supabase } from '../../lib/supabase';
-// IMPORTAÇÕES CORRIGIDAS:
 import { usePermissoes } from '../../hooks/usePermissoes'; 
 
 registerLocale('pt-BR', ptBR);
@@ -23,7 +24,6 @@ registerLocale('pt-BR', ptBR);
 const OPCOES_PROCEDIMENTOS = ["Exames", "RX", "Tomografia"];
 
 export function Agendar() {
-  // TROCA DA LÓGICA DE PERMISSÃO:
   const { podeCriarPA } = usePermissoes(); 
   
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
@@ -47,7 +47,6 @@ export function Agendar() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [errorMsg, setErrorMsg] = useState(''); 
 
-  // ... (Efeitos de busca de horários e lógica de bloqueio permanecem iguais)
   useEffect(() => {
     const fetchHorarios = async () => {
       const { data, error } = await supabase
@@ -134,7 +133,7 @@ export function Agendar() {
     return { nome: file.name, url: data.publicUrl };
   };
 
-const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setErrorMsg('');
@@ -149,11 +148,9 @@ const handleSubmit = async (e: FormEvent) => {
       novosErros.telefone_paciente = 'Telefone inválido';
     }
 
-    // --- ADICIONE ESTA VALIDAÇÃO AQUI ---
     if (!formData.crm_responsavel || !/^[0-9]{4,5}$/.test(formData.crm_responsavel)) {
       novosErros.crm_responsavel = 'Favor preencher um CRM válido (4 ou 5 números)';
     }
-    // ------------------------------------
 
     if (Object.keys(novosErros).length > 0) {
       setErrors(novosErros);
@@ -200,18 +197,17 @@ const handleSubmit = async (e: FormEvent) => {
     }
   };
 
-  // BLOQUEIO DE ACESSO USANDO O HOOK:
   if (!podeCriarPA) {
     return (
-      <div className="max-w-4xl mx-auto text-center py-20 bg-white rounded-xl border border-red-100 shadow-sm mt-8 animate-in zoom-in-95 duration-300">
-        <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
+      <div className="max-w-4xl mx-auto text-center py-20 bg-white dark:bg-slate-900 rounded-xl border border-red-100 dark:border-red-900/30 shadow-sm mt-8 animate-in zoom-in-95 duration-300">
+        <div className="w-20 h-20 bg-red-50 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
           <AlertCircle size={48} className="text-red-400" />
         </div>
-        <h2 className="text-2xl font-bold text-slate-800 mb-2">Acesso Negado</h2>
-        <p className="text-slate-500 max-w-sm mx-auto">
+        <Title className="mb-2">Acesso Negado</Title>
+        <Description className="max-w-sm mx-auto">
           O seu perfil não tem permissão para registrar novos agendamentos no Pronto Atendimento.
-        </p>
-        <Link to="/" className="inline-block mt-8 px-6 py-2 bg-slate-100 text-slate-600 rounded-lg font-bold hover:bg-slate-200 transition-colors">
+        </Description>
+        <Link to="/" className="inline-block mt-8 px-6 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg font-bold hover:bg-slate-200 transition-colors">
           Voltar para Início
         </Link>
       </div>
@@ -221,26 +217,25 @@ const handleSubmit = async (e: FormEvent) => {
   return (
     <div className="max-w-4xl mx-auto animate-in fade-in duration-500">
       
-      <div className="flex items-center gap-6 mb-8 border-b border-gray-200 px-2">
+      <div className="flex items-center gap-6 mb-8 border-b border-gray-200 dark:border-slate-800 px-2">
         <Link to="/novo" className="pb-3 text-sm font-bold border-b-2 border-blue-600 text-blue-600">
           Novo Agendamento
         </Link>
-        <Link to="/agenda" className="pb-3 text-sm font-bold border-b-2 border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300 transition-colors">
+        <Link to="/agenda" className={`pb-3 text-sm font-bold border-b-2 border-transparent transition-colors opacity-60 hover:opacity-100 ${themeClasses.text}`}>
           Ver Agenda
         </Link>
       </div>
 
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">Novo Agendamento</h1>
-        <p className="text-gray-600">Preencha os dados a seguir:</p>
+        <Title className="mb-2">Novo Agendamento</Title>
+        <Description>Preencha os dados a seguir:</Description>
       </div>
 
       <Card>
         <form onSubmit={handleSubmit} className="space-y-6 p-6" noValidate>
-          {/* ... O restante do formulário permanece igual ... */}
           <div className="flex flex-col gap-6">
             <div className="w-full">
-                <label className="text-sm font-semibold text-slate-700 mb-2 block">Selecione a Data <span className="text-red-500">*</span></label>
+                <label className={`text-sm font-semibold mb-2 block ${themeClasses.text}`}>Selecione a Data <span className="text-red-500">*</span></label>
                 <div className="relative max-w-sm">
                     <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none z-10"><Calendar size={20} /></div>
                     <DatePicker
@@ -254,7 +249,7 @@ const handleSubmit = async (e: FormEvent) => {
                         locale="pt-BR"
                         dateFormat="dd/MM/yyyy"
                         placeholderText="Selecione o dia"
-                        className={`w-full pl-10 pr-4 py-3 rounded-xl border ${errors.data_agendamento ? 'border-red-500' : 'border-slate-200'} outline-none focus:ring-4 focus:ring-blue-500/10`}
+                        className={`w-full pl-10 pr-4 py-3 rounded-xl border bg-white dark:bg-slate-800 ${themeClasses.text} ${themeClasses.placeholder} ${errors.data_agendamento ? 'border-red-500' : 'border-slate-200 dark:border-slate-700'} outline-none focus:ring-4 focus:ring-blue-500/10`}
                         onFocus={(e) => e.target.blur()}
                     />
                 </div>
@@ -262,15 +257,15 @@ const handleSubmit = async (e: FormEvent) => {
             </div>
 
             <div className="w-full">
-                <label className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                <label className={`text-sm font-semibold mb-3 flex items-center gap-2 ${themeClasses.text}`}>
                     Selecione o Horário <span className="text-red-500">*</span>
                     {selectedTime && <span className="text-xs font-normal text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">Selecionado: {format(selectedTime, 'HH:mm')}</span>}
                 </label>
                 
                 {horariosDisponiveis.length === 0 ? (
-                  <p className="text-sm text-gray-500 italic">Carregando horários...</p>
+                  <p className={`text-sm italic ${themeClasses.text}`}>Carregando horários...</p>
                 ) : (
-                  <div className={`grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 p-2 rounded-xl ${errors.hora_agendamento ? 'bg-red-50 border border-red-200' : ''}`}>
+                  <div className={`grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 p-2 rounded-xl ${errors.hora_agendamento ? 'bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/30' : ''}`}>
                       {horariosDisponiveis.map((horario) => {
                           const isDisabled = checkIsDisabled(horario);
                           const isSelected = selectedTime && format(selectedTime, 'HH:mm') === horario;
@@ -284,10 +279,10 @@ const handleSubmit = async (e: FormEvent) => {
                                   className={`
                                       py-2 px-1 rounded-lg text-sm font-semibold border transition-all duration-200
                                       ${isDisabled 
-                                          ? 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed'
+                                          ? 'bg-slate-50 dark:bg-slate-900/50 text-slate-300 dark:text-slate-700 border-slate-100 dark:border-slate-800 cursor-not-allowed'
                                           : isSelected
                                               ? 'bg-blue-600 text-white border-blue-600 shadow-md transform scale-105'
-                                              : 'bg-white text-slate-600 border-slate-200 hover:border-blue-400 hover:text-blue-600 hover:shadow-sm'
+                                              : `bg-white dark:bg-slate-800 hover:border-blue-400 border-slate-200 dark:border-slate-700 hover:text-blue-600 hover:shadow-sm ${themeClasses.text}`
                                       }
                                   `}
                               >
@@ -303,9 +298,10 @@ const handleSubmit = async (e: FormEvent) => {
             </div>
           </div>
 
-          <div className="h-px bg-slate-100 my-2"></div>
+          <div className="h-px bg-slate-100 dark:bg-slate-800 my-2"></div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* SEUS PLACEHOLDERS E PROPS EXATAMENTE COMO VOCÊ MANDOU */}
             <Input 
               label="Nome do Paciente" 
               name="nome_paciente" 
@@ -388,7 +384,7 @@ const handleSubmit = async (e: FormEvent) => {
                                     px-3 py-1.5 rounded-full text-xs font-semibold border transition-all flex items-center gap-1.5
                                     ${isSelected 
                                         ? 'bg-emerald-50 text-emerald-700 border-emerald-200 shadow-sm' 
-                                        : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                                        : `bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 ${themeClasses.text}`
                                     }
                                 `}
                             >
@@ -402,24 +398,24 @@ const handleSubmit = async (e: FormEvent) => {
           </div>
 
           <div className="w-full">
-            <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Anexos (Máx: 5)</label>
-            <div className="border-2 border-dashed border-slate-300 rounded-xl bg-slate-50 p-6 hover:bg-white hover:border-blue-400 transition-colors relative text-center">
+            <label className={`text-sm font-semibold mb-1.5 block ${themeClasses.text}`}>Anexos (Máx: 5)</label>
+            <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900/50 p-6 hover:bg-white dark:hover:bg-slate-800 hover:border-blue-400 transition-colors relative text-center">
                 <input type="file" multiple onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept=".pdf,image/*" />
-                <div className="flex flex-col items-center justify-center gap-2 text-slate-500">
+                <div className="flex flex-col items-center justify-center gap-2">
                    <Upload size={32} className="text-blue-400" />
-                   <p className="text-sm font-medium">Clique ou arraste arquivos aqui</p>
+                   <p className={`text-sm font-medium ${themeClasses.text}`}>Clique ou arraste arquivos aqui</p>
                    <p className="text-xs text-slate-400">PDF ou Imagens</p>
                 </div>
             </div>
             {arquivos.length > 0 && (
                 <div className="mt-3 space-y-2">
                     {arquivos.map((arq, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-lg shadow-sm">
+                    <div key={index} className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm">
                         <div className="flex items-center gap-2 overflow-hidden">
                         <Paperclip size={16} className="text-blue-600 flex-shrink-0" />
-                        <span className="text-sm text-slate-700 truncate">{arq.name}</span>
+                        <span className={`text-sm truncate ${themeClasses.text}`}>{arq.name}</span>
                         </div>
-                        <button type="button" onClick={() => removerArquivo(index)} className="p-1 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded transition-colors"><Trash2 size={16} /></button>
+                        <button type="button" onClick={() => removerArquivo(index)} className="p-1 hover:bg-red-50 dark:hover:bg-red-900/30 text-slate-400 hover:text-red-500 rounded transition-colors"><Trash2 size={16} /></button>
                     </div>
                     ))}
                 </div>
