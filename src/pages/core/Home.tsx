@@ -8,9 +8,13 @@ import { Card } from '../../components/ui/Card';
 import { Title, Description } from '../../components/ui/Typography';
 
 export function Home() {
-  const { profileName, setores, roleId } = useAuth();
+  const { profileName, setores, roleId, loading } = useAuth();
   const { podeVerPA, podeVerAmb } = usePermissoes();
   const navigate = useNavigate();
+
+  // TRAVA DUPLA: Além do loading, aguarda o profileName (nome do usuário) ser preenchido.
+  // Todo usuário válido tem nome. Se não chegou o nome, os setores também não chegaram ainda.
+  if (loading || profileName === null) return null;
 
   const isAcessoPendente = roleId === null || !setores || setores.length === 0;
 
@@ -18,8 +22,7 @@ export function Home() {
     <div className="max-w-6xl mx-auto animate-in fade-in duration-500">
       
       <div className="mb-8">
-        {/* Se você mudar a cor no Typography.tsx, aqui muda sozinho */}
-        <Title>Olá, {profileName ? profileName.split(' ')[0] : 'Profissional'}</Title>
+        <Title>Olá, {profileName.split(' ')[0]}</Title>
         <Description>Selecione o seu ambiente de trabalho para iniciar.</Description>
       </div>
 
@@ -65,7 +68,6 @@ export function Home() {
                 <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform ${cor}`}>
                    <Icone size={32} />
                 </div>
-                {/* Aqui também usamos o Title para garantir padronização */}
                 <Title className="text-xl mb-2">{setor.nome}</Title>
                 <span className="text-slate-400 dark:text-slate-500 text-xs font-bold bg-gray-100 dark:bg-slate-800 px-3 py-1 rounded-full tracking-wider">
                     {setor.sigla}

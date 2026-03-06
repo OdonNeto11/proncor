@@ -1,8 +1,8 @@
 import React from 'react';
-import { themeClasses } from './Typography'; // INJETADO PARA CORES
+import { themeClasses } from './Typography'; 
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-  label?: string; // <-- CORRIGIDO: O ponto de interrogação salva as outras telas (opcional)
+  label?: string; 
   error?: string;
   icon?: React.ReactNode; 
 }
@@ -10,7 +10,6 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 export function Input({ label, error, icon, className = '', ...props }: InputProps) {
   return (
     <div className="flex flex-col gap-1.5 w-full">
-      {/* Condicional adicionada: só desenha a label se ela for enviada */}
       {label && (
         <label className={`text-sm font-semibold ${themeClasses.text}`}>
           {label} {props.required && <span className="text-red-500">*</span>}
@@ -18,24 +17,37 @@ export function Input({ label, error, icon, className = '', ...props }: InputPro
       )}
       
       <div className="relative">
-        {/* Ícone posicionado à esquerda (Intocado) */}
         {icon && (
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none z-10">
             {icon}
           </div>
         )}
         
         <input 
           className={`
-            w-full rounded-lg border px-3 py-2 text-sm 
-            focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 
+            w-full rounded-lg px-3 py-2.5 text-sm transition-all duration-200 
+            
+            /* FORÇA BRUTA PARA DESTRUIR A MOLDURA DO NAVEGADOR */
+            appearance-none outline-none border border-transparent shadow-none ring-0
+            
+            /* ESTADOS VISUAIS LIMPOS (USANDO RING PARA FOCO) */
+            focus:ring-2 focus:ring-blue-500/30 dark:focus:ring-blue-500/40
             disabled:cursor-not-allowed disabled:opacity-50
-            /* CORES INJETADAS DO TEMA AQUI */
-            bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700
+            
+            /* CORES BASE */
+            bg-white dark:bg-slate-800
             ${themeClasses.text} ${themeClasses.placeholder}
-            /* MANTIDO SEU PL-10 ORIGINAL PARA NÃO EMPURRAR O TEXTO PRO MEIO */
+            
+            /* BLINDAGEM CONTRA O FUNDO BRANCO DO AUTOFILL */
+            [&:autofill]:shadow-[inset_0_0_0px_1000px_#ffffff]
+            dark:[&:autofill]:shadow-[inset_0_0_0px_1000px_#1e293b]
+            dark:[&:autofill]:[-webkit-text-fill-color:#f8fafc]
+            
+            /* ESPAÇAMENTO DO ÍCONE */
             ${icon ? 'pl-10' : ''} 
-            ${error ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''} 
+            
+            /* MODO ERRO */
+            ${error ? '!ring-2 !ring-red-500 !focus:ring-red-500/40' : ''} 
             ${className}
           `}
           {...props}

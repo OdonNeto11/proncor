@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Home as HomeIcon, Menu, X, LogOut, UserCircle, Settings, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { Logo } from './ui/Logo';
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
@@ -10,10 +11,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const { signOut, profileName, roleId } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // LÓGICA DE PERSISTÊNCIA DO TEMA
+  // LÓGICA DE PERSISTÊNCIA DO TEMA (AGORA O PADRÃO É DARK)
   const [isDark, setIsDark] = useState(() => {
-    return localStorage.getItem('theme') === 'dark' || 
-           (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme) return savedTheme === 'dark';
+    return true; // <-- PADRÃO AGORA É DARK MODE
   });
 
   useEffect(() => {
@@ -43,12 +45,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
             
             <div className="flex items-center gap-3">
               <Link to="/" className="flex-shrink-0 hover:opacity-90 transition-opacity">
-                {/* LOGO COM FILTRO DE INVERSÃO PARA MODO DARK */}
-                <img 
-                  src="/logo.png" 
-                  alt="Hospital Proncor" 
-                  className="h-12 w-auto object-contain dark:brightness-0 dark:invert transition-all duration-300" 
-                />
+                {/* NOVO COMPONENTE DE LOGO APLICADO AQUI */}
+                <Logo className="h-12 w-auto" />
               </Link>
             </div>
             

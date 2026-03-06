@@ -54,6 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
+        setLoading(true); // Evita a piscada garantindo que a tela aguarde os dados
         loadUserProfile(session.user.id);
       } else {
         setRoleId(null);
@@ -83,8 +84,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setProfileName(nomeCorreto);
 
       if (profileData.role_id) {
-        
-        // Lendo da sua estrutura M:N (role_permissoes -> permissoes)
         const { data: permissoesData, error: permissoesError } = await supabase
           .from('role_permissoes')
           .select(`
@@ -95,7 +94,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .eq('role_id', profileData.role_id);
 
         if (!permissoesError && permissoesData) {
-          // Extrai o array de nomes
           const permissoesArray = permissoesData
             .map((item: any) => item.permissoes?.nome)
             .filter(Boolean);
@@ -105,7 +103,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setPermissoes([]);
         }
 
-        // Lendo os setores
         const { data: ligacaoData, error: ligacaoError } = await supabase
           .from('usuario_setores')
           .select('setor_id')
