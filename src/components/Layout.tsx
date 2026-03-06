@@ -11,11 +11,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const { signOut, profileName, roleId } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // LÓGICA DE PERSISTÊNCIA DO TEMA (AGORA O PADRÃO É DARK)
   const [isDark, setIsDark] = useState(() => {
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme) return savedTheme === 'dark';
-    return true; // <-- PADRÃO AGORA É DARK MODE
+    return true; 
   });
 
   useEffect(() => {
@@ -45,11 +44,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
             
             <div className="flex items-center gap-3">
               <Link to="/" className="flex-shrink-0 hover:opacity-90 transition-opacity">
-                {/* NOVO COMPONENTE DE LOGO APLICADO AQUI */}
                 <Logo className="h-12 w-auto" />
               </Link>
             </div>
             
+            {/* DESKTOP NAV */}
             <nav className="hidden md:flex items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-300">
               <Link to="/" className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 ${isActive('/') ? 'text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 font-semibold' : 'hover:text-blue-600 hover:bg-gray-50 dark:hover:bg-slate-800'}`}>
                 <HomeIcon size={18} /> Início
@@ -67,7 +66,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
               <div className="h-6 w-px bg-gray-200 dark:bg-slate-700 mx-2"></div>
 
-              {/* BOTÃO DARK MODE AO LADO DO NOME */}
               <button 
                 onClick={() => setIsDark(!isDark)}
                 className="p-2 mr-2 rounded-lg bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-yellow-400 hover:ring-2 hover:ring-blue-400 transition-all"
@@ -87,27 +85,36 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </button>
             </nav>
 
-            <button className="md:hidden p-2 text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
-              {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-            </button>
+            {/* MOBILE CONTROLS (TEMA FIXO + HAMBÚRGUER) */}
+            <div className="flex items-center gap-2 md:hidden">
+              <button 
+                onClick={() => setIsDark(!isDark)}
+                className="p-2.5 rounded-lg bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-yellow-400 transition-all active:scale-95"
+                title={isDark ? "Mudar para modo claro" : "Mudar para modo escuro"}
+              >
+                {isDark ? <Sun size={20} /> : <Moon size={20} />}
+              </button>
+
+              <button 
+                className="p-2.5 text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors active:scale-95" 
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              >
+                {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+              </button>
+            </div>
 
           </div>
         </div>
 
-        {/* MOBILE MENU */}
+        {/* MOBILE MENU (REMOVIDO O BOTÃO DE TEMA DAQUI POIS AGORA ESTÁ FIXO NO HEADER) */}
         {isMobileMenuOpen && (
           <>
             <div className="fixed inset-0 z-40 bg-black/20 dark:bg-black/40 backdrop-blur-sm md:hidden" onClick={() => setIsMobileMenuOpen(false)} />
             <div className="md:hidden absolute top-20 right-4 z-50 w-auto min-w-[240px] bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-gray-100 dark:border-slate-800 animate-in fade-in slide-in-from-top-2 duration-200">
               <div className="flex flex-col p-2 space-y-1">
-                <div className="px-4 py-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg mb-2 border border-blue-100 dark:border-blue-900/30 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <UserCircle size={24} className="text-blue-500 dark:text-blue-400" />
-                      <p className="font-bold text-gray-800 dark:text-slate-200 text-sm">{profileName || 'Usuário'}</p>
-                    </div>
-                    <button onClick={() => setIsDark(!isDark)} className="p-2 text-gray-500 dark:text-yellow-400">
-                      {isDark ? <Sun size={18} /> : <Moon size={18} />}
-                    </button>
+                <div className="px-4 py-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg mb-2 border border-blue-100 dark:border-blue-900/30 flex items-center gap-3">
+                  <UserCircle size={24} className="text-blue-500 dark:text-blue-400" />
+                  <p className="font-bold text-gray-800 dark:text-slate-200 text-sm">{profileName || 'Usuário'}</p>
                 </div>
 
                 <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive('/') ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-semibold' : 'text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800'}`}>

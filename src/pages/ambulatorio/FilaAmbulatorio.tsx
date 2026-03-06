@@ -15,11 +15,10 @@ import { Input } from '../../components/ui/Input';
 import { Textarea } from '../../components/ui/Textarea';
 import { Modal } from '../../components/ui/Modal';
 import { Button } from '../../components/ui/Button';
-import { ActionListItem } from '../../components/ui/ActionListItem';
 import { SelectAutocomplete } from '../../components/ui/SelectAutocomplete';
 import { Toast } from '../../components/ui/Toast';
 
-// COMPONENTES COMPARTILHADOS (O NOVO CARD ENTRA AQUI)
+// COMPONENTES COMPARTILHADOS
 import { AtendimentoCard } from '../../components/shared/AtendimentoCard';
 import { ModalDetalhesLayout } from '../../components/shared/ModalDetalhesLayout';
 import { ModalConfirmacaoCancelamentoLayout } from '../../components/shared/ModalConfirmacaoCancelamentoLayout';
@@ -29,12 +28,12 @@ import { ModalAtualizarStatusLayout } from '../../components/shared/ModalAtualiz
 import { maskPhone, capitalizeName } from '../../utils/formUtils';
 import { usePermissoes } from '../../hooks/usePermissoes';
 
-// RÓTULO DO STATUS 1 ALTERADO PARA REFLETIR A REALIDADE DO AMBULATÓRIO
+// RÓTULOS ATUALIZADOS COM SUPORTE AO MODO DARK
 const STATUS_CONFIG_AMB: Record<number, { label: string, color: string, border: string, icon: any }> = {
-  1: { label: 'Aguardando Agendamento', color: 'bg-orange-100 text-orange-700', border: 'border-orange-200', icon: ClipboardList },
-  3: { label: 'Cancelado', color: 'bg-red-100 text-red-700', border: 'border-red-200', icon: XCircle },
-  4: { label: 'Não Atende', color: 'bg-gray-100 text-gray-600', border: 'border-gray-200', icon: HelpCircle },
-  5: { label: 'Finalizado', color: 'bg-emerald-100 text-emerald-700', border: 'border-emerald-200', icon: CheckCircle2 },
+  1: { label: 'Aguardando Agendamento', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400', border: 'border-orange-200 dark:border-orange-800/50', icon: ClipboardList },
+  3: { label: 'Cancelado', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400', border: 'border-red-200 dark:border-red-800/50', icon: XCircle },
+  4: { label: 'Não Atende', color: 'bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-slate-400', border: 'border-gray-200 dark:border-slate-700', icon: HelpCircle },
+  5: { label: 'Finalizado', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', border: 'border-emerald-200 dark:border-emerald-800/50', icon: CheckCircle2 },
 };
 
 export function Ambulatorio() {
@@ -58,14 +57,13 @@ export function Ambulatorio() {
     observacoes: ''
   });
 
-  // PROTEÇÃO DE PÁGINA
   if (!podeVerAmb) {
     return (
-      <div className="max-w-4xl mx-auto text-center py-20 bg-white rounded-xl border border-red-100 mt-8">
-        <AlertCircle size={48} className="text-red-400 mx-auto mb-4" />
-        <h2 className="text-2xl font-bold text-slate-800">Acesso Negado</h2>
-        <p className="text-slate-500">Você não tem permissão para visualizar a fila do Ambulatório.</p>
-        <Link to="/" className="inline-block mt-8 px-6 py-2 bg-slate-100 rounded-lg font-bold">Voltar</Link>
+      <div className="max-w-4xl mx-auto text-center py-20 bg-white dark:bg-slate-900 rounded-xl border border-red-100 dark:border-red-900/30 mt-8">
+        <AlertCircle size={48} className="text-red-400 dark:text-red-500 mx-auto mb-4" />
+        <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Acesso Negado</h2>
+        <p className="text-slate-500 dark:text-slate-400">Você não tem permissão para visualizar a fila do Ambulatório.</p>
+        <Link to="/" className="inline-block mt-8 px-6 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">Voltar</Link>
       </div>
     );
   }
@@ -151,13 +149,14 @@ export function Ambulatorio() {
   return (
     <div className="max-w-6xl mx-auto animate-in fade-in duration-500 pb-20">
       
-      <div className="flex items-center gap-6 mb-8 border-b border-slate-200 px-2">
+      {/* NAVEGAÇÃO SUPERIOR */}
+      <div className="flex items-center gap-6 mb-8 border-b border-slate-200 dark:border-slate-800 px-2">
         {podeCriarAmb && (
-          <Link to="/novo-ambulatorio" className={`pb-3 text-sm font-bold border-b-2 transition-colors ${window.location.pathname === '/novo-ambulatorio' ? 'border-purple-600 text-purple-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>
+          <Link to="/novo-ambulatorio" className={`pb-3 text-sm font-bold border-b-2 transition-colors ${window.location.pathname === '/novo-ambulatorio' ? 'border-purple-600 dark:border-purple-500 text-purple-600 dark:text-purple-400' : 'border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600'}`}>
             Novo Encaminhamento
           </Link>
         )}
-        <Link to="/ambulatorio" className={`pb-3 text-sm font-bold border-b-2 transition-colors ${window.location.pathname === '/ambulatorio' ? 'border-purple-600 text-purple-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>
+        <Link to="/ambulatorio" className={`pb-3 text-sm font-bold border-b-2 transition-colors ${window.location.pathname === '/ambulatorio' ? 'border-purple-600 dark:border-purple-500 text-purple-600 dark:text-purple-400' : 'border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600'}`}>
           Fila/Pendentes
         </Link>
       </div>
@@ -165,24 +164,29 @@ export function Ambulatorio() {
       <Card className="mb-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-              <ClipboardList className="text-purple-600" /> Fila do Ambulatório
+            {/* TÍTULOS E TEXTOS DARKEADOS */}
+            <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+              <ClipboardList className="text-purple-600 dark:text-purple-400" /> Fila do Ambulatório
             </h1>
-            <p className="text-slate-500 text-sm">Gerencie os pedidos de agendamento.</p>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">Gerencie os pedidos de agendamento.</p>
           </div>
-          <div className="flex gap-2 bg-slate-100 p-1 rounded-xl">
+          
+          {/* ABAS DE FILTRO DARKEADAS */}
+          <div className="flex gap-2 bg-slate-100 dark:bg-slate-800/50 p-1 rounded-xl border border-slate-200 dark:border-slate-700/50">
             {(['pendentes', 'sucesso', 'perdidos'] as const).map((t) => (
               <button 
                 key={t}
                 onClick={() => setFiltroTab(t)} 
-                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${filtroTab === t ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-500'}`}
+                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${filtroTab === t ? 'bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
               >
                 {t.charAt(0).toUpperCase() + t.slice(1)}
               </button>
             ))}
           </div>
         </div>
-        <div className="mt-6 border-t border-slate-50 pt-6">
+        
+        {/* BUSCA */}
+        <div className="mt-6 border-t border-slate-50 dark:border-slate-800/50 pt-6">
           <Input 
             value={busca} 
             onChange={(e) => setBusca(e.target.value)} 
@@ -192,13 +196,13 @@ export function Ambulatorio() {
         </div>
       </Card>
 
-      {/* RENDERIZAÇÃO USANDO O NOVO ATENDIMENTO CARD */}
+      {/* ESTADOS DE CARREGAMENTO E VAZIO */}
       {loading ? (
-        <div className="text-center py-20 text-slate-400 font-bold">Buscando registros...</div>
+        <div className="text-center py-20 text-slate-400 dark:text-slate-500 font-bold">Buscando registros...</div>
       ) : listaFiltrada.length === 0 ? (
-        <Card className="text-center py-20 border-dashed shadow-none">
-            <AlertCircle size={48} className="text-slate-300 mx-auto mb-4" />
-            <p className="text-slate-500 font-medium">Nenhum registro encontrado.</p>
+        <Card className="text-center py-20 border-dashed border-slate-300 dark:border-slate-700 shadow-none bg-transparent">
+            <AlertCircle size={48} className="text-slate-300 dark:text-slate-600 mx-auto mb-4" />
+            <p className="text-slate-500 dark:text-slate-400 font-medium">Nenhum registro encontrado.</p>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -206,7 +210,7 @@ export function Ambulatorio() {
             const statusConfig = STATUS_CONFIG_AMB[item.status_id] || STATUS_CONFIG_AMB[1];
             
             return (
-<AtendimentoCard 
+              <AtendimentoCard 
                 key={item.id}
                 id={item.id}
                 onClick={() => abrirDetalhes(item)}
@@ -219,7 +223,7 @@ export function Ambulatorio() {
                 telefone={item.telefone_paciente}
                 planoSaude={item.plano_saude}
                 crm={item.crm_solicitante}
-                origem={item.origem} // <--- ADICIONE ESTA LINHA AQUI!
+                origem={item.origem} 
                 tagsLabel="Exames/Especialidades"
                 tags={item.exames_especialidades}
               />
@@ -228,15 +232,16 @@ export function Ambulatorio() {
         </div>
       )}
 
+      {/* MODAL DE DETALHES */}
       {selectedEnc && viewMode === 'details' && (
         <ModalDetalhesLayout 
           isOpen={true}
           onClose={() => setSelectedEnc(null)}
           title={
             <div className="flex items-center gap-2">
-              <span className="line-clamp-1">{selectedEnc.nome_paciente}</span>
+              <span className="line-clamp-1 dark:text-slate-100">{selectedEnc.nome_paciente}</span>
               {selectedEnc.status_id === 1 && podeEditarAmb && (
-                <button onClick={() => setViewMode('edit')} className="p-1.5 bg-slate-100 hover:bg-purple-100 text-slate-500 hover:text-purple-600 rounded-lg transition-colors">
+                <button onClick={() => setViewMode('edit')} className="p-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-purple-100 dark:hover:bg-purple-900/30 text-slate-500 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 rounded-lg transition-colors">
                   <Edit size={18} />
                 </button>
               )}
@@ -253,19 +258,20 @@ export function Ambulatorio() {
           tags={selectedEnc.exames_especialidades}
           phoneForWhats={selectedEnc.telefone_paciente}
           obsText={selectedEnc.observacoes || 'Sem observações.'}
-          obsFooter={selectedEnc.crm_solicitante && <div className="text-xs font-bold text-slate-500">CRM: {selectedEnc.crm_solicitante}</div>}
+          obsFooter={selectedEnc.crm_solicitante && <div className="text-xs font-bold text-slate-500 dark:text-slate-400">CRM: {selectedEnc.crm_solicitante}</div>}
           actionButtons={selectedEnc.status_id === 1 && podeGerenciarStatusAmb && (
             <Button variant="primary" fullWidth onClick={() => setViewMode('update_status')}>Atualizar Status</Button>
           )}
           footerButtons={selectedEnc.status_id === 1 && podeCancelarAmb && (
-            <button onClick={() => setViewMode('confirm_cancel')} className="w-full text-xs text-red-400 font-bold py-2">Cancelar Pedido</button>
+            <Button variant="ghostDanger" fullWidth onClick={() => setViewMode('confirm_cancel')}>Cancelar Pedido</Button>
           )}
         />
       )}
 
+      {/* MODAL DE EDIÇÃO */}
       {selectedEnc && viewMode === 'edit' && (
-        <Modal isOpen={true} onClose={() => setViewMode('details')} title="Editando Encaminhamento">
-          <div className="space-y-4">
+        <Modal isOpen={true} onClose={() => setViewMode('details')} title={<span className="text-purple-600 dark:text-purple-400">Editando Encaminhamento</span>}>
+          <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
             <Input label="Nº Atendimento" value={editForm.numero_atendimento} onChange={e => setEditForm({ ...editForm, numero_atendimento: e.target.value.replace(/\D/g, '') })} maxLength={10} />
             <Input label="Paciente" value={editForm.nome_paciente} onChange={e => setEditForm({ ...editForm, nome_paciente: capitalizeName(e.target.value) })} />
             <Input label="WhatsApp" value={editForm.telefone_paciente} onChange={e => setEditForm({ ...editForm, telefone_paciente: maskPhone(e.target.value) })} maxLength={15} />
@@ -281,8 +287,10 @@ export function Ambulatorio() {
             </div>
 
             <Textarea label="Observações" value={editForm.observacoes} onChange={e => setEditForm({ ...editForm, observacoes: e.target.value })} />
+            
             {errorMsg && <p className="text-red-500 text-xs font-bold">{errorMsg}</p>}
-            <div className="flex gap-2 pt-4 border-t border-slate-100">
+            
+            <div className="flex gap-2 pt-4 border-t border-slate-100 dark:border-slate-800 mt-4">
               <Button variant="secondary" fullWidth onClick={() => setViewMode('details')}>Voltar</Button>
               <Button variant="primary" fullWidth onClick={confirmarEdicao}>Salvar</Button>
             </div>
@@ -290,13 +298,21 @@ export function Ambulatorio() {
         </Modal>
       )}
 
+      {/* MODAL DE ATUALIZAÇÃO DE STATUS PADRONIZADO */}
       {selectedEnc && viewMode === 'update_status' && (
-        <ModalAtualizarStatusLayout isOpen onClose={() => setViewMode('details')} nomePaciente={selectedEnc.nome_paciente}>
-          <ActionListItem icon={<CheckCircle2 size={18} />} title="Finalizado" colorTheme="green" onClick={() => atualizarStatus(5, 'Finalizado!')} />
-          <ActionListItem icon={<HelpCircle size={18} />} title="Não Atende" colorTheme="gray" onClick={() => atualizarStatus(4, 'Não atende.')} />
+        <ModalAtualizarStatusLayout isOpen onClose={() => setViewMode('details')} nomePaciente={selectedEnc.nome_paciente} theme="purple">
+          <div className="flex flex-col gap-2">
+            <Button variant="success" fullWidth justify="start" onClick={() => atualizarStatus(5, 'Finalizado!')}>
+              <CheckCircle2 size={18} /> Finalizado
+            </Button>
+            <Button variant="secondary" fullWidth justify="start" onClick={() => atualizarStatus(4, 'Não atende.')}>
+              <HelpCircle size={18} /> Não Atende
+            </Button>
+          </div>
         </ModalAtualizarStatusLayout>
       )}
 
+      {/* MODAL DE CONFIRMAÇÃO DE CANCELAMENTO */}
       {selectedEnc && viewMode === 'confirm_cancel' && (
         <ModalConfirmacaoCancelamentoLayout isOpen onClose={() => setViewMode('details')} onConfirm={() => atualizarStatus(3, 'Cancelado.')} nomePaciente={selectedEnc.nome_paciente} tipoAtendimento="encaminhamento" />
       )}

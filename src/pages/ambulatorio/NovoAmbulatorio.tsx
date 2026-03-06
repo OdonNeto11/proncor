@@ -35,15 +35,15 @@ export function NovoAmbulatorio() {
 
   if (!podeCriarAmb) {
     return (
-      <div className="max-w-4xl mx-auto text-center py-20 bg-white rounded-xl border border-red-100 shadow-sm mt-8 animate-in zoom-in-95 duration-300">
-        <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
-          <AlertCircle size={48} className="text-red-400" />
+      <div className="max-w-4xl mx-auto text-center py-20 bg-white dark:bg-slate-900 rounded-xl border border-red-100 dark:border-red-900/30 shadow-sm mt-8 animate-in zoom-in-95 duration-300">
+        <div className="w-20 h-20 bg-red-50 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
+          <AlertCircle size={48} className="text-red-400 dark:text-red-500" />
         </div>
-        <h2 className="text-2xl font-bold text-slate-800 mb-2">Acesso Negado</h2>
-        <p className="text-slate-500 max-w-sm mx-auto">
+        <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-2">Acesso Negado</h2>
+        <p className="text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
           O seu perfil não tem permissão para criar novos encaminhamentos manuais para o Ambulatório.
         </p>
-        <Link to="/" className="inline-block mt-8 px-6 py-2 bg-slate-100 text-slate-600 rounded-lg font-bold hover:bg-slate-200 transition-colors">
+        <Link to="/" className="inline-block mt-8 px-6 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
           Voltar para Início
         </Link>
       </div>
@@ -139,24 +139,26 @@ export function NovoAmbulatorio() {
 
   return (
     <div className="max-w-4xl mx-auto animate-in fade-in duration-500 pb-20">
-      <div className="flex items-center gap-6 mb-8 border-b border-gray-200 px-2">
+      
+      {/* HEADER E NAVEGAÇÃO DARK */}
+      <div className="flex items-center gap-6 mb-8 border-b border-gray-200 dark:border-slate-800 px-2">
         <Link 
           to="/novo-ambulatorio" 
-          className={`pb-3 text-sm font-bold border-b-2 transition-colors ${window.location.pathname === '/novo-ambulatorio' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300'}`}
+          className={`pb-3 text-sm font-bold border-b-2 transition-colors ${window.location.pathname === '/novo-ambulatorio' ? 'border-purple-600 dark:border-purple-500 text-purple-600 dark:text-purple-400' : 'border-transparent text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 hover:border-gray-300 dark:hover:border-slate-600'}`}
         >
           Novo Encaminhamento
         </Link>
         <Link 
           to="/ambulatorio" 
-          className={`pb-3 text-sm font-bold border-b-2 transition-colors ${window.location.pathname === '/ambulatorio' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300'}`}
+          className={`pb-3 text-sm font-bold border-b-2 transition-colors ${window.location.pathname === '/ambulatorio' ? 'border-purple-600 dark:border-purple-500 text-purple-600 dark:text-purple-400' : 'border-transparent text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 hover:border-gray-300 dark:hover:border-slate-600'}`}
         >
           Fila/Pendentes
         </Link>
       </div>
 
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">Encaminhamento Ambulatório</h1>
-        <p className="text-gray-600">Preencha os dados para que o setor Concierge realize o agendamento.</p>
+        <h1 className="text-3xl font-bold text-gray-800 dark:text-slate-100 mb-2">Encaminhamento Ambulatório</h1>
+        <p className="text-gray-600 dark:text-slate-400">Preencha os dados para que o setor Concierge realize o agendamento.</p>
       </div>
 
       <Card>
@@ -181,7 +183,7 @@ export function NovoAmbulatorio() {
             </div>
           </div>
 
-          <div className="h-px bg-slate-100 my-2"></div>
+          <div className="h-px bg-slate-100 dark:bg-slate-800 my-2"></div>
 
           <Input 
             label="Seu CRM (Opcional)" 
@@ -193,37 +195,50 @@ export function NovoAmbulatorio() {
             maxLength={5}  
           />
 
-          <div className="bg-purple-50 p-5 rounded-2xl border border-purple-100">
-            <label className="text-sm font-semibold text-purple-900 mb-3 flex items-center gap-2">
-              <Activity size={18} className="text-purple-600" />
+          <div className="bg-purple-50 dark:bg-purple-900/10 p-5 rounded-2xl border border-purple-100 dark:border-purple-900/30">
+            <label className="text-sm font-semibold text-purple-900 dark:text-purple-300 mb-3 flex items-center gap-2">
+              <Activity size={18} className="text-purple-600 dark:text-purple-400" />
               Exames ou Especialidades
             </label>
             <div className="space-y-3">
               {exames.map((exame, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-purple-400 w-4">{index + 1}.</span>
-                  <input type="text" value={exame} onChange={(e) => handleExameChange(index, e.target.value)} placeholder="Ex: Ressonância Magnética..." className="flex-1 h-11 border border-purple-200 bg-white rounded-xl px-3 outline-none focus:ring-2 focus:ring-purple-500/20" />
+                <div key={index} className="flex items-center gap-3">
+                  <span className="text-xs font-bold text-purple-400 dark:text-purple-500 w-4">{index + 1}.</span>
+                  
+                  {/* COMPONENTE DE INPUT OFICIAL INJETADO NO LUGAR DA TAG CRUA */}
+                  <div className="flex-1">
+                    <Input 
+                      value={exame} 
+                      onChange={(e) => handleExameChange(index, e.target.value)} 
+                      placeholder="Ex: Ressonância Magnética..." 
+                    />
+                  </div>
+
                   {exames.length > 1 && (
-                    <button type="button" onClick={() => removeExameField(index)} className="p-3 text-purple-300 hover:text-red-500 rounded-xl transition-colors"><Trash2 size={18} /></button>
+                    <button type="button" onClick={() => removeExameField(index)} className="p-2 text-purple-300 dark:text-purple-500/50 hover:text-red-500 dark:hover:text-red-400 rounded-xl transition-colors">
+                      <Trash2 size={20} />
+                    </button>
                   )}
                 </div>
               ))}
             </div>
             {exames.length < 5 && (
-              <button type="button" onClick={addExameField} className="mt-3 flex items-center gap-2 text-sm font-bold text-purple-600 bg-white px-4 py-2 rounded-lg border border-purple-100 shadow-sm"><Plus size={16} /> Adicionar outro</button>
+              <button type="button" onClick={addExameField} className="mt-4 flex items-center gap-2 text-sm font-bold text-purple-600 dark:text-purple-400 bg-white dark:bg-slate-800 px-4 py-2 rounded-lg border border-purple-100 dark:border-purple-800/50 shadow-sm hover:bg-purple-50 dark:hover:bg-slate-700 transition-colors">
+                <Plus size={16} /> Adicionar outro
+              </button>
             )}
           </div>
 
           <Textarea label="Observações / Detalhes" name="observacoes" value={formData.observacoes} onChange={handleChange} rows={3} icon={<FileText size={20} />} />
 
           {errorMsg && (
-            <div className="p-4 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm flex items-center gap-3 animate-in fade-in">
+            <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 rounded-xl text-sm flex items-center gap-3 animate-in fade-in">
               <AlertCircle size={20} className="flex-shrink-0" />
               <span className="font-semibold">{errorMsg}</span>
             </div>
           )}
 
-          <Button type="submit" disabled={loading} fullWidth className="!bg-purple-600 hover:!bg-purple-700">
+          <Button type="submit" disabled={loading} fullWidth className="!bg-purple-600 hover:!bg-purple-700 dark:!bg-purple-600 dark:hover:!bg-purple-500">
             {loading ? 'Salvando...' : 'Enviar para o Concierge'}
           </Button>
         </form>
