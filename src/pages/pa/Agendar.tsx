@@ -1,19 +1,21 @@
 import React, { useState, FormEvent, useEffect } from 'react';
-import { Calendar, User, Phone, FileText, Upload, Paperclip, Trash2, Hash, Activity, AlertCircle } from 'lucide-react';
+import { Calendar, User, Phone, FileText, Hash, Activity, AlertCircle } from 'lucide-react';
 import DatePicker, { registerLocale } from 'react-datepicker';
 import { ptBR } from 'date-fns/locale';
 import "react-datepicker/dist/react-datepicker.css";
 import { format, isSameDay, setHours, setMinutes } from 'date-fns';
 import { Link } from 'react-router-dom';
 
+// COMPONENTES UI IMPORTADOS
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Textarea } from '../../components/ui/Textarea';
 import { Card } from '../../components/ui/Card';
 import { Toast } from '../../components/ui/Toast';
 import { SelectAutocomplete } from '../../components/ui/SelectAutocomplete';
-// INJETADO OS COMPONENTES DE TEXTO
 import { Title, Description, themeClasses } from '../../components/ui/Typography'; 
+import { TimeSelector } from '../../components/ui/TimeSelector';
+import { FileUpload } from '../../components/ui/FileUpload';
 
 import { maskPhone, validateFields, capitalizeName } from '../../utils/formUtils';
 import { supabase } from '../../lib/supabase';
@@ -249,59 +251,50 @@ export function Agendar() {
                         locale="pt-BR"
                         dateFormat="dd/MM/yyyy"
                         placeholderText="Selecione o dia"
-                        className={`w-full pl-10 pr-4 py-3 rounded-xl border bg-white dark:bg-slate-800 ${themeClasses.text} ${themeClasses.placeholder} ${errors.data_agendamento ? 'border-red-500' : 'border-slate-200 dark:border-slate-700'} outline-none focus:ring-4 focus:ring-blue-500/10`}
+                        className={`w-full pl-10 pr-4 py-3 rounded-xl border shadow-sm bg-white dark:bg-slate-800 ${themeClasses.text} ${themeClasses.placeholder} ${errors.data_agendamento ? 'border-red-500' : 'border-slate-300 dark:border-slate-600'} outline-none focus:ring-2 focus:ring-blue-500`}
                         onFocus={(e) => e.target.blur()}
                     />
                 </div>
                 {errors.data_agendamento && <span className="text-xs text-red-500 mt-1 block">{errors.data_agendamento}</span>}
             </div>
 
-            <div className="w-full">
-                <label className={`text-sm font-semibold mb-3 flex items-center gap-2 ${themeClasses.text}`}>
-                    Selecione o Horário <span className="text-red-500">*</span>
-                    {selectedTime && <span className="text-xs font-normal text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">Selecionado: {format(selectedTime, 'HH:mm')}</span>}
-                </label>
-                
-                {horariosDisponiveis.length === 0 ? (
-                  <p className={`text-sm italic ${themeClasses.text}`}>Carregando horários...</p>
-                ) : (
-                  <div className={`grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 p-2 rounded-xl ${errors.hora_agendamento ? 'bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/30' : ''}`}>
-                      {horariosDisponiveis.map((horario) => {
-                          const isDisabled = checkIsDisabled(horario);
-                          const isSelected = selectedTime && format(selectedTime, 'HH:mm') === horario;
-
-                          return (
-                              <button
-                                  key={horario}
-                                  type="button"
-                                  disabled={isDisabled}
-                                  onClick={() => handleSelectTime(horario)}
-                                  className={`
-                                      py-2 px-1 rounded-lg text-sm font-semibold border transition-all duration-200
-                                      ${isDisabled 
-                                          ? 'bg-slate-50 dark:bg-slate-900/50 text-slate-300 dark:text-slate-700 border-slate-100 dark:border-slate-800 cursor-not-allowed'
-                                          : isSelected
-                                              ? 'bg-blue-600 text-white border-blue-600 shadow-md transform scale-105'
-                                              : `bg-white dark:bg-slate-800 hover:border-blue-400 border-slate-200 dark:border-slate-700 hover:text-blue-600 hover:shadow-sm ${themeClasses.text}`
-                                      }
-                                  `}
-                              >
-                                  <div className="flex items-center justify-center gap-1">
-                                      {horario}
-                                  </div>
-                              </button>
-                          );
-                      })}
-                  </div>
-                )}
-                {errors.hora_agendamento && <span className="text-xs text-red-500 mt-1 block font-medium">{errors.hora_agendamento}</span>}
-            </div>
+            {/* COMPONENTE INJETADO */}
+            <TimeSelector 
+              horarios={horariosDisponiveis}
+              selectedTime={selectedTime}
+              onSelectTime={handleSelectTime}
+              checkIsDisabled={checkIsDisabled}
+              error={errors.hora_agendamento}
+            />
           </div>
 
           <div className="h-px bg-slate-100 dark:bg-slate-800 my-2"></div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* SEUS PLACEHOLDERS E PROPS EXATAMENTE COMO VOCÊ MANDOU */}
+          <div className="space-y-6">
+            <Input 
+              label="Seu CRM" 
+              name="crm_responsavel" 
+              value={formData.crm_responsavel} 
+              onChange={(e) => setFormData({ ...formData, crm_responsavel: e.target.value.replace(/\D/g, '').slice(0, 5) })} 
+              icon={<User size={20} />} 
+              error={errors.crm_responsavel}
+              placeholder="Apenas números (Ex: 12345)"
+              maxLength={5}
+              required
+            />
+
+            <Input 
+             label="Número do Atendimento" 
+             name="numero_atendimento" 
+             value={formData.numero_atendimento} 
+             onChange={(e) => setFormData({ ...formData, numero_atendimento: e.target.value.replace(/\D/g, '').slice(0, 10) })} 
+             icon={<Hash size={20} />} 
+             error={errors.numero_atendimento}
+             placeholder="Somente números"
+             maxLength={10}
+             required
+            />
+
             <Input 
               label="Nome do Paciente" 
               name="nome_paciente" 
@@ -323,9 +316,7 @@ export function Agendar() {
               error={errors.telefone_paciente} 
               required
             />
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <SelectAutocomplete 
               label="Plano de Saúde (Opcional)"
               placeholder="Ex: Unimed, Cassems..."
@@ -336,32 +327,6 @@ export function Agendar() {
               error={errors.plano_saude}
             />
 
-            <Input 
-              label="Seu CRM" 
-              name="crm_responsavel" 
-              value={formData.crm_responsavel} 
-              onChange={(e) => setFormData({ ...formData, crm_responsavel: e.target.value.replace(/\D/g, '').slice(0, 5) })} 
-              icon={<User size={20} />} 
-              error={errors.crm_responsavel}
-              placeholder="Apenas números"
-              maxLength={5}
-              required
-            />
-          </div>
-
-          <Input 
-             label="Número do Atendimento" 
-             name="numero_atendimento" 
-             value={formData.numero_atendimento} 
-             onChange={(e) => setFormData({ ...formData, numero_atendimento: e.target.value.replace(/\D/g, '').slice(0, 10) })} 
-             icon={<Hash size={20} />} 
-             error={errors.numero_atendimento}
-             placeholder="Somente números"
-             maxLength={10}
-             required
-          />
-
-          <div className="space-y-3">
             <Textarea 
                 label="Diagnóstico / Condutas" 
                 name="diagnostico" 
@@ -384,7 +349,7 @@ export function Agendar() {
                                     px-3 py-1.5 rounded-full text-xs font-semibold border transition-all flex items-center gap-1.5
                                     ${isSelected 
                                         ? 'bg-emerald-50 text-emerald-700 border-emerald-200 shadow-sm' 
-                                        : `bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 ${themeClasses.text}`
+                                        : `bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 hover:border-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 ${themeClasses.text}`
                                     }
                                 `}
                             >
@@ -395,31 +360,13 @@ export function Agendar() {
                     })}
                 </div>
             </div>
-          </div>
 
-          <div className="w-full">
-            <label className={`text-sm font-semibold mb-1.5 block ${themeClasses.text}`}>Anexos (Máx: 5)</label>
-            <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900/50 p-6 hover:bg-white dark:hover:bg-slate-800 hover:border-blue-400 transition-colors relative text-center">
-                <input type="file" multiple onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept=".pdf,image/*" />
-                <div className="flex flex-col items-center justify-center gap-2">
-                   <Upload size={32} className="text-blue-400" />
-                   <p className={`text-sm font-medium ${themeClasses.text}`}>Clique ou arraste arquivos aqui</p>
-                   <p className="text-xs text-slate-400">PDF ou Imagens</p>
-                </div>
-            </div>
-            {arquivos.length > 0 && (
-                <div className="mt-3 space-y-2">
-                    {arquivos.map((arq, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm">
-                        <div className="flex items-center gap-2 overflow-hidden">
-                        <Paperclip size={16} className="text-blue-600 flex-shrink-0" />
-                        <span className={`text-sm truncate ${themeClasses.text}`}>{arq.name}</span>
-                        </div>
-                        <button type="button" onClick={() => removerArquivo(index)} className="p-1 hover:bg-red-50 dark:hover:bg-red-900/30 text-slate-400 hover:text-red-500 rounded transition-colors"><Trash2 size={16} /></button>
-                    </div>
-                    ))}
-                </div>
-            )}
+            {/* COMPONENTE INJETADO */}
+            <FileUpload 
+              arquivos={arquivos}
+              onFileChange={handleFileChange}
+              onRemoveArquivo={removerArquivo}
+            />
           </div>
 
           {errorMsg && (

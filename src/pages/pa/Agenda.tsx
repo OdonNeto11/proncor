@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Calendar as CalendarIcon, Clock, CheckCircle2, 
-  Search, MessageCircle, AlertTriangle, ListChecks, Edit, RefreshCw, AlertCircle, FileDown, 
-  Hash, Activity, Stethoscope, ArrowRightCircle, HelpCircle, User, Phone
+  Search, AlertTriangle, ListChecks, Edit, RefreshCw, AlertCircle, FileDown, 
+  Hash, Stethoscope, ArrowRightCircle, HelpCircle, User, Phone
 } from 'lucide-react';
 import { format, parseISO, isToday, isTomorrow, isSameDay, endOfMonth, setHours, setMinutes } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -12,19 +12,20 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 
-// IMPORTAÇÕES DA NOSSA ARQUITETURA
+// IMPORTAÇÕES DA NOSSA ARQUITETURA NORMALIZADA
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Textarea } from '../../components/ui/Textarea';
 import { Card } from '../../components/ui/Card';
 import { Toast } from '../../components/ui/Toast';
-import { SelectAutocomplete } from '../../components/ui/SelectAutocomplete';
 import { Modal } from '../../components/ui/Modal';
 import { ModalDetalhesLayout } from '../../components/shared/ModalDetalhesLayout';
 import { ModalConfirmacaoCancelamentoLayout } from '../../components/shared/ModalConfirmacaoCancelamentoLayout';
 import { ModalAtualizarStatusLayout } from '../../components/shared/ModalAtualizarStatusLayout';
 import { ModalConfirmacaoStatusLayout } from '../../components/shared/ModalConfirmacaoStatusLayout';
 import { AtendimentoCard } from '../../components/shared/AtendimentoCard';
+import { TimeSelector } from '../../components/ui/TimeSelector';
+import { ProcedimentosSelector } from '../../components/ui/ProcedimentosSelector';
 import { maskPhone, capitalizeName } from '../../utils/formUtils';
 import { usePermissoes } from '../../hooks/usePermissoes';
 
@@ -505,7 +506,7 @@ export function Agenda() {
         />
       )}
 
-      {/* 4. Modal de Edição (Usando Componentes) */}
+      {/* 4. Modal de Edição (COMPONENTIZADO) */}
       {selectedAgendamento && viewMode === 'edit' && (
         <Modal isOpen={true} onClose={() => setViewMode('details')} title={<span className="text-blue-600 dark:text-blue-400">Editando dados</span>}>
             <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
@@ -514,19 +515,12 @@ export function Agenda() {
                <Input label="Telefone / WhatsApp" value={editForm.telefone} onChange={e => setEditForm({ ...editForm, telefone: maskPhone(e.target.value) })} icon={<Phone size={18} />} maxLength={15} />
                <Textarea label="Diagnóstico / Condutas" value={editForm.diagnostico} onChange={e => setEditForm({ ...editForm, diagnostico: e.target.value })} rows={3} />
                
-               <div>
-                  <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2 block">Procedimentos</label>
-                  <div className="flex flex-wrap gap-2">
-                    {OPCOES_PROCEDIMENTOS.map((proc) => {
-                      const isSelected = editForm.procedimentos.includes(proc); 
-                      return (
-                        <button key={proc} onClick={() => toggleProcedimentoEdit(proc)} className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all flex items-center gap-1.5 ${isSelected ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800/50' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 dark:hover:border-slate-500'}`}>
-                          <Activity size={14} /> {proc}
-                        </button>
-                      )
-                    })}
-                  </div>
-               </div>
+               {/* COMPONENTE INJETADO */}
+               <ProcedimentosSelector 
+                 opcoes={OPCOES_PROCEDIMENTOS}
+                 selecionados={editForm.procedimentos}
+                 onToggle={toggleProcedimentoEdit}
+               />
 
                <Input label="Seu CRM (Obrigatório para salvar)" value={editForm.crm_responsavel} onChange={e => setEditForm({ ...editForm, crm_responsavel: e.target.value.replace(/\D/g, '').slice(0, 5) })} icon={<Stethoscope size={18} />} placeholder="Apenas números. Ex.: 55123" />
 
@@ -545,7 +539,7 @@ export function Agenda() {
         </Modal>
       )}
 
-      {/* 5. Modal de Reagendamento */}
+      {/* 5. Modal de Reagendamento (COMPONENTIZADO) */}
       {selectedAgendamento && viewMode === 'reschedule' && (
         <Modal isOpen={true} onClose={() => setViewMode('details')} title={<span className="text-orange-600 dark:text-orange-400">Reagendamento</span>} maxWidth="2xl">
            <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
@@ -558,27 +552,25 @@ export function Agenda() {
                       <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2 block">Nova Data</label>
                       <div className="relative">
                           <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none z-10" size={20} />
-                          <DatePicker selected={reagendarDate} onChange={(d: Date | null) => setReagendarDate(d)} minDate={new Date()} locale="pt-BR" dateFormat="dd/MM/yyyy" placeholderText="Selecione o dia" popperPlacement="bottom-start" className="w-full pl-10 pr-3 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-sm focus:ring-4 focus:ring-blue-500/10 outline-none bg-white dark:bg-slate-800 dark:text-slate-200" onFocus={(e) => e.target.blur()} />
+                          <DatePicker selected={reagendarDate} onChange={(d: Date | null) => setReagendarDate(d)} minDate={new Date()} locale="pt-BR" dateFormat="dd/MM/yyyy" placeholderText="Selecione o dia" popperPlacement="bottom-start" className="w-full pl-10 pr-3 py-3 rounded-xl border border-slate-300 dark:border-slate-600 text-sm focus:ring-4 focus:ring-blue-500/10 outline-none bg-white dark:bg-slate-800 dark:text-slate-200 shadow-sm" onFocus={(e) => e.target.blur()} />
                       </div>
                   </div>
                   <div>
-                     <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2 block">Novo Horário</label>
+                     {/* COMPONENTE INJETADO */}
                      {!reagendarDate ? (
-                        <div className="h-10 flex items-center text-slate-400 dark:text-slate-500 text-sm italic">Selecione uma data primeiro.</div>
-                     ) : horariosDisponiveis.length === 0 ? (
-                        <div className="h-10 flex items-center text-slate-400 dark:text-slate-500 text-sm italic">Carregando horários...</div>
-                     ) : (
-                        <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-1">
-                            {horariosDisponiveis.map((horario) => { 
-                                const isDisabled = checkIsDisabled(horario); 
-                                const isSelected = reagendarTime && format(reagendarTime, 'HH:mm') === horario; 
-                                return (
-                                    <button key={horario} type="button" disabled={isDisabled} onClick={() => handleSelectRescheduleTime(horario)} className={`py-2 px-1 rounded-lg text-xs font-bold border transition-all ${isDisabled ? 'bg-slate-50 dark:bg-slate-800/50 text-slate-300 dark:text-slate-600 border-slate-100 dark:border-slate-800 cursor-not-allowed' : isSelected ? 'bg-blue-600 text-white border-blue-600 shadow-md transform scale-105' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400 hover:shadow-sm'}`}>
-                                        {horario}
-                                    </button>
-                                );
-                            })}
+                        <div>
+                          <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-3 block">Novo Horário</label>
+                          <div className="h-10 flex items-center text-slate-400 dark:text-slate-500 text-sm italic">Selecione uma data primeiro.</div>
                         </div>
+                     ) : (
+<TimeSelector 
+  horarios={horariosDisponiveis}
+  selectedTime={reagendarTime}
+  onSelectTime={handleSelectRescheduleTime}
+  checkIsDisabled={checkIsDisabled}
+  isLoading={horariosDisponiveis.length === 0}
+  gridClassName="grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-2" 
+/>
                      )}
                   </div>
               </div>

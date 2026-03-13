@@ -2,12 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   ClipboardList, Search, CheckCircle2, AlertCircle, 
-  Phone, HelpCircle, XCircle, Edit, FileText, User 
+  HelpCircle, XCircle, Edit, Hash, User, Phone, ShieldOff, FileText
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '../../lib/supabase';
-import { useAuth } from '../../contexts/AuthContext';
 
 // COMPONENTES PADRONIZADOS
 import { Card } from '../../components/ui/Card';
@@ -29,15 +28,15 @@ import { ModalAtualizarStatusLayout } from '../../components/shared/ModalAtualiz
 import { maskPhone, capitalizeName } from '../../utils/formUtils';
 import { usePermissoes } from '../../hooks/usePermissoes';
 
-// CONFIGURAÇÃO DE STATUS (DE/PARA)
+// CONFIGURAÇÃO DE STATUS
 const STATUS_CONFIG_AMB: Record<number, { label: string, color: string, border: string, icon: any }> = {
   1: { label: 'Aguardando Agendamento', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400', border: 'border-orange-200 dark:border-orange-800/50', icon: ClipboardList },
   3: { label: 'Cancelado', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400', border: 'border-red-200 dark:border-red-800/50', icon: XCircle },
   
   // NOVOS STATUS (SGFH)
   8: { label: 'Agendado', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', border: 'border-emerald-200 dark:border-emerald-800/50', icon: CheckCircle2 },
-  9: { label: 'Plano não Atendido', color: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400', border: 'border-rose-200 dark:border-rose-800/50', icon: XCircle },
-  10: { label: 'Sem Especialidade', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400', border: 'border-purple-200 dark:border-purple-800/50', icon: AlertCircle },
+  9: { label: 'Plano não Atendido', color: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400', border: 'border-rose-200 dark:border-rose-800/50', icon: ShieldOff },
+  10: { label: 'Sem Especialidade', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400', border: 'border-amber-200 dark:border-amber-800/50', icon: AlertCircle },
   11: { label: 'Sem Contato', color: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400', border: 'border-slate-200 dark:border-slate-700', icon: HelpCircle },
 };
 
@@ -64,7 +63,6 @@ export function Ambulatorio() {
   const fetchEncaminhamentos = async () => {
     setLoading(true);
     try {
-      // Mapeamento baseado nos novos IDs e agrupamentos (singular 'perdido')
       const statusMap = { 
         pendentes: [1], 
         sucesso: [8], 
@@ -145,7 +143,7 @@ export function Ambulatorio() {
     item.crm_solicitante?.includes(busca)
   );
 
-  if (!podeVerAmb) return null; // Tratado no layout ou superior
+  if (!podeVerAmb) return null;
 
   return (
     <div className="max-w-6xl mx-auto animate-in fade-in duration-500 pb-20">
@@ -262,58 +260,67 @@ export function Ambulatorio() {
         />
       )}
 
-{/* MODAL DE ATUALIZAÇÃO DE STATUS - 100% NORMALIZADO COM FUNDO */}
-{selectedEnc && viewMode === 'update_status' && (
-  <ModalAtualizarStatusLayout 
-    isOpen 
-    onClose={() => setViewMode('details')} 
-    nomePaciente={selectedEnc.nome_paciente} 
-    theme="purple"
-  >
-    <div className="flex flex-col gap-3">
-      {/* SUCESSO - VERDE */}
-      <Button 
-        variant="success" 
-        fullWidth 
-        justify="start" 
-        onClick={() => atualizarStatus(8, 'Agendado!')}
-      >
-        <CheckCircle2 size={18} /> Agendado
-      </Button>
-      
-      {/* PERDA OPERACIONAL - CINZA (SECONDARY) */}
-      <Button 
-        variant="secondary" 
-        fullWidth 
-        justify="start" 
-        onClick={() => atualizarStatus(11, 'Não conseguimos contato.')}
-      >
-        <HelpCircle size={18} /> Não conseguimos contato
-      </Button>
+      {/* MODAL DE EDIÇÃO */}
+      {selectedEnc && viewMode === 'edit' && (
+        <Modal isOpen={true} onClose={() => setViewMode('details')} title={<span className="text-purple-600 dark:text-purple-400">Editar Encaminhamento</span>}>
+          <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
+             <Input label="Nº Atendimento" value={editForm.numero_atendimento} onChange={e => setEditForm({ ...editForm, numero_atendimento: e.target.value.replace(/\D/g, '') })} icon={<Hash size={18} />} maxLength={10} />
+             <Input label="Nome do Paciente" value={editForm.nome_paciente} onChange={e => setEditForm({ ...editForm, nome_paciente: capitalizeName(e.target.value) })} icon={<User size={18} />} required />
+             <Input label="Telefone / WhatsApp" value={editForm.telefone_paciente} onChange={e => setEditForm({ ...editForm, telefone_paciente: maskPhone(e.target.value) })} icon={<Phone size={18} />} maxLength={15} required />
+             
+             <SelectAutocomplete 
+                label="Plano de Saúde"
+                placeholder="Ex: Unimed, Cassems..."
+                tableName="planos_saude"
+                columnName="nome"
+                value={editForm.plano_saude}
+                onChange={(val) => setEditForm({ ...editForm, plano_saude: val })}
+             />
+             
+             <Textarea label="Observações / Diagnóstico" value={editForm.observacoes} onChange={e => setEditForm({ ...editForm, observacoes: e.target.value })} rows={3} icon={<FileText size={18} />} />
 
-      {/* PERDA TÉCNICA (PLANO) - VERMELHO (DANGER) */}
-      <Button 
-        variant="danger" 
-        fullWidth 
-        justify="start" 
-        onClick={() => atualizarStatus(9, 'Plano não atendido.')}
-      >
-        <XCircle size={18} /> Não atendemos o plano
-      </Button>
+             {errorMsg && (
+               <div className="mb-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 rounded-xl text-sm flex items-center gap-2">
+                 <AlertCircle size={18} className="flex-shrink-0" />
+                 <span className="font-semibold">{errorMsg}</span>
+               </div>
+             )}
 
-      {/* PERDA TÉCNICA (ESPECIALIDADE) - ROXO (ESTILO PERSONALIZADO SOBRE COMPONENTE) */}
-      <Button 
-        variant="secondary" 
-        fullWidth 
-        justify="start" 
-        className="bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:hover:bg-purple-900/50"
-        onClick={() => atualizarStatus(10, 'Sem especialidade.')}
-      >
-        <AlertCircle size={18} /> Não temos a especialidade
-      </Button>
-    </div>
-  </ModalAtualizarStatusLayout>
-)}
+             <div className="flex gap-2 pt-2">
+                 <Button variant="secondary" fullWidth onClick={() => setViewMode('details')}>Cancelar</Button>
+                 <Button variant="primary" fullWidth onClick={confirmarEdicao}>Salvar Dados</Button>
+             </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* MODAL DE ATUALIZAÇÃO DE STATUS USANDO AS NOVAS VARIANTES */}
+      {selectedEnc && viewMode === 'update_status' && (
+        <ModalAtualizarStatusLayout 
+          isOpen 
+          onClose={() => setViewMode('details')} 
+          nomePaciente={selectedEnc.nome_paciente} 
+          theme="purple"
+        >
+          <div className="flex flex-col gap-3">
+            <Button variant="success" fullWidth justify="start" onClick={() => atualizarStatus(8, 'Agendado com sucesso!')}>
+              <CheckCircle2 size={18} /> Agendado
+            </Button>
+            
+            <Button variant="rose" fullWidth justify="start" onClick={() => atualizarStatus(9, 'Plano não atendido registrado.')}>
+              <ShieldOff size={18} /> Não atendemos o plano
+            </Button>
+
+            <Button variant="amber" fullWidth justify="start" onClick={() => atualizarStatus(10, 'Falta de especialidade registrada.')}>
+              <AlertCircle size={18} /> Não temos a especialidade
+            </Button>
+            
+            <Button variant="secondary" fullWidth justify="start" onClick={() => atualizarStatus(11, 'Falha de contato registrada.')}>
+              <HelpCircle size={18} /> Não conseguimos contato
+            </Button>
+          </div>
+        </ModalAtualizarStatusLayout>
+      )}
 
       {selectedEnc && viewMode === 'confirm_cancel' && (
         <ModalConfirmacaoCancelamentoLayout isOpen onClose={() => setViewMode('details')} onConfirm={() => atualizarStatus(3, 'Cancelado.')} nomePaciente={selectedEnc.nome_paciente} tipoAtendimento="encaminhamento" />

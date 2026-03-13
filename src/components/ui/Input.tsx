@@ -27,11 +27,13 @@ export function Input({ label, error, icon, className = '', ...props }: InputPro
           className={`
             w-full rounded-lg px-3 py-2.5 text-sm transition-all duration-200 
             
-            /* FORÇA BRUTA PARA DESTRUIR A MOLDURA DO NAVEGADOR */
-            appearance-none outline-none border border-transparent shadow-none ring-0
+            /* BORDAS E SOMBRAS VISÍVEIS RESTAURADAS */
+            appearance-none outline-none border shadow-sm
+            border-slate-300 dark:border-slate-600
             
-            /* ESTADOS VISUAIS LIMPOS (USANDO RING PARA FOCO) */
-            focus:ring-2 focus:ring-blue-500/30 dark:focus:ring-blue-500/40
+            /* ESTADOS VISUAIS DE FOCO (LINHA E ANEL AZUL) */
+            focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 
+            dark:focus:border-blue-500 dark:focus:ring-blue-500/40
             disabled:cursor-not-allowed disabled:opacity-50
             
             /* CORES BASE */
@@ -47,7 +49,7 @@ export function Input({ label, error, icon, className = '', ...props }: InputPro
             ${icon ? 'pl-10' : ''} 
             
             /* MODO ERRO */
-            ${error ? '!ring-2 !ring-red-500 !focus:ring-red-500/40' : ''} 
+            ${error ? '!border-red-500 !ring-2 !ring-red-500/30' : ''} 
             ${className}
           `}
           {...props}

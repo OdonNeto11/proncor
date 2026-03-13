@@ -17,30 +17,41 @@ export function Textarea({ label, error, icon, className = '', ...props }: Texta
       
       <div className="relative">
         {icon && (
-          <div className="absolute left-4 top-4 text-slate-400 dark:text-slate-500 pointer-events-none">
-            {React.isValidElement(icon) ? React.cloneElement(icon as React.ReactElement, { size: 18 }) : icon}
+          <div className="absolute left-3 top-3.5 text-slate-400 pointer-events-none z-10">
+            {icon}
           </div>
         )}
         
         <textarea 
           className={`
-            w-full rounded-xl border px-4 py-3 text-sm transition-all min-h-[100px]
-            bg-white dark:bg-slate-800 
-            border-slate-200 dark:border-slate-700
+            w-full rounded-xl px-3 py-3 text-sm transition-all duration-200 min-h-[100px]
+            
+            /* BORDAS E SOMBRAS VISÍVEIS RESTAURADAS */
+            appearance-none outline-none border shadow-sm
+            border-slate-300 dark:border-slate-600
+            
+            /* ESTADOS VISUAIS DE FOCO (LINHA E ANEL AZUL) */
+            focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 
+            dark:focus:border-blue-500 dark:focus:ring-blue-500/40
+            disabled:cursor-not-allowed disabled:opacity-50
+            
+            /* CORES BASE */
+            bg-white dark:bg-slate-800
             text-slate-900 dark:text-slate-100
             placeholder:text-slate-400 dark:placeholder:text-slate-500
-            focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none 
-            focus:ring-4 focus:ring-blue-500/10 dark:focus:ring-blue-400/10
-            disabled:cursor-not-allowed disabled:opacity-50
-            ${icon ? 'pl-11' : ''} 
-            ${error ? 'border-red-500 focus:border-red-500 focus:ring-red-500/10' : ''} 
+            
+            /* ESPAÇAMENTO DO ÍCONE */
+            ${icon ? 'pl-10' : ''} 
+            
+            /* MODO ERRO */
+            ${error ? '!border-red-500 !ring-2 !ring-red-500/30' : ''} 
             ${className}
           `}
           {...props}
         />
       </div>
       
-      {error && <span className="text-xs text-red-500 font-bold mt-1">{error}</span>}
+      {error && <span className="text-xs text-red-500 font-medium mt-1">{error}</span>}
     </div>
   );
 }

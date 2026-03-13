@@ -8,8 +8,8 @@ interface Props {
   value: string;
   onChange: (val: string) => void;
   label: string;
-  tableName: string;  // NOVO: Qual tabela buscar?
-  columnName: string; // NOVO: Qual coluna exibir?
+  tableName: string;  
+  columnName: string; 
   placeholder?: string;
   required?: boolean;
   error?: string;
@@ -20,12 +20,10 @@ export function SelectAutocomplete({ value, onChange, label, tableName, columnNa
   const [filtered, setFiltered] = useState<string[]>([]);
   const [isOpen, setIsOpen] = useState(false);
 
-// A CONSULTA AGORA É DINÂMICA E TIPADA
   useEffect(() => {
     const fetchData = async () => {
       const { data } = await supabase.from(tableName).select(columnName).eq('situacao', 1);
       if (data) {
-        // CORREÇÃO: Tipamos o 'item' como Record<string, any> para o TypeScript aceitar a busca dinâmica
         setOptions(data.map((item: Record<string, any>) => item[columnName]));
       }
     };
@@ -77,7 +75,7 @@ export function SelectAutocomplete({ value, onChange, label, tableName, columnNa
       />
 
       {isOpen && filtered.length > 0 && (
-        <ul className="absolute z-[100] w-full mt-2 bg-white border border-slate-100 rounded-xl shadow-xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
+        <ul className="absolute z-[100] w-full mt-2 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl shadow-xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
           {filtered.map((opt, i) => (
             <li 
               key={i}
@@ -86,7 +84,7 @@ export function SelectAutocomplete({ value, onChange, label, tableName, columnNa
                 onChange(opt);
                 setIsOpen(false);
               }}
-              className="px-4 py-3 hover:bg-slate-50 cursor-pointer text-sm font-bold text-slate-700 border-b border-slate-50 last:border-0"
+              className="px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer text-sm font-bold text-slate-700 dark:text-slate-200 border-b border-slate-50 dark:border-slate-800/50 last:border-0 transition-colors"
             >
               {opt}
             </li>
