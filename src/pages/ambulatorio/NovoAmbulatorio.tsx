@@ -113,7 +113,7 @@ export function NovoAmbulatorio() {
         exames_especialidades: examesPreenchidos,
         observacoes: formData.observacoes,
         criado_por: user?.id,
-        status_id: 1,
+        status_id: 13,
         origem: 'MANUAL', 
         crm_solicitante: formData.crm_solicitante || null
       }]);

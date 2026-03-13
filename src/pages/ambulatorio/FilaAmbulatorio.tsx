@@ -28,16 +28,14 @@ import { ModalAtualizarStatusLayout } from '../../components/shared/ModalAtualiz
 import { maskPhone, capitalizeName } from '../../utils/formUtils';
 import { usePermissoes } from '../../hooks/usePermissoes';
 
-// CONFIGURAÇÃO DE STATUS
+// CONFIGURAÇÃO DE STATUS CORRIGIDA
 const STATUS_CONFIG_AMB: Record<number, { label: string, color: string, border: string, icon: any }> = {
-  1: { label: 'Aguardando Agendamento', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400', border: 'border-orange-200 dark:border-orange-800/50', icon: AlertCircle },
+  13: { label: 'Aguardando Agendamento', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400', border: 'border-orange-200 dark:border-orange-800/50', icon: AlertCircle },
   3: { label: 'Cancelado', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400', border: 'border-red-200 dark:border-red-800/50', icon: XCircle },
-  
-  // NOVOS STATUS (SGFH)
-  8: { label: 'Agendado', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', border: 'border-emerald-200 dark:border-emerald-800/50', icon: CheckCircle2 },
-  9: { label: 'Plano não Atendido', color: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400', border: 'border-rose-200 dark:border-rose-800/50', icon: ShieldOff },
-  10: { label: 'Sem Especialidade', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400', border: 'border-amber-200 dark:border-amber-800/50', icon: AlertCircle },
-  11: { label: 'Sem Contato', color: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400', border: 'border-slate-200 dark:border-slate-700', icon: HelpCircle },
+  9: { label: 'Agendado', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', border: 'border-emerald-200 dark:border-emerald-800/50', icon: CheckCircle2 },
+  10: { label: 'Plano não Atendido', color: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400', border: 'border-rose-200 dark:border-rose-800/50', icon: ShieldOff },
+  11: { label: 'Sem Especialidade', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400', border: 'border-amber-200 dark:border-amber-800/50', icon: AlertCircle },
+  12: { label: 'Sem Contato', color: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400', border: 'border-slate-200 dark:border-slate-700', icon: HelpCircle },
 };
 
 export function Ambulatorio() {
@@ -46,7 +44,7 @@ export function Ambulatorio() {
   const [lista, setLista] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [busca, setBusca] = useState('');
-  const [filtroTab, setFiltroTab] = useState<'pendentes' | 'sucesso' | 'perdidos'>('pendentes');
+  const [filtroTab, setFiltroTab] = useState<'todos' | 'pendentes' | 'sucesso' | 'perdidos'>('pendentes');
   const [selectedEnc, setSelectedEnc] = useState<any | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'details' | 'edit' | 'update_status' | 'confirm_cancel'>('list');
   const [showToast, setShowToast] = useState({ visible: false, message: '' });
@@ -60,21 +58,27 @@ export function Ambulatorio() {
     observacoes: ''
   });
 
-  const fetchEncaminhamentos = async () => {
+const fetchEncaminhamentos = async () => {
     setLoading(true);
     try {
       const statusMap = { 
-        pendentes: [1], 
-        sucesso: [8], 
-        perdidos: [3, 9, 10, 11] 
+        pendentes: [13], 
+        sucesso: [9], 
+        perdidos: [3, 10, 11, 12],
+        todos: [] // Array vazio para identificar a opção "Todos"
       };
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('encaminhamentos_ambulatorio')
         .select('*, status:status_id(*)')
-        .in('status_id', statusMap[filtroTab])
         .order('created_at', { ascending: false });
       
+      // Só aplica o filtro de status se NÃO for a aba "todos"
+      if (filtroTab !== 'todos') {
+        query = query.in('status_id', statusMap[filtroTab]);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       setLista(data || []);
     } catch (error) {
@@ -159,7 +163,6 @@ export function Ambulatorio() {
         </Link>
       </div>
 
-      {/* CABEÇALHO PADRONIZADO E CONTEXTUALIZADO */}
       <div className="mb-8">
         <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400 font-bold text-xs uppercase tracking-widest mb-2">
            <Activity size={16} /> Módulo: Ambulatório
@@ -168,10 +171,8 @@ export function Ambulatorio() {
         <Description>Gerencie as solicitações de exames e consultas.</Description>
       </div>
 
-      {/* CARD DE FILTROS REESTRUTURADO (MESMO PADRÃO DA AGENDA PA) */}
       <Card className="mb-8 p-4">
         <div className="flex flex-col lg:flex-row gap-4 justify-between items-center">
-          
           <div className="w-full lg:flex-1">
             <Input 
               value={busca} 
@@ -181,19 +182,17 @@ export function Ambulatorio() {
               className="!h-10"
             />
           </div>
-          
-          <div className="flex w-full lg:w-auto bg-slate-100 dark:bg-slate-800/50 p-1 rounded-xl border border-slate-200 dark:border-slate-700/50 overflow-x-auto">
-            {(['pendentes', 'sucesso', 'perdidos'] as const).map((t) => (
-              <button 
-                key={t}
-                onClick={() => setFiltroTab(t)} 
-                className={`flex-1 lg:flex-none whitespace-nowrap px-6 py-2 rounded-lg text-sm font-bold transition-all ${filtroTab === t ? 'bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
-              >
-                {t.charAt(0).toUpperCase() + t.slice(1)}
-              </button>
-            ))}
-          </div>
-
+<div className="flex w-full lg:w-auto bg-slate-100 dark:bg-slate-800/50 p-1 rounded-xl border border-slate-200 dark:border-slate-700/50 overflow-x-auto">
+  {(['todos', 'pendentes', 'sucesso', 'perdidos'] as const).map((t) => (
+    <button 
+      key={t}
+      onClick={() => setFiltroTab(t)} 
+      className={`flex-1 lg:flex-none whitespace-nowrap px-6 py-2 rounded-lg text-sm font-bold transition-all ${filtroTab === t ? 'bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+    >
+      {t === 'todos' ? 'Todos' : t === 'pendentes' ? 'Pendentes' : t === 'sucesso' ? 'Agendados' : 'Perdidos'}
+    </button>
+  ))}
+</div>
         </div>
       </Card>
 
@@ -207,7 +206,7 @@ export function Ambulatorio() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {listaFiltrada.map((item: any) => {
-            const statusConfig = STATUS_CONFIG_AMB[item.status_id] || STATUS_CONFIG_AMB[1];
+            const statusConfig = STATUS_CONFIG_AMB[item.status_id] || STATUS_CONFIG_AMB[13];
             return (
               <AtendimentoCard 
                 key={item.id}
@@ -238,8 +237,8 @@ export function Ambulatorio() {
           title={
             <div className="flex items-center gap-2">
               <span className="line-clamp-1 dark:text-slate-100">{selectedEnc.nome_paciente}</span>
-              {selectedEnc.status_id === 1 && podeEditarAmb && (
-                <button onClick={() => setViewMode('edit')} className="p-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-purple-100 dark:hover:bg-purple-900/30 text-slate-500 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 rounded-lg transition-colors">
+              {selectedEnc.status_id === 13 && podeEditarAmb && (
+                <button onClick={() => setViewMode('edit')} className="p-1.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 rounded-lg transition-colors">
                   <Edit size={18} />
                 </button>
               )}
@@ -256,51 +255,16 @@ export function Ambulatorio() {
           tags={selectedEnc.exames_especialidades}
           phoneForWhats={selectedEnc.telefone_paciente}
           obsText={selectedEnc.observacoes || 'Sem observações.'}
-          obsFooter={selectedEnc.crm_solicitante && <div className="text-xs font-bold text-slate-500 dark:text-slate-400">CRM: {selectedEnc.crm_solicitante}</div>}
-          actionButtons={selectedEnc.status_id === 1 && podeGerenciarStatusAmb && (
+          actionButtons={selectedEnc.status_id === 13 && podeGerenciarStatusAmb && (
             <Button variant="primary" fullWidth onClick={() => setViewMode('update_status')}>Atualizar Status</Button>
           )}
-          footerButtons={selectedEnc.status_id === 1 && podeCancelarAmb && (
+          footerButtons={selectedEnc.status_id === 13 && podeCancelarAmb && (
             <Button variant="ghostDanger" fullWidth onClick={() => setViewMode('confirm_cancel')}>Cancelar Pedido</Button>
           )}
         />
       )}
 
-      {/* MODAL DE EDIÇÃO */}
-      {selectedEnc && viewMode === 'edit' && (
-        <Modal isOpen={true} onClose={() => setViewMode('details')} title={<span className="text-purple-600 dark:text-purple-400">Editar Encaminhamento</span>}>
-          <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
-             <Input label="Nº Atendimento" value={editForm.numero_atendimento} onChange={e => setEditForm({ ...editForm, numero_atendimento: e.target.value.replace(/\D/g, '') })} icon={<Hash size={18} />} maxLength={10} />
-             <Input label="Nome do Paciente" value={editForm.nome_paciente} onChange={e => setEditForm({ ...editForm, nome_paciente: capitalizeName(e.target.value) })} icon={<User size={18} />} required />
-             <Input label="Telefone / WhatsApp" value={editForm.telefone_paciente} onChange={e => setEditForm({ ...editForm, telefone_paciente: maskPhone(e.target.value) })} icon={<Phone size={18} />} maxLength={15} required />
-             
-             <SelectAutocomplete 
-                label="Plano de Saúde"
-                placeholder="Ex: Unimed, Cassems..."
-                tableName="planos_saude"
-                columnName="nome"
-                value={editForm.plano_saude}
-                onChange={(val) => setEditForm({ ...editForm, plano_saude: val })}
-             />
-             
-             <Textarea label="Observações / Diagnóstico" value={editForm.observacoes} onChange={e => setEditForm({ ...editForm, observacoes: e.target.value })} rows={3} icon={<FileText size={18} />} />
-
-             {errorMsg && (
-               <div className="mb-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 rounded-xl text-sm flex items-center gap-2">
-                 <AlertCircle size={18} className="flex-shrink-0" />
-                 <span className="font-semibold">{errorMsg}</span>
-               </div>
-             )}
-
-             <div className="flex gap-2 pt-2">
-                 <Button variant="secondary" fullWidth onClick={() => setViewMode('details')}>Cancelar</Button>
-                 <Button variant="primary" fullWidth onClick={confirmarEdicao}>Salvar Dados</Button>
-             </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* MODAL DE ATUALIZAÇÃO DE STATUS */}
+      {/* MODAL DE ATUALIZAÇÃO DE STATUS - IDS CORRIGIDOS */}
       {selectedEnc && viewMode === 'update_status' && (
         <ModalAtualizarStatusLayout 
           isOpen 
@@ -309,19 +273,19 @@ export function Ambulatorio() {
           theme="purple"
         >
           <div className="flex flex-col gap-3">
-            <Button variant="success" fullWidth justify="start" onClick={() => atualizarStatus(8, 'Agendado com sucesso!')}>
+            <Button variant="success" fullWidth justify="start" onClick={() => atualizarStatus(9, 'Agendamento confirmado!')}>
               <CheckCircle2 size={18} /> Agendado
             </Button>
             
-            <Button variant="rose" fullWidth justify="start" onClick={() => atualizarStatus(9, 'Plano não atendido registrado.')}>
+            <Button variant="rose" fullWidth justify="start" onClick={() => atualizarStatus(10, 'Plano não atendido registrado.')}>
               <ShieldOff size={18} /> Não atendemos o plano
             </Button>
 
-            <Button variant="amber" fullWidth justify="start" onClick={() => atualizarStatus(10, 'Falta de especialidade registrada.')}>
+            <Button variant="amber" fullWidth justify="start" onClick={() => atualizarStatus(11, 'Falta de especialidade registrada.')}>
               <AlertCircle size={18} /> Não temos a especialidade
             </Button>
             
-            <Button variant="secondary" fullWidth justify="start" onClick={() => atualizarStatus(11, 'Falha de contato registrada.')}>
+            <Button variant="secondary" fullWidth justify="start" onClick={() => atualizarStatus(12, 'Falha de contato registrada.')}>
               <HelpCircle size={18} /> Não conseguimos contato
             </Button>
           </div>
