@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
-  ClipboardList, Search, CheckCircle2, AlertCircle, 
-  HelpCircle, XCircle, Edit, Hash, User, Phone, ShieldOff, FileText
+  Search, CheckCircle2, AlertCircle, 
+  HelpCircle, XCircle, Edit, Hash, User, Phone, ShieldOff, FileText, Activity
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -30,7 +30,7 @@ import { usePermissoes } from '../../hooks/usePermissoes';
 
 // CONFIGURAÇÃO DE STATUS
 const STATUS_CONFIG_AMB: Record<number, { label: string, color: string, border: string, icon: any }> = {
-  1: { label: 'Aguardando Agendamento', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400', border: 'border-orange-200 dark:border-orange-800/50', icon: ClipboardList },
+  1: { label: 'Aguardando Agendamento', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400', border: 'border-orange-200 dark:border-orange-800/50', icon: AlertCircle },
   3: { label: 'Cancelado', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400', border: 'border-red-200 dark:border-red-800/50', icon: XCircle },
   
   // NOVOS STATUS (SGFH)
@@ -159,35 +159,41 @@ export function Ambulatorio() {
         </Link>
       </div>
 
-      <Card className="mb-8">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <Title size="2xl" className="flex items-center gap-2">
-              <ClipboardList className="text-purple-600 dark:text-purple-400" /> Fila do Ambulatório
-            </Title>
-            <Description size="sm">Gerencie os pedidos de agendamento do SGFH.</Description>
+      {/* CABEÇALHO PADRONIZADO E CONTEXTUALIZADO */}
+      <div className="mb-8">
+        <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400 font-bold text-xs uppercase tracking-widest mb-2">
+           <Activity size={16} /> Módulo: Ambulatório
+        </div>
+        <Title className="mb-2">Fila do Ambulatório</Title>
+        <Description>Gerencie as solicitações de exames e consultas.</Description>
+      </div>
+
+      {/* CARD DE FILTROS REESTRUTURADO (MESMO PADRÃO DA AGENDA PA) */}
+      <Card className="mb-8 p-4">
+        <div className="flex flex-col lg:flex-row gap-4 justify-between items-center">
+          
+          <div className="w-full lg:flex-1">
+            <Input 
+              value={busca} 
+              onChange={(e) => setBusca(e.target.value)} 
+              placeholder="Buscar por paciente, atendimento ou CRM..." 
+              icon={<Search size={18} />} 
+              className="!h-10"
+            />
           </div>
           
-          <div className="flex gap-2 bg-slate-100 dark:bg-slate-800/50 p-1 rounded-xl border border-slate-200 dark:border-slate-700/50">
+          <div className="flex w-full lg:w-auto bg-slate-100 dark:bg-slate-800/50 p-1 rounded-xl border border-slate-200 dark:border-slate-700/50 overflow-x-auto">
             {(['pendentes', 'sucesso', 'perdidos'] as const).map((t) => (
               <button 
                 key={t}
                 onClick={() => setFiltroTab(t)} 
-                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${filtroTab === t ? 'bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+                className={`flex-1 lg:flex-none whitespace-nowrap px-6 py-2 rounded-lg text-sm font-bold transition-all ${filtroTab === t ? 'bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
               >
                 {t.charAt(0).toUpperCase() + t.slice(1)}
               </button>
             ))}
           </div>
-        </div>
-        
-        <div className="mt-6 border-t border-slate-50 dark:border-slate-800/50 pt-6">
-          <Input 
-            value={busca} 
-            onChange={(e) => setBusca(e.target.value)} 
-            placeholder="Buscar por paciente, atendimento ou CRM..." 
-            icon={<Search size={18} />} 
-          />
+
         </div>
       </Card>
 
@@ -294,7 +300,7 @@ export function Ambulatorio() {
         </Modal>
       )}
 
-      {/* MODAL DE ATUALIZAÇÃO DE STATUS USANDO AS NOVAS VARIANTES */}
+      {/* MODAL DE ATUALIZAÇÃO DE STATUS */}
       {selectedEnc && viewMode === 'update_status' && (
         <ModalAtualizarStatusLayout 
           isOpen 

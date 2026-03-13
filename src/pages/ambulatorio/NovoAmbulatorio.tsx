@@ -1,7 +1,7 @@
 import React, { useState, FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { 
-  ClipboardList, User, FileText, Hash, Building2, Plus, Trash2, AlertCircle, Activity, Phone 
+  User, FileText, Hash, Plus, Trash2, AlertCircle, Activity, Phone 
 } from 'lucide-react';
 
 import { Button } from '../../components/ui/Button';
@@ -10,6 +10,7 @@ import { Textarea } from '../../components/ui/Textarea';
 import { Card } from '../../components/ui/Card';
 import { Toast } from '../../components/ui/Toast';
 import { SelectAutocomplete } from '../../components/ui/SelectAutocomplete';
+import { Title, Description } from '../../components/ui/Typography';
 import { maskPhone, capitalizeName } from '../../utils/formUtils';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -39,10 +40,10 @@ export function NovoAmbulatorio() {
         <div className="w-20 h-20 bg-red-50 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
           <AlertCircle size={48} className="text-red-400 dark:text-red-500" />
         </div>
-        <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-2">Acesso Negado</h2>
-        <p className="text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+        <Title className="mb-2">Acesso Negado</Title>
+        <Description className="max-w-sm mx-auto">
           O seu perfil não tem permissão para criar novos encaminhamentos manuais para o Ambulatório.
-        </p>
+        </Description>
         <Link to="/" className="inline-block mt-8 px-6 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
           Voltar para Início
         </Link>
@@ -140,25 +141,22 @@ export function NovoAmbulatorio() {
   return (
     <div className="max-w-4xl mx-auto animate-in fade-in duration-500 pb-20">
       
-      {/* HEADER E NAVEGAÇÃO DARK */}
       <div className="flex items-center gap-6 mb-8 border-b border-gray-200 dark:border-slate-800 px-2">
-        <Link 
-          to="/novo-ambulatorio" 
-          className={`pb-3 text-sm font-bold border-b-2 transition-colors ${window.location.pathname === '/novo-ambulatorio' ? 'border-purple-600 dark:border-purple-500 text-purple-600 dark:text-purple-400' : 'border-transparent text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 hover:border-gray-300 dark:hover:border-slate-600'}`}
-        >
+        <Link to="/novo-ambulatorio" className={`pb-3 text-sm font-bold border-b-2 transition-colors ${window.location.pathname === '/novo-ambulatorio' ? 'border-purple-600 dark:border-purple-500 text-purple-600 dark:text-purple-400' : 'border-transparent text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 hover:border-gray-300 dark:hover:border-slate-600'}`}>
           Novo Encaminhamento
         </Link>
-        <Link 
-          to="/ambulatorio" 
-          className={`pb-3 text-sm font-bold border-b-2 transition-colors ${window.location.pathname === '/ambulatorio' ? 'border-purple-600 dark:border-purple-500 text-purple-600 dark:text-purple-400' : 'border-transparent text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 hover:border-gray-300 dark:hover:border-slate-600'}`}
-        >
+        <Link to="/ambulatorio" className={`pb-3 text-sm font-bold border-b-2 transition-colors ${window.location.pathname === '/ambulatorio' ? 'border-purple-600 dark:border-purple-500 text-purple-600 dark:text-purple-400' : 'border-transparent text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 hover:border-gray-300 dark:hover:border-slate-600'}`}>
           Fila/Pendentes
         </Link>
       </div>
 
+      {/* CABEÇALHO PADRONIZADO E CONTEXTUALIZADO */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-slate-100 mb-2">Encaminhamento Ambulatório</h1>
-        <p className="text-gray-600 dark:text-slate-400">Preencha os dados para que o setor Concierge realize o agendamento.</p>
+        <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400 font-bold text-xs uppercase tracking-widest mb-2">
+           <Activity size={16} /> Módulo: Ambulatório
+        </div>
+        <Title className="mb-2">Encaminhamento Manual</Title>
+        <Description>Preencha os dados para que o setor Concierge realize o agendamento de exames/consultas.</Description>
       </div>
 
       <Card>
@@ -195,7 +193,7 @@ export function NovoAmbulatorio() {
             maxLength={5}  
           />
 
-          <div className="bg-purple-50 dark:bg-purple-900/10 p-5 rounded-2xl border border-purple-100 dark:border-purple-900/30">
+          <div className="bg-purple-50 dark:bg-purple-900/10 p-5 rounded-2xl border border-purple-100 dark:border-purple-900/30 transition-colors">
             <label className="text-sm font-semibold text-purple-900 dark:text-purple-300 mb-3 flex items-center gap-2">
               <Activity size={18} className="text-purple-600 dark:text-purple-400" />
               Exames ou Especialidades
@@ -205,7 +203,6 @@ export function NovoAmbulatorio() {
                 <div key={index} className="flex items-center gap-3">
                   <span className="text-xs font-bold text-purple-400 dark:text-purple-500 w-4">{index + 1}.</span>
                   
-                  {/* COMPONENTE DE INPUT OFICIAL INJETADO NO LUGAR DA TAG CRUA */}
                   <div className="flex-1">
                     <Input 
                       value={exame} 
@@ -232,13 +229,13 @@ export function NovoAmbulatorio() {
           <Textarea label="Observações / Detalhes" name="observacoes" value={formData.observacoes} onChange={handleChange} rows={3} icon={<FileText size={20} />} />
 
           {errorMsg && (
-            <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 rounded-xl text-sm flex items-center gap-3 animate-in fade-in">
+            <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 rounded-xl text-sm flex items-center gap-3 animate-in fade-in transition-colors">
               <AlertCircle size={20} className="flex-shrink-0" />
               <span className="font-semibold">{errorMsg}</span>
             </div>
           )}
 
-          <Button type="submit" disabled={loading} fullWidth className="!bg-purple-600 hover:!bg-purple-700 dark:!bg-purple-600 dark:hover:!bg-purple-500">
+          <Button type="submit" disabled={loading} fullWidth className="!bg-purple-600 hover:!bg-purple-700 dark:!bg-purple-600 dark:hover:!bg-purple-500 border-none">
             {loading ? 'Salvando...' : 'Enviar para o Concierge'}
           </Button>
         </form>
