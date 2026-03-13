@@ -3,10 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { Lock, User, Loader2, Sun, Moon } from 'lucide-react';
 
-// COMPONENTES OFICIAIS SENDO USADOS
+// COMPONENTES OFICIAIS
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { Logo } from '../../components/ui/Logo';
+import { Title, Description } from '../../components/ui/Typography';
 
 export function Login() {
   const navigate = useNavigate();
@@ -15,7 +16,7 @@ export function Login() {
   const [isDark, setIsDark] = useState(() => {
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme) return savedTheme === 'dark';
-    return true; // <-- PADRÃO AGORA É DARK MODE
+    return true; 
   });
 
   useEffect(() => {
@@ -28,7 +29,6 @@ export function Login() {
       localStorage.setItem('theme', 'light');
     }
   }, [isDark]);
-  // ------------------------------------
 
   const [loginInput, setLoginInput] = useState('');
   const [password, setPassword] = useState('');
@@ -59,31 +59,32 @@ export function Login() {
   };
 
   return (
-    <div className="relative min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4 transition-colors duration-300">
+    <div className="relative min-h-screen bg-white dark:bg-slate-950 flex items-center justify-center p-4 transition-colors duration-500">
       
       {/* BOTÃO DE SOL/LUA FLUTUANTE */}
       <div className="absolute top-6 right-6">
         <button 
           onClick={() => setIsDark(!isDark)}
-          className="p-3 rounded-full bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-yellow-400 hover:ring-2 hover:ring-blue-400 transition-all"
+          className="p-3 rounded-full bg-slate-50 dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-yellow-400 hover:ring-2 hover:ring-blue-400 transition-all active:scale-90"
           title={isDark ? "Mudar para modo claro" : "Mudar para modo escuro"}
         >
           {isDark ? <Sun size={22} /> : <Moon size={22} />}
         </button>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-md p-8 border border-slate-100 dark:border-slate-800">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md p-8 border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-300">
         
         <div className="text-center mb-8">
-          {/* COMPONENTE DA LOGO */}
           <Logo className="h-20 mx-auto mb-6" />
           
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Sistema de Teleconsultas</h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">Agendamento de Teleconsultas e Retornos</p>
+          {/* NOME DO SISTEMA NORMALIZADO COM COMPONENTES */}
+          <Title size="2xl">SGFH</Title>
+          <Description size="lg" className="mt-1 font-medium">
+            Portal de Gestão e Fluxo Hospitalar
+          </Description>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-5">
-          {/* COMPONENTE DE INPUT NORMALIZADO */}
           <Input 
             label="Usuário ou Email"
             value={loginInput}
@@ -93,7 +94,6 @@ export function Login() {
             required
           />
 
-          {/* COMPONENTE DE INPUT NORMALIZADO */}
           <Input 
             label="Senha"
             type="password"
@@ -105,16 +105,21 @@ export function Login() {
           />
 
           {errorMsg && (
-            <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm rounded-lg text-center font-medium border border-red-100 dark:border-red-900/50">
+            <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm rounded-lg text-center font-bold border border-red-100 dark:border-red-900/50">
               {errorMsg}
             </div>
           )}
 
-          {/* COMPONENTE DE BUTTON NORMALIZADO */}
-          <Button type="submit" fullWidth disabled={loading}>
+          <Button type="submit" fullWidth disabled={loading} size="lg">
             {loading ? <Loader2 className="animate-spin" /> : 'Entrar no Sistema'}
           </Button>
         </form>
+
+        <div className="mt-8 text-center">
+          <p className="text-[10px] text-slate-400 dark:text-slate-600 uppercase tracking-[0.2em] font-bold">
+            Unidade Proncor Ativa
+          </p>
+        </div>
       </div>
     </div>
   );

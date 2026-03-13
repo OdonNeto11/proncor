@@ -1,6 +1,7 @@
 import React, { ReactNode } from 'react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
+import { Description } from '../ui/Typography';
 
 interface ModalAtualizarStatusLayoutProps {
   isOpen: boolean;
@@ -26,15 +27,18 @@ export function ModalAtualizarStatusLayout({
       onClose={onClose} 
       title={<span className={`${textTheme} font-bold`}>Atualizar Status</span>}
     >
-      <div className="space-y-3 animate-in slide-in-from-right-4 duration-300">
+      <div className="flex flex-col gap-4 animate-in slide-in-from-right-4 duration-300">
         
-        <p className="text-sm text-slate-600 dark:text-slate-300 mb-2">
+        <Description size="sm">
           Selecione o novo status para <strong className={textTheme}>{nomePaciente}</strong>:
-        </p>
+        </Description>
         
-        {children}
+        {/* Aqui é onde os botões (children) são injetados */}
+        <div className="flex flex-col gap-3">
+          {children}
+        </div>
 
-        <Button variant="secondary" fullWidth onClick={onClose} className="mt-4">
+        <Button variant="secondary" fullWidth onClick={onClose} className="mt-2">
           Cancelar e Voltar
         </Button>
         

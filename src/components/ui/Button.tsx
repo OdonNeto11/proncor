@@ -2,7 +2,8 @@ import { ButtonHTMLAttributes, ReactNode } from 'react';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
-  variant?: 'primary' | 'secondary' | 'outline' | 'danger' | 'success' | 'warning' | 'purple' | 'indigo' | 'ghostDanger';
+  variant?: 'primary' | 'secondary' | 'outline' | 'danger' | 'success' | 'warning' | 'purple' | 'indigo' | 'ghostDanger' | 'ghost';
+  size?: 'sm' | 'md' | 'icon';
   fullWidth?: boolean;
   justify?: 'center' | 'start' | 'between';
 }
@@ -10,12 +11,19 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 export function Button({
   children,
   variant = 'primary',
+  size = 'md',
   fullWidth = false,
   justify = 'center',
   className = '',
   ...props
 }: ButtonProps) {
-  const baseStyles = 'px-6 py-3 rounded-xl font-bold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 flex items-center gap-2';
+  const baseStyles = 'rounded-xl font-bold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 flex items-center gap-2';
+
+  const sizeStyles = {
+    sm: 'px-4 py-2 text-sm',
+    md: 'px-6 py-3',
+    icon: 'p-2.5 justify-center', // Remove o padding horizontal gigante, ideal para Menu e Theme
+  };
 
   const justifyStyles = {
     center: 'justify-center',
@@ -32,14 +40,15 @@ export function Button({
     warning: 'bg-orange-50 text-orange-600 border border-orange-100 hover:bg-orange-100 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-900/50 dark:hover:bg-orange-900/40',
     purple: 'bg-purple-50 text-purple-600 border border-purple-100 hover:bg-purple-100 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-900/50 dark:hover:bg-purple-900/40',
     indigo: 'bg-indigo-50 text-indigo-600 border border-indigo-100 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-400 dark:border-indigo-900/50 dark:hover:bg-indigo-900/40',
-    ghostDanger: 'bg-transparent border border-transparent text-red-500 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20 shadow-none',
+    ghostDanger: 'bg-transparent border-transparent text-red-500 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20 shadow-none',
+    ghost: 'bg-transparent text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 shadow-none',
   };
 
   const widthStyles = fullWidth ? 'w-full' : '';
 
   return (
     <button
-      className={`${baseStyles} ${justifyStyles[justify]} ${variantStyles[variant]} ${widthStyles} ${className}`}
+      className={`${baseStyles} ${sizeStyles[size]} ${justifyStyles[justify]} ${variantStyles[variant]} ${widthStyles} ${className}`}
       {...props}
     >
       {children}

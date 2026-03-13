@@ -1,18 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-// NOTA: Tivemos que colocar 3 pontinhos (../../../) para ele conseguir voltar até a pasta lib e components
 import { supabase } from "../../../lib/supabase"; 
+import { useTheme } from '../../../contexts/ThemeContext';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, LabelList,
   PieChart, Pie, Cell, Legend
 } from 'recharts';
+
+// COMPONENTES NORMALIZADOS
 import { Card } from '../../../components/ui/Card';
+import { Title, Description } from '../../../components/ui/Typography';
+import { Button } from '../../../components/ui/Button';
+
 import { Download, X, Filter, Calendar as CalendarIcon, User, Activity, ChevronRight, Home } from 'lucide-react';
 import DatePicker from 'react-datepicker';
 import { format, parseISO } from 'date-fns';
 import * as XLSX from 'xlsx';
-
-// ... resto do seu código (CONFIG_STATUS, etc) ...
 
 const CONFIG_STATUS: Record<number, { label: string, color: string }> = {
   1: { label: 'Agendado', color: '#3b82f6' },
@@ -29,6 +32,8 @@ interface DashPAProps {
 }
 
 export function DashPA({ onBack }: DashPAProps) {
+  const { isDark } = useTheme();
+
   const [dataInicio, setDataInicio] = useState<Date | null>(null);
   const [dataFim, setDataFim] = useState<Date | null>(null);
   const [statusFiltro, setStatusFiltro] = useState<string>('');
@@ -134,12 +139,12 @@ export function DashPA({ onBack }: DashPAProps) {
   };
 
   const renderCustomLegend = () => (
-    <ul className="flex flex-col gap-2 m-0 p-0 list-none text-[11px] font-medium text-slate-600">
+    <ul className="flex flex-col gap-2 m-0 p-0 list-none text-[11px] font-medium text-slate-600 dark:text-slate-400">
       {stats.porStatus.map((entry, index) => (
         <li key={`legend-${index}`} className="flex items-center gap-2">
           <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: entry.color }} />
           <span className="truncate">{entry.name}</span>
-          <span className="font-bold text-slate-800 ml-auto pl-2">{entry.value}</span>
+          <span className="font-bold text-slate-800 dark:text-slate-200 ml-auto pl-2">{entry.value}</span>
         </li>
       ))}
     </ul>
@@ -151,64 +156,63 @@ export function DashPA({ onBack }: DashPAProps) {
 
   return (
     <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
-      <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm transition-colors">
         
-{/* NAVEGAÇÃO BREADCRUMB */}
-        <nav className="flex items-center space-x-2 text-sm text-slate-500 font-medium mb-5">
-          <Link to="/" className="hover:text-blue-600 flex items-center gap-1 transition-colors">
+        {/* NAVEGAÇÃO BREADCRUMB */}
+        <nav className="flex items-center space-x-2 text-sm text-slate-500 dark:text-slate-400 font-medium mb-5">
+          <Link to="/" className="hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-1 transition-colors">
             <Home size={14} />
             <span>Home</span>
           </Link>
-          <ChevronRight size={14} className="text-slate-400" />
+          <ChevronRight size={14} className="text-slate-400 dark:text-slate-600" />
           
-          {/* O segredo está no state={{ reset: Date.now() }} */}
           <Link 
             to="/admin" 
             state={{ reset: Date.now() }} 
-            className="hover:text-blue-600 transition-colors"
+            className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
           >
             Administração
           </Link>
           
-          <ChevronRight size={14} className="text-slate-400" />
+          <ChevronRight size={14} className="text-slate-400 dark:text-slate-600" />
           <button 
             onClick={onBack} 
-            className="hover:text-blue-600 transition-colors font-medium"
+            className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors font-medium"
           >
             Dashboards
           </button>
-          <ChevronRight size={14} className="text-slate-400" />
-          <span className="text-slate-800 font-bold">Dash PA</span>
+          <ChevronRight size={14} className="text-slate-400 dark:text-slate-600" />
+          <span className="text-slate-800 dark:text-slate-200 font-bold">Dash PA</span>
         </nav>
 
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
           <div className="flex items-center gap-3">
-            <Activity className="text-blue-600" size={32} />
-            <h1 className="text-3xl font-bold text-gray-800">Painel do Pronto Atendimento</h1>
+            <Activity className="text-blue-600 dark:text-blue-500" size={32} />
+            <Title className="!text-3xl !mb-0 text-gray-800 dark:text-white">Painel do Pronto Atendimento</Title>
           </div>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-4 pt-4 border-t border-gray-50">
+        <div className="flex flex-col lg:flex-row gap-4 pt-4 border-t border-gray-50 dark:border-slate-800/50">
           <div className="flex items-center gap-2 lg:w-1/3">
             <div className="relative flex-1">
-                <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10" size={16} />
-                <DatePicker selected={dataInicio} onChange={setDataInicio} isClearable locale="pt-BR" dateFormat="dd/MM/yyyy" placeholderText="Início" className="custom-datepicker-input !h-10 !text-sm !pl-10" onFocus={(e) => e.target.blur()} />
+                <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none z-10" size={16} />
+                <DatePicker selected={dataInicio} onChange={setDataInicio} isClearable locale="pt-BR" dateFormat="dd/MM/yyyy" placeholderText="Início" className="custom-datepicker-input !h-10 !text-sm !pl-10 w-full rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-blue-500 outline-none transition-colors" onFocus={(e) => e.target.blur()} />
             </div>
-            <span className="text-gray-400 text-sm">até</span>
+            <span className="text-gray-400 dark:text-slate-500 text-sm">até</span>
             <div className="relative flex-1">
-                <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10" size={16} />
-                <DatePicker selected={dataFim} onChange={setDataFim} isClearable locale="pt-BR" dateFormat="dd/MM/yyyy" placeholderText="Fim" className="custom-datepicker-input !h-10 !text-sm !pl-10" onFocus={(e) => e.target.blur()} />
+                <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none z-10" size={16} />
+                <DatePicker selected={dataFim} onChange={setDataFim} isClearable locale="pt-BR" dateFormat="dd/MM/yyyy" placeholderText="Fim" className="custom-datepicker-input !h-10 !text-sm !pl-10 w-full rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-blue-500 outline-none transition-colors" onFocus={(e) => e.target.blur()} />
             </div>
           </div>
           
           <div className="relative flex-1 max-w-[200px]">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-              <input type="text" placeholder="Filtrar CRM..." value={crmFiltro} onChange={e => setCrmFiltro(e.target.value.replace(/\D/g, ''))} maxLength={5} className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white h-10 transition-all" />
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" size={16} />
+              <input type="text" placeholder="Filtrar CRM..." value={crmFiltro} onChange={e => setCrmFiltro(e.target.value.replace(/\D/g, ''))} maxLength={5} className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-gray-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 h-10 transition-colors" />
           </div>
 
           <div className="relative flex-1 max-w-xs">
-              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-              <select value={statusFiltro} onChange={e => setStatusFiltro(e.target.value)} className="w-full pl-9 pr-8 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none appearance-none bg-white h-10">
+              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" size={16} />
+              <select value={statusFiltro} onChange={e => setStatusFiltro(e.target.value)} className="w-full pl-9 pr-8 py-2.5 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-gray-800 dark:text-slate-200 text-sm focus:outline-none appearance-none h-10 transition-colors">
                   <option value="">Todos os Status</option>
                   {Object.entries(CONFIG_STATUS).map(([id, config]) => (<option key={id} value={id}>{config.label}</option>))}
               </select>
@@ -218,26 +222,26 @@ export function DashPA({ onBack }: DashPAProps) {
 
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div className="h-full" title="Considera todos os registros no período, exceto status Cancelado.">
-          <Card className="h-full p-4 border-l-4 border-l-slate-600 cursor-pointer hover:bg-slate-50 hover:shadow-md transition-all group flex flex-col justify-center" onClick={() => openModal('Total de Registros', (i) => i.status_id !== 3)}>
-            <p className="text-[10px] text-gray-500 font-bold uppercase group-hover:text-slate-700 mb-1">Total Registros</p>
-            <p className="text-2xl font-black text-gray-800 group-hover:text-slate-900">{stats.totalGeral}</p>
+          <Card className="h-full p-4 border-l-4 border-l-slate-600 dark:border-l-slate-500 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group flex flex-col justify-center" onClick={() => openModal('Total de Registros', (i) => i.status_id !== 3)}>
+            <p className="text-[10px] text-gray-500 dark:text-slate-400 font-bold uppercase group-hover:text-slate-700 dark:group-hover:text-slate-300 mb-1">Total Registros</p>
+            <p className="text-2xl font-black text-gray-800 dark:text-white group-hover:text-slate-900 dark:group-hover:text-gray-100">{stats.totalGeral}</p>
           </Card>
         </div>
         
         <div className="h-full" title="Considera os status: Finalizado, Encaminhado Amb e Retorno ao PA.">
-          <Card className="h-full p-4 border-l-4 border-l-green-500 cursor-pointer hover:bg-green-50 hover:shadow-md transition-all group flex flex-col justify-center" onClick={() => openModal('Finalizados', (i) => i.status?.agrupamento === 'sucesso')}>
-            <p className="text-[10px] text-gray-500 font-bold uppercase group-hover:text-green-600 mb-1">Finalizado</p>
-            <p className="text-2xl font-black text-gray-800 group-hover:text-green-800">{stats.sucesso}</p>
+          <Card className="h-full p-4 border-l-4 border-l-green-500 cursor-pointer hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors group flex flex-col justify-center" onClick={() => openModal('Finalizados', (i) => i.status?.agrupamento === 'sucesso')}>
+            <p className="text-[10px] text-gray-500 dark:text-slate-400 font-bold uppercase group-hover:text-green-600 dark:group-hover:text-green-400 mb-1">Finalizado</p>
+            <p className="text-2xl font-black text-gray-800 dark:text-white group-hover:text-green-800 dark:group-hover:text-green-300">{stats.sucesso}</p>
           </Card>
         </div>
 
         <div className="h-full" title="Considera os status: Agendado e Reagendado.">
-          <Card className="h-full p-4 border-l-4 border-l-blue-500 cursor-pointer hover:bg-blue-50 hover:shadow-md transition-all group flex flex-col justify-between" onClick={() => openModal('Fila', (i) => i.status?.agrupamento === 'pendente')}>
-            <p className="text-[10px] text-gray-500 font-bold uppercase group-hover:text-blue-600 mb-1">Fila</p>
+          <Card className="h-full p-4 border-l-4 border-l-blue-500 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors group flex flex-col justify-between" onClick={() => openModal('Fila', (i) => i.status?.agrupamento === 'pendente')}>
+            <p className="text-[10px] text-gray-500 dark:text-slate-400 font-bold uppercase group-hover:text-blue-600 dark:group-hover:text-blue-400 mb-1">Fila</p>
             <div className="flex flex-col mt-1">
-              <p className="text-3xl font-black text-gray-800 group-hover:text-blue-800 leading-none mb-3">{stats.filaAgendados}</p>
-              <div className="flex justify-between items-center text-[11px] font-bold text-blue-600/80 bg-blue-50 px-2 py-1.5 rounded-md w-full">
-                <span>{stats.agendadosCount} Agendados</span><span className="text-blue-200">|</span><span>{stats.reagendadosCount} Reagendados</span>
+              <p className="text-3xl font-black text-gray-800 dark:text-white group-hover:text-blue-800 dark:group-hover:text-blue-300 leading-none mb-3">{stats.filaAgendados}</p>
+              <div className="flex justify-between items-center text-[11px] font-bold text-blue-600/80 dark:text-blue-300/90 bg-blue-50 dark:bg-blue-900/40 px-2 py-1.5 rounded-md w-full transition-colors">
+                <span>{stats.agendadosCount} Agendados</span><span className="text-blue-200 dark:text-blue-500/50">|</span><span>{stats.reagendadosCount} Reagendados</span>
               </div>
             </div>
           </Card>
@@ -245,48 +249,53 @@ export function DashPA({ onBack }: DashPAProps) {
         
         <div className="h-full" title="Cálculo: (Finalizados / (Total Registros - Fila)) * 100">
           <Card className="h-full p-4 border-l-4 border-l-indigo-500 flex flex-col justify-center">
-            <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Taxa Conversão</p>
-            <p className="text-2xl font-black text-gray-800">{taxaConversao}%</p>
+            <p className="text-[10px] text-gray-500 dark:text-slate-400 font-bold uppercase mb-1">Taxa Conversão</p>
+            <p className="text-2xl font-black text-gray-800 dark:text-white">{taxaConversao}%</p>
           </Card>
         </div>
 
         <div className="h-full" title="Considera estritamente o status: Não Atende.">
-          <Card className="h-full p-4 border-l-4 border-l-red-500 cursor-pointer hover:bg-red-50 hover:shadow-md transition-all group flex flex-col justify-center" onClick={() => openModal('Sem Contato', (i) => i.status_id === 4)}>
-            <p className="text-[10px] text-gray-500 font-bold uppercase group-hover:text-red-600 mb-1">Sem Contato</p>
+          <Card className="h-full p-4 border-l-4 border-l-red-500 cursor-pointer hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors group flex flex-col justify-center" onClick={() => openModal('Sem Contato', (i) => i.status_id === 4)}>
+            <p className="text-[10px] text-gray-500 dark:text-slate-400 font-bold uppercase group-hover:text-red-600 dark:group-hover:text-red-400 mb-1">Sem Contato</p>
             <div className="flex items-center gap-3 mt-1">
-              <p className="text-2xl font-black text-gray-800 group-hover:text-red-800">{stats.semConversao}</p><span className="text-xl font-light text-gray-300">|</span><p className="text-2xl font-black text-gray-800 group-hover:text-red-800">{taxaSemRetorno}%</p>
+              <p className="text-2xl font-black text-gray-800 dark:text-white group-hover:text-red-800 dark:group-hover:text-red-300">{stats.semConversao}</p><span className="text-xl font-light text-gray-300 dark:text-slate-600">|</span><p className="text-2xl font-black text-gray-800 dark:text-white group-hover:text-red-800 dark:group-hover:text-red-300">{taxaSemRetorno}%</p>
             </div>
           </Card>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Card className="p-6 shadow-sm bg-white border border-gray-100">
-          <h3 className="text-lg font-bold text-gray-700 mb-6">Evolução de Sucessos</h3>
+        <Card className="p-6">
+          <Title className="!text-lg !mb-6 text-gray-700 dark:text-slate-200">Evolução de Sucessos</Title>
           <div className="h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={stats.mensal}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                <YAxis axisLine={false} tickLine={false} />
-                <RechartsTooltip cursor={{fill: '#f8fafc'}} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#334155' : '#f0f0f0'} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: isDark ? '#94a3b8' : '#64748b' }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: isDark ? '#94a3b8' : '#64748b' }} />
+                <RechartsTooltip 
+                  cursor={{fill: isDark ? '#1e293b' : '#f8fafc'}} 
+                  contentStyle={{ backgroundColor: isDark ? '#0f172a' : '#ffffff', borderColor: isDark ? '#1e293b' : '#e2e8f0', color: isDark ? '#f8fafc' : '#0f172a' }} 
+                />
                 <Bar dataKey="total" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={45}>
-                  <LabelList dataKey="total" position="top" style={{ fill: '#64748b', fontSize: '12px', fontWeight: 'bold' }} />
+                  <LabelList dataKey="total" position="top" style={{ fill: isDark ? '#cbd5e1' : '#64748b', fontSize: '12px', fontWeight: 'bold' }} />
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
         </Card>
 
-        <Card className="p-6 shadow-sm bg-white border border-gray-100">
-          <h3 className="text-lg font-bold text-gray-700 mb-6">Status Detalhados</h3>
+        <Card className="p-6">
+          <Title className="!text-lg !mb-6 text-gray-700 dark:text-slate-200">Status Detalhados</Title>
           <div className="h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie data={stats.porStatus} cx="40%" cy="50%" outerRadius={100} dataKey="value" labelLine={false} label={false}>
-                  {stats.porStatus.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.color} stroke="#fff" strokeWidth={2} />))}
+                  {stats.porStatus.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.color} stroke={isDark ? '#0f172a' : '#fff'} strokeWidth={2} />))}
                 </Pie>
-                <RechartsTooltip />
+                <RechartsTooltip 
+                  contentStyle={{ backgroundColor: isDark ? '#0f172a' : '#ffffff', borderColor: isDark ? '#1e293b' : '#e2e8f0', color: isDark ? '#f8fafc' : '#0f172a' }}
+                />
                 <Legend layout="vertical" verticalAlign="middle" align="right" content={renderCustomLegend} />
               </PieChart>
             </ResponsiveContainer>
@@ -295,45 +304,47 @@ export function DashPA({ onBack }: DashPAProps) {
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200">
-            <div className="bg-gray-50 rounded-t-2xl px-6 py-4 border-b flex justify-between items-center">
+        <div className="fixed inset-0 bg-black/60 dark:bg-black/80 z-[70] flex items-center justify-center p-4 backdrop-blur-sm transition-colors">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200 border border-transparent dark:border-slate-800">
+            <div className="bg-gray-50 dark:bg-slate-800/50 rounded-t-2xl px-6 py-4 border-b border-gray-200 dark:border-slate-700/50 flex justify-between items-center transition-colors">
               <div>
-                <h3 className="text-lg font-bold text-gray-800">{modalTitle}</h3>
-                <p className="text-xs text-gray-500 font-medium">{modalData.length} registros encontrados</p>
+                <Title className="!text-lg !mb-0 text-gray-800 dark:text-slate-100">{modalTitle}</Title>
+                <Description className="!text-xs !font-medium !mt-0 !mb-0">{modalData.length} registros encontrados</Description>
               </div>
               <div className="flex gap-2">
-                <button onClick={exportToExcel} className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors">
+                <Button variant="success" size="sm" onClick={exportToExcel} className="!py-2">
                     <Download size={16} /> Exportar Excel
-                </button>
-                <button onClick={() => setIsModalOpen(false)} className="p-2 text-gray-400 hover:bg-gray-200 hover:text-gray-600 rounded-lg transition-colors"><X size={20} /></button>
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => setIsModalOpen(false)}>
+                  <X size={20} />
+                </Button>
               </div>
             </div>
 
-            <div className="p-0 overflow-auto flex-1 bg-white rounded-b-2xl">
+            <div className="p-0 overflow-auto flex-1 bg-white dark:bg-slate-900 rounded-b-2xl transition-colors">
               {modalData.length === 0 ? (
-                <div className="text-center py-12 text-gray-400 font-medium">Nenhum dado para este filtro.</div>
+                <div className="text-center py-12 text-gray-400 dark:text-slate-500 font-medium">Nenhum dado para este filtro.</div>
               ) : (
                 <table className="w-full text-left border-collapse whitespace-nowrap">
-                  <thead className="bg-slate-50 sticky top-0 z-10 shadow-sm">
+                  <thead className="bg-slate-50 dark:bg-slate-800/80 sticky top-0 z-10 shadow-sm transition-colors">
                     <tr>
-                      <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Data/Hora</th>
-                      <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Nº Atend.</th>
-                      <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">CRM</th>
-                      <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Paciente</th>
-                      <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Data/Hora</th>
+                      <th className="px-6 py-3 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Nº Atend.</th>
+                      <th className="px-6 py-3 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">CRM</th>
+                      <th className="px-6 py-3 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Paciente</th>
+                      <th className="px-6 py-3 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-gray-100 dark:divide-slate-800/80">
                     {modalData.map(item => (
-                      <tr key={item.id} className="hover:bg-blue-50/50 transition-colors">
+                      <tr key={item.id} className="hover:bg-blue-50/50 dark:hover:bg-slate-800/50 transition-colors">
                         <td className="px-6 py-3">
-                          <div className="text-sm font-semibold text-gray-800">{item.data_agendamento ? format(parseISO(item.data_agendamento), 'dd/MM/yyyy') : '-'}</div>
-                          <div className="text-xs text-gray-500">{item.hora_agendamento || '-'}</div>
+                          <div className="text-sm font-semibold text-gray-800 dark:text-slate-200">{item.data_agendamento ? format(parseISO(item.data_agendamento), 'dd/MM/yyyy') : '-'}</div>
+                          <div className="text-xs text-gray-500 dark:text-slate-400">{item.hora_agendamento || '-'}</div>
                         </td>
-                        <td className="px-6 py-3 text-sm font-mono text-gray-600">{item.numero_atendimento || '-'}</td>
-                        <td className="px-6 py-3 text-sm font-bold text-gray-700">{item.crm_responsavel || '-'}</td>
-                        <td className="px-6 py-3 text-sm font-medium text-gray-800">{item.nome_paciente}</td>
+                        <td className="px-6 py-3 text-sm font-mono text-gray-600 dark:text-slate-400">{item.numero_atendimento || '-'}</td>
+                        <td className="px-6 py-3 text-sm font-bold text-gray-700 dark:text-slate-300">{item.crm_responsavel || '-'}</td>
+                        <td className="px-6 py-3 text-sm font-medium text-gray-800 dark:text-slate-200">{item.nome_paciente}</td>
                         <td className="px-6 py-3">
                           <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border`} style={{ backgroundColor: `${CONFIG_STATUS[item.status_id]?.color}15`, color: CONFIG_STATUS[item.status_id]?.color, borderColor: `${CONFIG_STATUS[item.status_id]?.color}40`}}>
                             {CONFIG_STATUS[item.status_id]?.label || 'DESCONHECIDO'}

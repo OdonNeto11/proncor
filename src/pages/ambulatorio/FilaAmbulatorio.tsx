@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   ClipboardList, Search, CheckCircle2, AlertCircle, 
-  Hash, Phone, HelpCircle, XCircle, Edit, FileText, User 
+  Phone, HelpCircle, XCircle, Edit, FileText, User 
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -17,6 +17,7 @@ import { Modal } from '../../components/ui/Modal';
 import { Button } from '../../components/ui/Button';
 import { SelectAutocomplete } from '../../components/ui/SelectAutocomplete';
 import { Toast } from '../../components/ui/Toast';
+import { Title, Description } from '../../components/ui/Typography';
 
 // COMPONENTES COMPARTILHADOS
 import { AtendimentoCard } from '../../components/shared/AtendimentoCard';
@@ -28,16 +29,19 @@ import { ModalAtualizarStatusLayout } from '../../components/shared/ModalAtualiz
 import { maskPhone, capitalizeName } from '../../utils/formUtils';
 import { usePermissoes } from '../../hooks/usePermissoes';
 
-// RÓTULOS ATUALIZADOS COM SUPORTE AO MODO DARK
+// CONFIGURAÇÃO DE STATUS (DE/PARA)
 const STATUS_CONFIG_AMB: Record<number, { label: string, color: string, border: string, icon: any }> = {
   1: { label: 'Aguardando Agendamento', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400', border: 'border-orange-200 dark:border-orange-800/50', icon: ClipboardList },
   3: { label: 'Cancelado', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400', border: 'border-red-200 dark:border-red-800/50', icon: XCircle },
-  4: { label: 'Não Atende', color: 'bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-slate-400', border: 'border-gray-200 dark:border-slate-700', icon: HelpCircle },
-  5: { label: 'Finalizado', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', border: 'border-emerald-200 dark:border-emerald-800/50', icon: CheckCircle2 },
+  
+  // NOVOS STATUS (SGFH)
+  8: { label: 'Agendado', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', border: 'border-emerald-200 dark:border-emerald-800/50', icon: CheckCircle2 },
+  9: { label: 'Plano não Atendido', color: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400', border: 'border-rose-200 dark:border-rose-800/50', icon: XCircle },
+  10: { label: 'Sem Especialidade', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400', border: 'border-purple-200 dark:border-purple-800/50', icon: AlertCircle },
+  11: { label: 'Sem Contato', color: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400', border: 'border-slate-200 dark:border-slate-700', icon: HelpCircle },
 };
 
 export function Ambulatorio() {
-  const { user } = useAuth();
   const { podeVerAmb, podeCriarAmb, podeGerenciarStatusAmb, podeEditarAmb, podeCancelarAmb } = usePermissoes();
 
   const [lista, setLista] = useState<any[]>([]);
@@ -57,21 +61,16 @@ export function Ambulatorio() {
     observacoes: ''
   });
 
-  if (!podeVerAmb) {
-    return (
-      <div className="max-w-4xl mx-auto text-center py-20 bg-white dark:bg-slate-900 rounded-xl border border-red-100 dark:border-red-900/30 mt-8">
-        <AlertCircle size={48} className="text-red-400 dark:text-red-500 mx-auto mb-4" />
-        <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Acesso Negado</h2>
-        <p className="text-slate-500 dark:text-slate-400">Você não tem permissão para visualizar a fila do Ambulatório.</p>
-        <Link to="/" className="inline-block mt-8 px-6 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">Voltar</Link>
-      </div>
-    );
-  }
-
   const fetchEncaminhamentos = async () => {
     setLoading(true);
     try {
-      const statusMap = { pendentes: [1], sucesso: [5], perdidos: [3, 4] };
+      // Mapeamento baseado nos novos IDs e agrupamentos (singular 'perdido')
+      const statusMap = { 
+        pendentes: [1], 
+        sucesso: [8], 
+        perdidos: [3, 9, 10, 11] 
+      };
+
       const { data, error } = await supabase
         .from('encaminhamentos_ambulatorio')
         .select('*, status:status_id(*)')
@@ -89,19 +88,6 @@ export function Ambulatorio() {
 
   useEffect(() => { fetchEncaminhamentos(); }, [filtroTab]);
 
-  const abrirDetalhes = (item: any) => {
-    setSelectedEnc(item);
-    setViewMode('details');
-    setErrorMsg('');
-    setEditForm({
-      numero_atendimento: item.numero_atendimento || '',
-      nome_paciente: item.nome_paciente || '',
-      telefone_paciente: item.telefone_paciente || '',
-      plano_saude: item.plano_saude || '',
-      observacoes: item.observacoes || ''
-    });
-  };
-
   const atualizarStatus = async (novoStatusId: number, msg: string) => {
     try {
       const { error } = await supabase
@@ -117,6 +103,19 @@ export function Ambulatorio() {
     } catch (error) {
       alert('Erro ao atualizar.');
     }
+  };
+
+  const abrirDetalhes = (item: any) => {
+    setSelectedEnc(item);
+    setViewMode('details');
+    setErrorMsg('');
+    setEditForm({
+      numero_atendimento: item.numero_atendimento || '',
+      nome_paciente: item.nome_paciente || '',
+      telefone_paciente: item.telefone_paciente || '',
+      plano_saude: item.plano_saude || '',
+      observacoes: item.observacoes || ''
+    });
   };
 
   const confirmarEdicao = async () => {
@@ -146,10 +145,11 @@ export function Ambulatorio() {
     item.crm_solicitante?.includes(busca)
   );
 
+  if (!podeVerAmb) return null; // Tratado no layout ou superior
+
   return (
     <div className="max-w-6xl mx-auto animate-in fade-in duration-500 pb-20">
       
-      {/* NAVEGAÇÃO SUPERIOR */}
       <div className="flex items-center gap-6 mb-8 border-b border-slate-200 dark:border-slate-800 px-2">
         {podeCriarAmb && (
           <Link to="/novo-ambulatorio" className={`pb-3 text-sm font-bold border-b-2 transition-colors ${window.location.pathname === '/novo-ambulatorio' ? 'border-purple-600 dark:border-purple-500 text-purple-600 dark:text-purple-400' : 'border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600'}`}>
@@ -164,14 +164,12 @@ export function Ambulatorio() {
       <Card className="mb-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            {/* TÍTULOS E TEXTOS DARKEADOS */}
-            <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+            <Title size="2xl" className="flex items-center gap-2">
               <ClipboardList className="text-purple-600 dark:text-purple-400" /> Fila do Ambulatório
-            </h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">Gerencie os pedidos de agendamento.</p>
+            </Title>
+            <Description size="sm">Gerencie os pedidos de agendamento do SGFH.</Description>
           </div>
           
-          {/* ABAS DE FILTRO DARKEADAS */}
           <div className="flex gap-2 bg-slate-100 dark:bg-slate-800/50 p-1 rounded-xl border border-slate-200 dark:border-slate-700/50">
             {(['pendentes', 'sucesso', 'perdidos'] as const).map((t) => (
               <button 
@@ -185,7 +183,6 @@ export function Ambulatorio() {
           </div>
         </div>
         
-        {/* BUSCA */}
         <div className="mt-6 border-t border-slate-50 dark:border-slate-800/50 pt-6">
           <Input 
             value={busca} 
@@ -196,19 +193,17 @@ export function Ambulatorio() {
         </div>
       </Card>
 
-      {/* ESTADOS DE CARREGAMENTO E VAZIO */}
       {loading ? (
-        <div className="text-center py-20 text-slate-400 dark:text-slate-500 font-bold">Buscando registros...</div>
+        <div className="text-center py-20 font-bold"><Description>Buscando registros...</Description></div>
       ) : listaFiltrada.length === 0 ? (
         <Card className="text-center py-20 border-dashed border-slate-300 dark:border-slate-700 shadow-none bg-transparent">
             <AlertCircle size={48} className="text-slate-300 dark:text-slate-600 mx-auto mb-4" />
-            <p className="text-slate-500 dark:text-slate-400 font-medium">Nenhum registro encontrado.</p>
+            <Description className="font-medium">Nenhum registro encontrado para esta aba.</Description>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {listaFiltrada.map((item: any) => {
             const statusConfig = STATUS_CONFIG_AMB[item.status_id] || STATUS_CONFIG_AMB[1];
-            
             return (
               <AtendimentoCard 
                 key={item.id}
@@ -232,7 +227,6 @@ export function Ambulatorio() {
         </div>
       )}
 
-      {/* MODAL DE DETALHES */}
       {selectedEnc && viewMode === 'details' && (
         <ModalDetalhesLayout 
           isOpen={true}
@@ -268,51 +262,59 @@ export function Ambulatorio() {
         />
       )}
 
-      {/* MODAL DE EDIÇÃO */}
-      {selectedEnc && viewMode === 'edit' && (
-        <Modal isOpen={true} onClose={() => setViewMode('details')} title={<span className="text-purple-600 dark:text-purple-400">Editando Encaminhamento</span>}>
-          <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
-            <Input label="Nº Atendimento" value={editForm.numero_atendimento} onChange={e => setEditForm({ ...editForm, numero_atendimento: e.target.value.replace(/\D/g, '') })} maxLength={10} />
-            <Input label="Paciente" value={editForm.nome_paciente} onChange={e => setEditForm({ ...editForm, nome_paciente: capitalizeName(e.target.value) })} />
-            <Input label="WhatsApp" value={editForm.telefone_paciente} onChange={e => setEditForm({ ...editForm, telefone_paciente: maskPhone(e.target.value) })} maxLength={15} />
-            
-            <div className="relative z-50">
-              <SelectAutocomplete 
-                label="Plano de Saúde" 
-                tableName="planos_saude" 
-                columnName="nome" 
-                value={editForm.plano_saude} 
-                onChange={val => setEditForm({ ...editForm, plano_saude: val })} 
-              />
-            </div>
+{/* MODAL DE ATUALIZAÇÃO DE STATUS - 100% NORMALIZADO COM FUNDO */}
+{selectedEnc && viewMode === 'update_status' && (
+  <ModalAtualizarStatusLayout 
+    isOpen 
+    onClose={() => setViewMode('details')} 
+    nomePaciente={selectedEnc.nome_paciente} 
+    theme="purple"
+  >
+    <div className="flex flex-col gap-3">
+      {/* SUCESSO - VERDE */}
+      <Button 
+        variant="success" 
+        fullWidth 
+        justify="start" 
+        onClick={() => atualizarStatus(8, 'Agendado!')}
+      >
+        <CheckCircle2 size={18} /> Agendado
+      </Button>
+      
+      {/* PERDA OPERACIONAL - CINZA (SECONDARY) */}
+      <Button 
+        variant="secondary" 
+        fullWidth 
+        justify="start" 
+        onClick={() => atualizarStatus(11, 'Não conseguimos contato.')}
+      >
+        <HelpCircle size={18} /> Não conseguimos contato
+      </Button>
 
-            <Textarea label="Observações" value={editForm.observacoes} onChange={e => setEditForm({ ...editForm, observacoes: e.target.value })} />
-            
-            {errorMsg && <p className="text-red-500 text-xs font-bold">{errorMsg}</p>}
-            
-            <div className="flex gap-2 pt-4 border-t border-slate-100 dark:border-slate-800 mt-4">
-              <Button variant="secondary" fullWidth onClick={() => setViewMode('details')}>Voltar</Button>
-              <Button variant="primary" fullWidth onClick={confirmarEdicao}>Salvar</Button>
-            </div>
-          </div>
-        </Modal>
-      )}
+      {/* PERDA TÉCNICA (PLANO) - VERMELHO (DANGER) */}
+      <Button 
+        variant="danger" 
+        fullWidth 
+        justify="start" 
+        onClick={() => atualizarStatus(9, 'Plano não atendido.')}
+      >
+        <XCircle size={18} /> Não atendemos o plano
+      </Button>
 
-      {/* MODAL DE ATUALIZAÇÃO DE STATUS PADRONIZADO */}
-      {selectedEnc && viewMode === 'update_status' && (
-        <ModalAtualizarStatusLayout isOpen onClose={() => setViewMode('details')} nomePaciente={selectedEnc.nome_paciente} theme="purple">
-          <div className="flex flex-col gap-2">
-            <Button variant="success" fullWidth justify="start" onClick={() => atualizarStatus(5, 'Finalizado!')}>
-              <CheckCircle2 size={18} /> Finalizado
-            </Button>
-            <Button variant="secondary" fullWidth justify="start" onClick={() => atualizarStatus(4, 'Não atende.')}>
-              <HelpCircle size={18} /> Não Atende
-            </Button>
-          </div>
-        </ModalAtualizarStatusLayout>
-      )}
+      {/* PERDA TÉCNICA (ESPECIALIDADE) - ROXO (ESTILO PERSONALIZADO SOBRE COMPONENTE) */}
+      <Button 
+        variant="secondary" 
+        fullWidth 
+        justify="start" 
+        className="bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:hover:bg-purple-900/50"
+        onClick={() => atualizarStatus(10, 'Sem especialidade.')}
+      >
+        <AlertCircle size={18} /> Não temos a especialidade
+      </Button>
+    </div>
+  </ModalAtualizarStatusLayout>
+)}
 
-      {/* MODAL DE CONFIRMAÇÃO DE CANCELAMENTO */}
       {selectedEnc && viewMode === 'confirm_cancel' && (
         <ModalConfirmacaoCancelamentoLayout isOpen onClose={() => setViewMode('details')} onConfirm={() => atualizarStatus(3, 'Cancelado.')} nomePaciente={selectedEnc.nome_paciente} tipoAtendimento="encaminhamento" />
       )}

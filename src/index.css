@@ -2,12 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
-/* --- CUSTOMIZAÇÃO DO DATEPICKER --- */
+/* CORREÇÃO DO FUNDO ZUMBI */
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-300;
+  }
+}
+
+/* --- CUSTOMIZAÇÃO DO DATEPICKER (MODO CLARO) --- */
 .react-datepicker-wrapper {
   width: 100%;
 }
 
-/* Aumentei o z-index para ficar acima do cabeçalho */
 .react-datepicker-popper {
   z-index: 9999 !important;
 }
@@ -47,28 +53,26 @@
   line-height: 2rem !important;
   margin: 0.2rem !important;
   border-radius: 0.5rem !important;
+  color: #334155 !important;
 }
 
-/* Dia Selecionado (Normal) */
 .react-datepicker__day--selected, 
 .react-datepicker__day--keyboard-selected {
-  background-color: #2563eb !important; /* Azul forte (blue-600) */
+  background-color: #2563eb !important; 
   color: white !important;
   font-weight: bold !important;
 }
 
-/* Dia Selecionado (Ao passar o mouse) */
 .react-datepicker__day--selected:hover,
 .react-datepicker__day--keyboard-selected:hover {
-  background-color: #1d4ed8 !important; /* Azul mais escuro (blue-700) */
+  background-color: #1d4ed8 !important; 
   color: white !important;
 }
 
-/* --- CORREÇÃO PEDIDA: Dia Comum (Ao passar o mouse) --- */
 .react-datepicker__day:hover {
-  background-color: #dbeafe !important; /* Azul um pouco mais escuro (blue-100) antes era (blue-50) */
-  color: #1e293b !important; /* Texto escuro */
-  font-weight: bold !important; /* Negrito ao passar o mouse */
+  background-color: #dbeafe !important; 
+  color: #1e293b !important; 
+  font-weight: bold !important; 
 }
 
 /* Estilo do Input do DatePicker */
@@ -97,13 +101,76 @@
   font-weight: bold !important;
 }
 
-/* Ajuste fino para horários hover */
 .react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list li.react-datepicker__time-list-item--selected:hover {
   background-color: #1d4ed8 !important;
 }
 
-/* Horário comum hover */
 .react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list li.react-datepicker__time-list-item:hover {
   background-color: #dbeafe !important;
   font-weight: bold !important;
+  color: #1e293b !important;
+}
+
+/* --- CUSTOMIZAÇÃO DO DATEPICKER (MODO ESCURO) --- */
+.dark .react-datepicker {
+  background-color: #0f172a !important; /* bg-slate-900 */
+  border-color: #1e293b !important; /* border-slate-800 */
+}
+
+.dark .react-datepicker__header {
+  background-color: #1e293b !important; /* bg-slate-800 */
+  border-color: #334155 !important; /* border-slate-700 */
+}
+
+.dark .react-datepicker__current-month,
+.dark .react-datepicker-time__header {
+  color: #f8fafc !important; /* text-slate-50 */
+}
+
+.dark .react-datepicker__day-name {
+  color: #94a3b8 !important; /* text-slate-400 */
+}
+
+.dark .react-datepicker__day {
+  color: #cbd5e1 !important; /* text-slate-300 */
+}
+
+.dark .react-datepicker__day:hover {
+  background-color: #334155 !important; /* bg-slate-700 */
+  color: #f8fafc !important; /* text-slate-50 */
+}
+
+.dark .react-datepicker__day--selected,
+.dark .react-datepicker__day--keyboard-selected {
+  background-color: #3b82f6 !important; /* blue-500 */
+  color: white !important;
+}
+
+/* Input do DatePicker no Modo Escuro */
+.dark .custom-datepicker-input {
+  background-color: #0f172a !important; /* bg-slate-900 */
+  border-color: #1e293b !important; /* border-slate-800 */
+  color: #f8fafc !important; /* text-slate-50 */
+}
+
+.dark .custom-datepicker-input:focus {
+  background-color: #020617 !important; /* bg-slate-950 */
+  border-color: #3b82f6 !important; /* blue-500 */
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+/* Horários no Modo Escuro */
+.dark .react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list li.react-datepicker__time-list-item {
+  background-color: #0f172a !important;
+  color: #cbd5e1 !important;
+}
+
+.dark .react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list li.react-datepicker__time-list-item:hover {
+  background-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+.dark .react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list li.react-datepicker__time-list-item--selected {
+  background-color: #3b82f6 !important;
+  color: white !important;
 }

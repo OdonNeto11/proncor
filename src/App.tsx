@@ -5,13 +5,17 @@ import { Layout } from './components/Layout';
 // CAMINHOS GEOGRÁFICOS E ARQUITETURA ATUALIZADA
 import { Login } from './pages/core/Login';
 import { Home } from './pages/core/Home';
-import { Admin } from './pages/administracao/Admin'; // Nova localização da ponte administrativa
+import { Admin } from './pages/administracao/Admin';
 import { Agenda } from './pages/pa/Agenda';
 import { Agendar } from './pages/pa/Agendar';
 import { Ambulatorio as FilaAmbulatorio } from './pages/ambulatorio/FilaAmbulatorio'; 
 import { NovoAmbulatorio } from './pages/ambulatorio/NovoAmbulatorio';
 
+// CONTEXTOS E COMPONENTES UI
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { Button } from './components/ui/Button';
+import { Description } from './components/ui/Typography';
 
 function AuthGuard({ children, permission, requireProfile = true }: { children: React.ReactNode, permission?: string, requireProfile?: boolean }) {
   const { user, roleId, permissoes, loading } = useAuth();
@@ -35,14 +39,20 @@ function AuthGuard({ children, permission, requireProfile = true }: { children: 
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 space-y-6">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-slate-950 transition-colors duration-500 space-y-6">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-500"></div>
         {isHanging && (
           <div className="text-center animate-in fade-in duration-500 max-w-sm px-4">
-            <p className="text-slate-600 mb-4 font-medium">Sua sessão expirou.</p>
-            <button onClick={forceClearCache} className="w-full px-4 py-3 bg-blue-100 text-blue-700 rounded-xl hover:bg-blue-200 hover:text-blue-800 font-bold transition-colors shadow-sm">
+            <Description className="!mb-4 !font-medium text-slate-600 dark:text-slate-300">
+              Sua sessão expirou.
+            </Description>
+            <Button 
+              onClick={forceClearCache} 
+              variant="primary" 
+              fullWidth
+            >
               Atualizar Sessão
-            </button>
+            </Button>
           </div>
         )}
       </div>
@@ -58,63 +68,65 @@ function AuthGuard({ children, permission, requireProfile = true }: { children: 
 
 export default function App() {
   return (
-    <AuthProvider>
-      <Routes>
-        <Route path="/login" element={<Login />} />
+    <ThemeProvider>
+      <AuthProvider>
+        <Routes>
+          <Route path="/login" element={<Login />} />
 
-        <Route path="/" element={
-          <AuthGuard requireProfile={false}>
-            <Layout>
-              <Home />
-            </Layout>
-          </AuthGuard>
-        } />
+          <Route path="/" element={
+            <AuthGuard requireProfile={false}>
+              <Layout>
+                <Home />
+              </Layout>
+            </AuthGuard>
+          } />
 
-        {/* PRONTO ATENDIMENTO */}
-        <Route path="/agenda" element={
-          <AuthGuard>
-            <Layout>
-              <Agenda />
-            </Layout>
-          </AuthGuard>
-        } />
+          {/* PRONTO ATENDIMENTO */}
+          <Route path="/agenda" element={
+            <AuthGuard>
+              <Layout>
+                <Agenda />
+              </Layout>
+            </AuthGuard>
+          } />
 
-        <Route path="/novo" element={
-          <AuthGuard>
-            <Layout>
-              <Agendar />
-            </Layout>
-          </AuthGuard>
-        } />
+          <Route path="/novo" element={
+            <AuthGuard>
+              <Layout>
+                <Agendar />
+              </Layout>
+            </AuthGuard>
+          } />
 
-        {/* ADMINISTRAÇÃO (HUB, DASHBOARDS E HORÁRIOS) */}
-        <Route path="/admin" element={
-          <AuthGuard>
-            <Layout>
-              <Admin />
-            </Layout>
-          </AuthGuard>
-        } />
+          {/* ADMINISTRAÇÃO (HUB, DASHBOARDS E HORÁRIOS) */}
+          <Route path="/admin" element={
+            <AuthGuard>
+              <Layout>
+                <Admin />
+              </Layout>
+            </AuthGuard>
+          } />
 
-        {/* AMBULATÓRIO - PRONCOR */}
-        <Route path="/novo-ambulatorio" element={
-          <AuthGuard>
-            <Layout>
-              <NovoAmbulatorio />
-            </Layout>
-          </AuthGuard>
-        } />
+          {/* AMBULATÓRIO - PRONCOR */}
+          <Route path="/novo-ambulatorio" element={
+            <AuthGuard>
+              <Layout>
+                <NovoAmbulatorio />
+              </Layout>
+            </AuthGuard>
+          } />
 
-        <Route path="/ambulatorio" element={
-          <AuthGuard>
-            <Layout>
-              <FilaAmbulatorio />
-            </Layout>
-          </AuthGuard>
-        } />
+          <Route path="/ambulatorio" element={
+            <AuthGuard>
+              <Layout>
+                <FilaAmbulatorio />
+              </Layout>
+            </AuthGuard>
+          } />
 
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </AuthProvider>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
