@@ -91,11 +91,11 @@ export function NovoAmbulatorio() {
     setLoading(true);
     setErrorMsg('');
 
-    if (!formData.nome_paciente.trim() || !formData.numero_atendimento.trim() || !formData.plano_saude.trim() || !formData.telefone_paciente.trim()) {
-      setErrorMsg('Por favor, preencha todos os campos obrigatórios.');
-      setLoading(false);
-      return;
-    }
+if (!formData.nome_paciente.trim() || !formData.plano_saude.trim() || !formData.telefone_paciente.trim()) {
+  setErrorMsg('Por favor, preencha todos os campos obrigatórios.');
+  setLoading(false);
+  return;
+}
 
     const examesPreenchidos = exames.filter(e => e.trim() !== '');
     if (examesPreenchidos.length === 0) {
@@ -163,8 +163,18 @@ export function NovoAmbulatorio() {
         <form onSubmit={handleSubmit} className="space-y-6 p-6" noValidate>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Input label="Nome do Paciente" name="nome_paciente" value={formData.nome_paciente} onChange={handleChange} icon={<User size={20} />} required />
-            <Input label="Nº do Atendimento" name="numero_atendimento" value={formData.numero_atendimento} onChange={(e) => { const val = e.target.value.replace(/\D/g, ""); setFormData(prev => ({ ...prev, numero_atendimento: val })); }} icon={<Hash size={20} />} maxLength={10} required />
-          </div>
+<Input 
+  label="Nº do Atendimento" 
+  name="numero_atendimento" 
+  value={formData.numero_atendimento} 
+  onChange={(e) => { 
+    const val = e.target.value.replace(/\D/g, ""); 
+    setFormData(prev => ({ ...prev, numero_atendimento: val })); 
+  }} 
+  icon={<Hash size={20} />} 
+  maxLength={10} 
+  // Remova o 'required' daqui se ele existir
+/>          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Input label="Telefone / WhatsApp" name="telefone_paciente" value={formData.telefone_paciente} onChange={handlePhoneChange} placeholder="(xx) xxxxx-xxxx" icon={<Phone size={20} />} maxLength={15} required />
