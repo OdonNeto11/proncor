@@ -432,8 +432,12 @@ export function Agenda() {
       {selectedAgendamento && viewMode === 'reschedule' && (
         <Modal isOpen={true} onClose={() => setViewMode('details')} title={<span className="text-orange-600 dark:text-orange-400">Reagendamento</span>} maxWidth="2xl">
            <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
-              <div className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-xl border border-orange-100"><p className="text-sm text-orange-800 text-center font-bold">Selecione a nova data e horário</p></div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+{/* AVISO DE INSTRUÇÃO COM BRILHO NO MODO DARK */}
+<div className="bg-orange-50 dark:bg-orange-500/10 p-4 rounded-xl border border-orange-100 dark:border-orange-500/30 shadow-sm dark:shadow-[0_0_15px_rgba(249,115,22,0.1)]">
+    <p className="text-sm text-orange-800 dark:text-orange-400 text-center font-bold tracking-wide uppercase">
+        Selecione a nova data e horário
+    </p>
+</div>              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                       <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Nova Data</label>
                       <div className="relative">
