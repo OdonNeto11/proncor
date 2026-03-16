@@ -14,21 +14,21 @@ import { Input } from '../../components/ui/Input';
 import { Textarea } from '../../components/ui/Textarea';
 import { Modal } from '../../components/ui/Modal';
 import { Button } from '../../components/ui/Button';
-import { SelectAutocomplete } from '../../components/ui/SelectAutocomplete';
 import { Toast } from '../../components/ui/Toast';
 import { Title, Description } from '../../components/ui/Typography';
+import { DatePicker } from '../../components/ui/DatePicker'; // <--- NOVO COMPONENTE
 
 // COMPONENTES COMPARTILHADOS
 import { AtendimentoCard } from '../../components/shared/AtendimentoCard';
 import { ModalDetalhesLayout } from '../../components/shared/ModalDetalhesLayout';
 import { ModalConfirmacaoCancelamentoLayout } from '../../components/shared/ModalConfirmacaoCancelamentoLayout';
 import { ModalAtualizarStatusLayout } from '../../components/shared/ModalAtualizarStatusLayout';
+import { ModalConfirmacaoStatusLayout } from '../../components/shared/ModalConfirmacaoStatusLayout';
 
 // FUNÇÕES UTILITÁRIAS E PERMISSÕES
 import { maskPhone, capitalizeName } from '../../utils/formUtils';
 import { usePermissoes } from '../../hooks/usePermissoes';
 
-// CONFIGURAÇÃO DE STATUS CORRIGIDA
 const STATUS_CONFIG_AMB: Record<number, { label: string, color: string, border: string, icon: any }> = {
   13: { label: 'Aguardando Agendamento', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400', border: 'border-orange-200 dark:border-orange-800/50', icon: AlertCircle },
   3: { label: 'Cancelado', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400', border: 'border-red-200 dark:border-red-800/50', icon: XCircle },
@@ -46,7 +46,12 @@ export function Ambulatorio() {
   const [busca, setBusca] = useState('');
   const [filtroTab, setFiltroTab] = useState<'todos' | 'pendentes' | 'sucesso' | 'perdidos'>('pendentes');
   const [selectedEnc, setSelectedEnc] = useState<any | null>(null);
-  const [viewMode, setViewMode] = useState<'list' | 'details' | 'edit' | 'update_status' | 'confirm_cancel'>('list');
+  
+  const [viewMode, setViewMode] = useState<'list' | 'details' | 'edit' | 'update_status' | 'confirm_status' | 'confirm_cancel' | 'agendar_exames'>('list');
+  
+  const [statusSelecionado, setStatusSelecionado] = useState<{id: number, msg: string, label: string} | null>(null);
+  const [examesAgendamento, setExamesAgendamento] = useState<any[]>([]);
+  
   const [showToast, setShowToast] = useState({ visible: false, message: '' });
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -58,14 +63,14 @@ export function Ambulatorio() {
     observacoes: ''
   });
 
-const fetchEncaminhamentos = async () => {
+  const fetchEncaminhamentos = async () => {
     setLoading(true);
     try {
       const statusMap = { 
         pendentes: [13], 
         sucesso: [9], 
         perdidos: [3, 10, 11, 12],
-        todos: [] // Array vazio para identificar a opção "Todos"
+        todos: [] 
       };
 
       let query = supabase
@@ -73,7 +78,6 @@ const fetchEncaminhamentos = async () => {
         .select('*, status:status_id(*)')
         .order('created_at', { ascending: false });
       
-      // Só aplica o filtro de status se NÃO for a aba "todos"
       if (filtroTab !== 'todos') {
         query = query.in('status_id', statusMap[filtroTab]);
       }
@@ -101,9 +105,55 @@ const fetchEncaminhamentos = async () => {
       setShowToast({ visible: true, message: msg });
       setViewMode('list');
       setSelectedEnc(null);
+      setStatusSelecionado(null);
       fetchEncaminhamentos();
     } catch (error) {
       alert('Erro ao atualizar.');
+    }
+  };
+
+  const prepararAgendamento = async () => {
+    setViewMode('agendar_exames');
+    try {
+      const { data, error } = await supabase
+        .from('encaminhamento_exames')
+        .select('id, nome_customizado, data_agendamento, exames_especialidades(nome)')
+        .eq('encaminhamento_id', selectedEnc.id);
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        setExamesAgendamento(data.map(d => ({
+          id: d.id,
+          nome: (d.exames_especialidades as any)?.nome || d.nome_customizado || 'Exame/Especialidade',
+          data_agendamento: d.data_agendamento || ''
+        })));
+      } else {
+        setExamesAgendamento((selectedEnc.exames_especialidades || []).map((nome: string, idx: number) => ({
+          id: `legacy-${idx}`,
+          nome: nome,
+          data_agendamento: ''
+        })));
+      }
+    } catch (e) {
+      console.error('Erro ao buscar exames do encaminhamento', e);
+    }
+  };
+
+  const confirmarAgendamentoComDatas = async () => {
+    try {
+      const updates = examesAgendamento
+        .filter(ex => typeof ex.id === 'number')
+        .map(ex => 
+          supabase.from('encaminhamento_exames')
+            .update({ data_agendamento: ex.data_agendamento || null })
+            .eq('id', ex.id)
+        );
+      
+      await Promise.all(updates);
+      await atualizarStatus(9, 'Datas registradas e agendamento confirmado!');
+    } catch (error) {
+      alert('Erro ao salvar as datas de agendamento.');
     }
   };
 
@@ -111,6 +161,7 @@ const fetchEncaminhamentos = async () => {
     setSelectedEnc(item);
     setViewMode('details');
     setErrorMsg('');
+    setStatusSelecionado(null);
     setEditForm({
       numero_atendimento: item.numero_atendimento || '',
       nome_paciente: item.nome_paciente || '',
@@ -182,17 +233,17 @@ const fetchEncaminhamentos = async () => {
               className="!h-10"
             />
           </div>
-<div className="flex w-full lg:w-auto bg-slate-100 dark:bg-slate-800/50 p-1 rounded-xl border border-slate-200 dark:border-slate-700/50 overflow-x-auto">
-  {(['todos', 'pendentes', 'sucesso', 'perdidos'] as const).map((t) => (
-    <button 
-      key={t}
-      onClick={() => setFiltroTab(t)} 
-      className={`flex-1 lg:flex-none whitespace-nowrap px-6 py-2 rounded-lg text-sm font-bold transition-all ${filtroTab === t ? 'bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
-    >
-      {t === 'todos' ? 'Todos' : t === 'pendentes' ? 'Pendentes' : t === 'sucesso' ? 'Agendados' : 'Perdidos'}
-    </button>
-  ))}
-</div>
+          <div className="flex w-full lg:w-auto bg-slate-100 dark:bg-slate-800/50 p-1 rounded-xl border border-slate-200 dark:border-slate-700/50 overflow-x-auto">
+            {(['todos', 'pendentes', 'sucesso', 'perdidos'] as const).map((t) => (
+              <button 
+                key={t}
+                onClick={() => setFiltroTab(t)} 
+                className={`flex-1 lg:flex-none whitespace-nowrap px-6 py-2 rounded-lg text-sm font-bold transition-all ${filtroTab === t ? 'bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+              >
+                {t === 'todos' ? 'Todos' : t === 'pendentes' ? 'Pendentes' : t === 'sucesso' ? 'Agendados' : 'Perdidos'}
+              </button>
+            ))}
+          </div>
         </div>
       </Card>
 
@@ -264,7 +315,6 @@ const fetchEncaminhamentos = async () => {
         />
       )}
 
-      {/* MODAL DE ATUALIZAÇÃO DE STATUS - IDS CORRIGIDOS */}
       {selectedEnc && viewMode === 'update_status' && (
         <ModalAtualizarStatusLayout 
           isOpen 
@@ -273,23 +323,74 @@ const fetchEncaminhamentos = async () => {
           theme="purple"
         >
           <div className="flex flex-col gap-3">
-            <Button variant="success" fullWidth justify="start" onClick={() => atualizarStatus(9, 'Agendamento confirmado!')}>
+            <Button variant="success" fullWidth justify="start" onClick={prepararAgendamento}>
               <CheckCircle2 size={18} /> Agendado
             </Button>
             
-            <Button variant="rose" fullWidth justify="start" onClick={() => atualizarStatus(10, 'Plano não atendido registrado.')}>
+            <Button variant="rose" fullWidth justify="start" onClick={() => { setStatusSelecionado({ id: 10, msg: 'Plano não atendido registrado.', label: 'Não atendemos o plano' }); setViewMode('confirm_status'); }}>
               <ShieldOff size={18} /> Não atendemos o plano
             </Button>
 
-            <Button variant="amber" fullWidth justify="start" onClick={() => atualizarStatus(11, 'Falta de especialidade registrada.')}>
+            <Button variant="amber" fullWidth justify="start" onClick={() => { setStatusSelecionado({ id: 11, msg: 'Falta de especialidade registrada.', label: 'Não temos a especialidade' }); setViewMode('confirm_status'); }}>
               <AlertCircle size={18} /> Não temos a especialidade
             </Button>
             
-            <Button variant="secondary" fullWidth justify="start" onClick={() => atualizarStatus(12, 'Falha de contato registrada.')}>
+            <Button variant="secondary" fullWidth justify="start" onClick={() => { setStatusSelecionado({ id: 12, msg: 'Falha de contato registrada.', label: 'Não conseguimos contato' }); setViewMode('confirm_status'); }}>
               <HelpCircle size={18} /> Não conseguimos contato
             </Button>
           </div>
         </ModalAtualizarStatusLayout>
+      )}
+
+      {/* NOVA TELA DE LANÇAR AS DATAS USANDO O DATEPICKER BONITO */}
+      {selectedEnc && viewMode === 'agendar_exames' && (
+        <Modal isOpen onClose={() => setViewMode('update_status')} title={<span className="text-emerald-600 dark:text-emerald-500 font-bold text-lg">Datas de Agendamento</span>}>
+          <div className="p-4 space-y-4 animate-in zoom-in-95 duration-200">
+            <Description className="text-center mb-6">
+              Informe a data em que cada procedimento foi agendado para <strong className="text-emerald-600 dark:text-emerald-400">{selectedEnc.nome_paciente}</strong>.
+            </Description>
+
+            {/* AJUSTE AQUI: Tirei o overflow-y-auto e coloquei um min-h para o calendário sempre caber */}
+            <div className="space-y-3 min-h-[380px] overflow-visible pb-10">
+              {examesAgendamento.map((exame, index) => (
+                <div 
+                  key={exame.id} 
+                  className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700/50 flex flex-col md:flex-row md:items-center gap-3 justify-between relative"
+                  style={{ zIndex: 50 - index }} // <-- ISSO AQUI FAZ O CALENDÁRIO 1 SOBREPOR O CAMPO 2
+                >
+                  <span className="text-sm font-bold text-slate-700 dark:text-slate-300 flex-1">{exame.nome}</span>
+                  <div className="w-full md:w-48 flex-shrink-0">
+                    <DatePicker 
+                      value={exame.data_agendamento} 
+                      onChange={(e) => {
+                        const novos = [...examesAgendamento];
+                        novos[index].data_agendamento = e.target.value;
+                        setExamesAgendamento(novos);
+                      }} 
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-3 pt-6 border-t border-slate-100 dark:border-slate-800 mt-2">
+              <Button variant="secondary" fullWidth onClick={() => setViewMode('update_status')}>Voltar</Button>
+              <Button variant="success" fullWidth onClick={confirmarAgendamentoComDatas}>Confirmar Agendamento</Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {selectedEnc && viewMode === 'confirm_status' && statusSelecionado && (
+        <ModalConfirmacaoStatusLayout 
+          isOpen={true}
+          onClose={() => setViewMode('update_status')}
+          onConfirm={() => atualizarStatus(statusSelecionado.id, statusSelecionado.msg)}
+          nomePaciente={selectedEnc.nome_paciente}
+          statusNome={statusSelecionado.label}
+          tipoStatus={statusSelecionado.id === 9 ? 'sucesso' : 'neutro'}
+          theme="purple"
+        />
       )}
 
       {selectedEnc && viewMode === 'confirm_cancel' && (

@@ -1,90 +1,130 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
-import { normalizeString } from '../../utils/stringUtils';
-import { Search } from 'lucide-react';
-import { Input } from './Input';
+import { ChevronDown, Search } from 'lucide-react';
 
-interface Props {
+interface SelectAutocompleteProps {
+  label?: string;
+  tableName: string;
+  columnName: string;
   value: string;
-  onChange: (val: string) => void;
-  label: string;
-  tableName: string;  
-  columnName: string; 
+  onChange: (value: string) => void;
   placeholder?: string;
   required?: boolean;
-  error?: string;
 }
 
-export function SelectAutocomplete({ value, onChange, label, tableName, columnName, placeholder, required, error }: Props) {
+export function SelectAutocomplete({ 
+  label, 
+  tableName, 
+  columnName, 
+  value, 
+  onChange, 
+  placeholder = "Selecione ou digite...", 
+  required 
+}: SelectAutocompleteProps) {
+  
   const [options, setOptions] = useState<string[]>([]);
-  const [filtered, setFiltered] = useState<string[]>([]);
+  const [filteredOptions, setFilteredOptions] = useState<string[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+  const [inputValue, setInputValue] = useState(value);
+  const wrapperRef = useRef<HTMLDivElement>(null);
 
+  // Busca inicial dos dados no Supabase
   useEffect(() => {
-    const fetchData = async () => {
-      const { data } = await supabase.from(tableName).select(columnName).eq('situacao', 1);
-      if (data) {
-        setOptions(data.map((item: Record<string, any>) => item[columnName]));
+    const fetchOptions = async () => {
+      const { data, error } = await supabase
+        .from(tableName)
+        .select(columnName)
+        .order(columnName);
+        
+      if (!error && data) {
+        const uniqueOptions = Array.from(new Set(data.map((item: any) => item[columnName])));
+        setOptions(uniqueOptions as string[]);
+        setFilteredOptions(uniqueOptions as string[]);
       }
     };
-    fetchData();
+    fetchOptions();
   }, [tableName, columnName]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const term = e.target.value;
-    onChange(term);
-    
-    if (term.length > 0) {
-      const normalizedTerm = normalizeString(term);
-      const matches = options.filter(opt => 
-        normalizeString(opt).includes(normalizedTerm)
-      );
-      setFiltered(matches);
-      setIsOpen(true);
-    } else {
-      setIsOpen(false);
-    }
-  };
+  // Sincroniza o valor externo com o input interno
+  useEffect(() => {
+    setInputValue(value);
+  }, [value]);
 
-  const handleBlur = () => {
-    setTimeout(() => {
-      setIsOpen(false);
-      if (value && value.trim() !== '') {
-        const match = options.find(opt => normalizeString(opt) === normalizeString(value));
-        if (match) {
-          onChange(match);
-        } else {
-          onChange('');
+  // Fecha o menu se clicar fora
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+        // Se o usuário digitou algo novo e clicou fora, a gente ACEITA esse valor
+        if (inputValue.trim() !== '' && inputValue !== value) {
+          onChange(inputValue);
         }
       }
-    }, 200);
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [inputValue, value, onChange]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const text = e.target.value;
+    setInputValue(text);
+    setIsOpen(true);
+    
+    const filtered = options.filter(opt => 
+      opt.toLowerCase().includes(text.toLowerCase())
+    );
+    setFilteredOptions(filtered);
+    
+    // Atualiza o valor externo em tempo real, permitindo texto livre
+    onChange(text);
+  };
+
+  const handleSelectOption = (option: string) => {
+    setInputValue(option);
+    onChange(option);
+    setIsOpen(false);
   };
 
   return (
-    <div className="relative w-full">
-      <Input
-        label={label}
-        required={required}
-        value={value}
-        onChange={handleInputChange}
-        onFocus={() => value.length > 0 && setIsOpen(true)}
-        onBlur={handleBlur}
-        placeholder={placeholder}
-        icon={<Search size={18} />}
-        error={error}
-      />
+    <div className="w-full flex flex-col gap-1.5 relative" ref={wrapperRef}>
+      {label && (
+        <label className="text-sm font-bold text-slate-700 dark:text-slate-300 flex gap-1">
+          {label} {required && <span className="text-red-500">*</span>}
+        </label>
+      )}
+      
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+          <Search size={18} />
+        </div>
+        
+        <input
+          type="text"
+          value={inputValue}
+          onChange={handleInputChange}
+          onFocus={() => {
+            setIsOpen(true);
+            setFilteredOptions(options);
+          }}
+          placeholder={placeholder}
+          className="w-full h-11 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-300 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all outline-none pl-10 pr-10 shadow-sm"
+        />
+        
+        <div 
+          className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 cursor-pointer hover:text-purple-500 transition-colors"
+          onClick={() => setIsOpen(!isOpen)}
+        >
+          <ChevronDown size={18} className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+        </div>
+      </div>
 
-      {isOpen && filtered.length > 0 && (
-        <ul className="absolute z-[100] w-full mt-2 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl shadow-xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
-          {filtered.map((opt, i) => (
+      {isOpen && filteredOptions.length > 0 && (
+        <ul className="absolute z-[100] w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg max-h-60 overflow-y-auto top-full animate-in fade-in slide-in-from-top-2">
+          {filteredOptions.map((opt, index) => (
             <li 
-              key={i}
-              onMouseDown={(e) => {
-                e.preventDefault(); 
-                onChange(opt);
-                setIsOpen(false);
-              }}
-              className="px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer text-sm font-bold text-slate-700 dark:text-slate-200 border-b border-slate-50 dark:border-slate-800/50 last:border-0 transition-colors"
+              key={index}
+              onClick={() => handleSelectOption(opt)}
+              className="px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-purple-50 dark:hover:bg-slate-700 cursor-pointer transition-colors border-b border-slate-100 dark:border-slate-700/50 last:border-0"
             >
               {opt}
             </li>
