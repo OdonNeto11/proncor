@@ -19,7 +19,8 @@ import { usePermissoes } from '../../hooks/usePermissoes';
 
 export function NovoAmbulatorio() {
   const { user } = useAuth();
-  const { podeCriarAmb } = usePermissoes();
+  // ADICIONADO: Extraí a permissão podeVerAmb aqui
+  const { podeCriarAmb, podeVerAmb } = usePermissoes();
   
   const [formData, setFormData] = useState({
     atendido_proncor: null as boolean | null,
@@ -187,9 +188,12 @@ export function NovoAmbulatorio() {
         <Link to="/novo-ambulatorio" className={`pb-3 text-sm font-bold border-b-2 transition-colors ${window.location.pathname === '/novo-ambulatorio' ? 'border-purple-600 dark:border-purple-500 text-purple-600 dark:text-purple-400' : 'border-transparent text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 hover:border-gray-300 dark:hover:border-slate-600'}`}>
           Novo Encaminhamento
         </Link>
-        <Link to="/ambulatorio" className={`pb-3 text-sm font-bold border-b-2 transition-colors ${window.location.pathname === '/ambulatorio' ? 'border-purple-600 dark:border-purple-500 text-purple-600 dark:text-purple-400' : 'border-transparent text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 hover:border-gray-300 dark:hover:border-slate-600'}`}>
-          Fila/Pendentes
-        </Link>
+        {/* ADICIONADO: A trava de segurança para esconder o menu da Fila se o cara não tiver a permissão */}
+        {podeVerAmb && (
+          <Link to="/ambulatorio" className={`pb-3 text-sm font-bold border-b-2 transition-colors ${window.location.pathname === '/ambulatorio' ? 'border-purple-600 dark:border-purple-500 text-purple-600 dark:text-purple-400' : 'border-transparent text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 hover:border-gray-300 dark:hover:border-slate-600'}`}>
+            Fila/Pendentes
+          </Link>
+        )}
       </div>
 
       <div className="mb-8">

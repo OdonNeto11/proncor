@@ -24,7 +24,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const nomeExibicao = profileName || (user?.email ? user.email.split('@')[0] : 'Perfil Incompleto');
 
   return (
-    <div className="min-h-screen h-[100dvh] w-full bg-slate-50 dark:bg-slate-950 flex flex-col font-sans overflow-hidden transition-colors duration-500">
+    /* REMOVIDO transition-colors e duration-500 PARA EVITAR O BUG HÍBRIDO */
+    <div className="min-h-screen h-[100dvh] w-full bg-slate-50 dark:bg-slate-950 flex flex-col font-sans overflow-hidden">
       
       <header className="bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 shadow-sm flex-none z-50 transition-colors duration-300">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -150,7 +151,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
         )}
       </header>
 
-      <main className="flex-1 overflow-y-auto overflow-x-hidden bg-slate-50 dark:bg-slate-950 scroll-smooth w-full transition-colors duration-500 flex flex-col">
+      {/* REMOVIDO transition-colors e duration-500 PARA EVITAR O BUG HÍBRIDO */}
+      <main className="flex-1 overflow-y-auto overflow-x-hidden bg-slate-50 dark:bg-slate-950 scroll-smooth w-full flex flex-col">
         <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto flex-1 w-full">
             {children}
         </div>
