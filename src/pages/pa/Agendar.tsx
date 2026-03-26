@@ -1,4 +1,4 @@
-import React, { useState, FormEvent } from 'react';
+import React, { useState, FormEvent, useEffect } from 'react';
 import { Calendar, User, Phone, FileText, Hash, Activity, AlertCircle } from 'lucide-react';
 import DatePicker, { registerLocale } from 'react-datepicker';
 import { ptBR } from 'date-fns/locale';
@@ -11,6 +11,7 @@ import { Input } from '../../components/ui/Input';
 import { Textarea } from '../../components/ui/Textarea';
 import { Card } from '../../components/ui/Card';
 import { Toast } from '../../components/ui/Toast';
+import { ToastError } from '../../components/ui/ToastError';
 import { SelectAutocomplete } from '../../components/ui/SelectAutocomplete';
 import { Title, Description, themeClasses } from '../../components/ui/Typography'; 
 import { TimeSelector } from '../../components/ui/TimeSelector';
@@ -20,20 +21,31 @@ import { FileUpload } from '../../components/ui/FileUpload';
 import { maskPhone, validateFields, capitalizeName } from '../../utils/formUtils';
 import { supabase } from '../../lib/supabase';
 import { usePermissoes } from '../../hooks/usePermissoes'; 
-
-// IMPORTANDO O NOVO HOOK INTELIGENTE
 import { useHorarios } from '../../hooks/useHorarios';
 
 registerLocale('pt-BR', ptBR);
 const OPCOES_PROCEDIMENTOS = ["Exames", "RX", "Tomografia"];
 
+// Função auxiliar para carregar o rascunho de forma síncrona
+const carregarRascunho = () => {
+  try {
+    const rascunho = localStorage.getItem('agendamento_pa_draft');
+    return rascunho ? JSON.parse(rascunho) : null;
+  } catch (e) {
+    return null;
+  }
+};
+
 export function Agendar() {
   const { podeCriarPA } = usePermissoes(); 
   
-  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
-  const [selectedTime, setSelectedTime] = useState<Date | null>(null);
+  // === RASCUNHO AUTOMÁTICO SÍNCRONO ===
+  const rascunho = carregarRascunho();
+
+  const [selectedDate, setSelectedDate] = useState<Date | null>(rascunho?.selectedDate ? new Date(rascunho.selectedDate) : new Date());
+  const [selectedTime, setSelectedTime] = useState<Date | null>(rascunho?.selectedTime ? new Date(rascunho.selectedTime) : null);
   
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState(rascunho?.formData || {
     numero_atendimento: '', 
     nome_paciente: '',
     telefone_paciente: '',
@@ -42,6 +54,7 @@ export function Agendar() {
     procedimentos: [] as string[],
     crm_responsavel: '' 
   });
+  // ====================================
 
   const [arquivos, setArquivos] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
@@ -49,14 +62,21 @@ export function Agendar() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [errorMsg, setErrorMsg] = useState(''); 
 
-  // === CONSUMINDO A INTELIGÊNCIA DO HOOK ===
+  // Salva no localStorage sempre que algo for digitado
+  useEffect(() => {
+    localStorage.setItem('agendamento_pa_draft', JSON.stringify({
+      formData,
+      selectedDate: selectedDate?.toISOString(),
+      selectedTime: selectedTime?.toISOString()
+    }));
+  }, [formData, selectedDate, selectedTime]);
+
   const { 
     horariosDisponiveis, 
     checkIsDisabled, 
     isLoadingHorarios, 
     marcarHorarioComoOcupado 
   } = useHorarios(selectedDate);
-  // ========================================
 
   const handleSelectTime = (timeStr: string) => {
     if (!selectedDate) return;
@@ -66,9 +86,14 @@ export function Agendar() {
   };
 
   const toggleProcedimento = (opcao: string) => {
-    setFormData(prev => {
+    setFormData((prev: typeof formData) => {
       const jaExiste = prev.procedimentos.includes(opcao);
-      return { ...prev, procedimentos: jaExiste ? prev.procedimentos.filter(p => p !== opcao) : [...prev.procedimentos, opcao] };
+      return { 
+        ...prev, 
+        procedimentos: jaExiste 
+          ? prev.procedimentos.filter((p: string) => p !== opcao) 
+          : [...prev.procedimentos, opcao] 
+      };
     });
   };
 
@@ -97,6 +122,7 @@ export function Agendar() {
     e.preventDefault();
     setLoading(true);
     setErrorMsg('');
+    setErrors({});
     
     const camposObrigatorios = ['numero_atendimento', 'nome_paciente', 'telefone_paciente', 'crm_responsavel'];
     const { errors: valErrors } = validateFields(formData, camposObrigatorios);
@@ -105,12 +131,16 @@ export function Agendar() {
     if (!selectedDate) novosErros.data_agendamento = 'Data obrigatória';
     if (!selectedTime) novosErros.hora_agendamento = 'Selecione um horário';
     if (formData.telefone_paciente && formData.telefone_paciente.length < 14) novosErros.telefone_paciente = 'Telefone inválido';
-    if (!formData.crm_responsavel || !/^[0-9]{4,5}$/.test(formData.crm_responsavel)) novosErros.crm_responsavel = 'Favor preencher CRM válido';
+    
+    if (!formData.crm_responsavel || !/^[0-9]{4,5}$/.test(formData.crm_responsavel)) {
+        novosErros.crm_responsavel = 'O CRM deve ter 4 ou 5 dígitos';
+    }
 
     if (Object.keys(novosErros).length > 0) {
       setErrors(novosErros);
       setErrorMsg("Por favor, preencha corretamente os campos em vermelho.");
-      setLoading(false); return;
+      setLoading(false); 
+      return; // O componente ToastError se encarrega do scroll a partir daqui
     }
 
     try {
@@ -144,7 +174,9 @@ export function Agendar() {
       setSelectedTime(null);
       setArquivos([]);
       
-      // BLOQUEIA O HORÁRIO NA TELA NA HORA, SEM PRECISAR RECARREGAR A PÁGINA
+      // Limpa o rascunho permanentemente após sucesso
+      localStorage.removeItem('agendamento_pa_draft');
+      
       marcarHorarioComoOcupado(horaFormatada);
       
     } catch (error: any) { 
@@ -165,7 +197,7 @@ export function Agendar() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto animate-in fade-in duration-500">
+    <div className="max-w-4xl mx-auto animate-in fade-in duration-500 relative">
       
       <div className="flex items-center gap-6 mb-8 border-b border-gray-200 dark:border-slate-800 px-2">
         <Link to="/novo" className="pb-3 text-sm font-bold border-b-2 border-blue-600 text-blue-600">Novo Agendamento</Link>
@@ -183,7 +215,7 @@ export function Agendar() {
       <Card>
         <form onSubmit={handleSubmit} className="space-y-6 p-6" noValidate>
           <div className="flex flex-col gap-6">
-            <div className="w-full">
+            <div className="w-full" id="data_agendamento">
                 <label className={`text-sm font-semibold mb-2 block ${themeClasses.text}`}>Selecione a Data <span className="text-red-500">*</span></label>
                 <div className="relative max-w-sm">
                     <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 z-10"><Calendar size={20} /></div>
@@ -205,35 +237,44 @@ export function Agendar() {
                 {errors.data_agendamento && <span className="text-xs text-red-500 mt-1 block">{errors.data_agendamento}</span>}
             </div>
 
-            <TimeSelector 
-              horarios={horariosDisponiveis}
-              selectedTime={selectedTime}
-              onSelectTime={handleSelectTime}
-              checkIsDisabled={checkIsDisabled}
-              isLoading={isLoadingHorarios}
-              error={errors.hora_agendamento}
-            />
+            <div id="hora_agendamento">
+              <TimeSelector 
+                horarios={horariosDisponiveis}
+                selectedTime={selectedTime}
+                onSelectTime={handleSelectTime}
+                checkIsDisabled={checkIsDisabled}
+                isLoading={isLoadingHorarios}
+                error={errors.hora_agendamento}
+              />
+            </div>
           </div>
 
           <div className="h-px bg-slate-100 dark:bg-slate-800 my-2"></div>
 
           <div className="space-y-6">
-            <Input label="Seu CRM" name="crm_responsavel" value={formData.crm_responsavel} onChange={(e) => setFormData({ ...formData, crm_responsavel: e.target.value.replace(/\D/g, '').slice(0, 5) })} icon={<User size={20} />} error={errors.crm_responsavel} placeholder="Apenas números (Ex: 12345)" maxLength={5} required />
-            <Input label="Número do Atendimento" name="numero_atendimento" value={formData.numero_atendimento} onChange={(e) => setFormData({ ...formData, numero_atendimento: e.target.value.replace(/\D/g, '').slice(0, 10) })} icon={<Hash size={20} />} error={errors.numero_atendimento} placeholder="Somente números" maxLength={10} required />
-            <Input label="Nome do Paciente" name="nome_paciente" value={formData.nome_paciente} onChange={(e) => setFormData({ ...formData, nome_paciente: capitalizeName(e.target.value) })} icon={<User size={20} />} error={errors.nome_paciente} required />
-            <Input label="Telefone / WhatsApp" name="telefone_paciente" value={formData.telefone_paciente} onChange={(e) => setFormData({ ...formData, telefone_paciente: maskPhone(e.target.value) })} placeholder="(xx) xxxxx-xxxx" maxLength={15} icon={<Phone size={20} />} error={errors.telefone_paciente} required />
-            <SelectAutocomplete label="Plano de Saúde (Opcional)" placeholder="Ex: Unimed, Cassems..." tableName="planos_saude" columnName="nome" value={formData.plano_saude} onChange={(val) => setFormData({ ...formData, plano_saude: val })} error={errors.plano_saude} />
+            <Input label="Seu CRM *" name="crm_responsavel" value={formData.crm_responsavel} onChange={(e) => setFormData({ ...formData, crm_responsavel: e.target.value.replace(/\D/g, '').slice(0, 5) })} icon={<User size={20} />} error={errors.crm_responsavel} placeholder="Apenas números (Ex: 12345)" maxLength={5} required />
+            <Input label="Número do Atendimento *" name="numero_atendimento" value={formData.numero_atendimento} onChange={(e) => setFormData({ ...formData, numero_atendimento: e.target.value.replace(/\D/g, '').slice(0, 10) })} icon={<Hash size={20} />} error={errors.numero_atendimento} placeholder="Somente números" maxLength={10} required />
+            <Input label="Nome do Paciente *" name="nome_paciente" value={formData.nome_paciente} onChange={(e) => setFormData({ ...formData, nome_paciente: capitalizeName(e.target.value) })} icon={<User size={20} />} error={errors.nome_paciente} required />
+            <Input label="Telefone / WhatsApp *" name="telefone_paciente" value={formData.telefone_paciente} onChange={(e) => setFormData({ ...formData, telefone_paciente: maskPhone(e.target.value) })} placeholder="(xx) xxxxx-xxxx" maxLength={15} icon={<Phone size={20} />} error={errors.telefone_paciente} required />
+            <SelectAutocomplete label="Plano de Saúde (Opcional)" placeholder="Ex: Unimed, Cassems..." tableName="planos_saude" columnName="nome" value={formData.plano_saude} onChange={(val) => setFormData({ ...formData, plano_saude: val })} />
             <Textarea label="Diagnóstico / Condutas" name="diagnostico" value={formData.diagnostico} onChange={(e) => setFormData({ ...formData, diagnostico: e.target.value })} rows={3} icon={<FileText size={20} />} />
             
             <ProcedimentosSelector opcoes={OPCOES_PROCEDIMENTOS} selecionados={formData.procedimentos} onToggle={toggleProcedimento} />
             <FileUpload arquivos={arquivos} onFileChange={handleFileChange} onRemoveArquivo={removerArquivo} />
           </div>
 
-          {errorMsg && (<div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm flex items-center gap-3"><AlertCircle size={20} /><span className="font-semibold">{errorMsg}</span></div>)}
           <Button type="submit" disabled={loading} fullWidth>{loading ? 'Salvando...' : 'Confirmar Agendamento'}</Button>
         </form>
       </Card>
+
       {showToast && <Toast message="Agendamento realizado com sucesso!" onClose={() => setShowToast(false)} />}
+      
+      {/* NOVO COMPONENTE DE ERRO COM SCROLL AUTOMÁTICO */}
+      <ToastError 
+        message={errorMsg} 
+        errors={errors} 
+        onClose={() => setErrorMsg('')} 
+      />
     </div>
   );
 }
