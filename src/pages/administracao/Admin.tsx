@@ -6,7 +6,6 @@ import { Clock, LayoutDashboard, Settings, ChevronRight, Home } from 'lucide-rea
 import { DashboardHub } from './dashboards/DashboardHub'; 
 import { GerenciarHorarios } from './GerenciarHorarios';
 
-// COMPONENTES PADRONIZADOS
 import { Card } from '../../components/ui/Card';
 import { Title, Description } from '../../components/ui/Typography';
 
@@ -15,11 +14,23 @@ type AdminView = 'hub' | 'horarios' | 'dashboard';
 export function Admin() {
   const { roleId, loading: authLoading } = useAuth();
   const location = useLocation();
-  const [view, setView] = useState<AdminView>('hub');
+  
+  const [view, setView] = useState<AdminView>(() => {
+    const savedView = sessionStorage.getItem('adminCurrentView');
+    return (savedView as AdminView) || 'hub';
+  });
 
   useEffect(() => {
-    if (location.state && (location.state as any).reset) {
+    sessionStorage.setItem('adminCurrentView', view);
+  }, [view]);
+
+  // CORREÇÃO: Lê apenas o comando exclusivo do Breadcrumb para resetar
+  useEffect(() => {
+    if (location.state && (location.state as any).forceAdminHub) {
       setView('hub');
+      sessionStorage.removeItem('adminCurrentView');
+      sessionStorage.removeItem('hubCurrentDash');
+      window.history.replaceState({}, document.title);
     }
   }, [location.state]);
 
@@ -50,7 +61,11 @@ export function Admin() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in slide-in-from-bottom-4 duration-300">
-            <Card hoverable onClick={() => setView('dashboard')} className="group">
+            {/* CORREÇÃO: Limpa a memória do hub ao clicar para sempre exibir os botões */}
+            <Card hoverable onClick={() => {
+              sessionStorage.removeItem('hubCurrentDash');
+              setView('dashboard');
+            }} className="group">
                <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                   <LayoutDashboard size={24} />
                </div>
@@ -58,7 +73,10 @@ export function Admin() {
                <Description className="text-sm">Acesse as métricas gerais e indicadores.</Description>
             </Card>
 
-            <Card hoverable onClick={() => setView('horarios')} className="group">
+            <Card hoverable onClick={() => {
+              sessionStorage.removeItem('hubCurrentDash');
+              setView('horarios');
+            }} className="group">
                <div className="w-12 h-12 bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                   <Clock size={24} />
                </div>
@@ -70,7 +88,10 @@ export function Admin() {
       )}
 
       {view === 'dashboard' && <DashboardHub />}
-      {view === 'horarios' && <GerenciarHorarios onBack={() => setView('hub')} />}
+      {view === 'horarios' && <GerenciarHorarios onBack={() => {
+        setView('hub');
+        sessionStorage.removeItem('adminCurrentView');
+      }} />}
     </div>
   );
 }

@@ -10,7 +10,6 @@ import { Title, Description } from './ui/Typography';
 export function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
-  // Incluí a extração do 'user' para podermos pegar o email dele
   const { user, signOut, profileName, roleId } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -22,11 +21,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
     navigate('/login');
   };
 
-  // VARIÁVEL DINÂMICA DE NOME: Se não tem profileName, mostra o prefixo do e-mail
   const nomeExibicao = profileName || (user?.email ? user.email.split('@')[0] : 'Perfil Incompleto');
 
   return (
-    <div className="min-h-screen h-[100dvh] w-full bg-white dark:bg-slate-950 flex flex-col font-sans overflow-hidden transition-colors duration-500">
+    <div className="min-h-screen h-[100dvh] w-full bg-slate-50 dark:bg-slate-950 flex flex-col font-sans overflow-hidden transition-colors duration-500">
       
       <header className="bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 shadow-sm flex-none z-50 transition-colors duration-300">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -38,7 +36,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </Link>
             </div>
             
-            {/* NAVEGAÇÃO DESKTOP */}
             <nav className="hidden md:flex items-center gap-2 text-sm font-medium text-slate-600 dark:text-slate-300">
               <Link to="/" className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 ${isActive('/') ? 'text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 font-semibold' : 'hover:text-blue-600 hover:bg-gray-50 dark:hover:bg-slate-800'}`}>
                 <HomeIcon size={18} /> Início
@@ -47,7 +44,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
               {roleId === 1 && (
                 <Link 
                   to="/admin" 
-                  state={{ reset: Date.now() }}
+                  state={{ forceAdminHub: true }}
+                  onClick={() => {
+                    sessionStorage.removeItem('adminCurrentView');
+                    sessionStorage.removeItem('hubCurrentDash');
+                  }}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 ${isActive('/admin') ? 'text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 font-semibold' : 'hover:text-blue-600 hover:bg-gray-50 dark:hover:bg-slate-800'}`}
                 >
                   <Settings size={18} /> Administração
@@ -66,15 +67,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 {isDark ? <Sun size={18} /> : <Moon size={18} />}
               </Button>
 
-<div 
-  className="flex items-center gap-3 mr-2 bg-gray-50 dark:bg-slate-800 px-3 py-2 rounded-lg border border-gray-100 dark:border-slate-700 transition-colors"
-  title={nomeExibicao}
->
-    <Description className="!text-sm !font-bold m-0 max-w-[150px] truncate">
-      {nomeExibicao}
-    </Description>
-    <UserCircle size={24} className="text-gray-400 dark:text-slate-500 flex-shrink-0" />
-</div>
+              <div className="flex items-center gap-3 mr-2 bg-gray-50 dark:bg-slate-800 px-3 py-2 rounded-lg border border-gray-100 dark:border-slate-700 transition-colors" title={nomeExibicao}>
+                <Description className="!text-sm !font-bold m-0 max-w-[150px] truncate">
+                  {nomeExibicao}
+                </Description>
+                <UserCircle size={24} className="text-gray-400 dark:text-slate-500 flex-shrink-0" />
+              </div>
 
               <Button 
                 variant="ghostDanger"
@@ -86,7 +84,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </Button>
             </nav>
 
-            {/* CONTROLES MOBILE */}
             <div className="flex items-center gap-2 md:hidden">
               <Button 
                 variant="ghost"
@@ -108,7 +105,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        {/* MENU MOBILE */}
         {isMobileMenuOpen && (
           <>
             <div className="fixed inset-0 z-40 bg-black/20 dark:bg-black/40 backdrop-blur-sm md:hidden" onClick={() => setIsMobileMenuOpen(false)} />
@@ -126,8 +122,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 {roleId === 1 && (
                   <Link 
                     to="/admin" 
-                    state={{ reset: Date.now() }}
-                    onClick={() => setIsMobileMenuOpen(false)} 
+                    state={{ forceAdminHub: true }}
+                    onClick={() => {
+                      sessionStorage.removeItem('adminCurrentView');
+                      sessionStorage.removeItem('hubCurrentDash');
+                      setIsMobileMenuOpen(false);
+                    }} 
                     className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive('/admin') ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-semibold' : 'text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800'}`}
                   >
                     <Settings size={18} /> Administração
@@ -150,12 +150,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
         )}
       </header>
 
-      <main className="flex-1 overflow-y-auto overflow-x-hidden bg-white dark:bg-slate-950 scroll-smooth w-full transition-colors duration-500 flex flex-col">
+      <main className="flex-1 overflow-y-auto overflow-x-hidden bg-slate-50 dark:bg-slate-950 scroll-smooth w-full transition-colors duration-500 flex flex-col">
         <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto flex-1 w-full">
             {children}
         </div>
 
-        {/* RODAPÉ */}
         <footer className="w-full py-6 px-4 sm:px-6 lg:px-8 border-t border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 transition-colors duration-300">
           <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
             

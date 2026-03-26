@@ -12,21 +12,16 @@ export function Home() {
   const { podeVerPA, podeCriarPA, podeVerAmb, podeCriarAmb } = usePermissoes();
   const navigate = useNavigate();
 
-  // 1. Aguarda APENAS o carregamento geral do contexto
   if (loading) return null;
 
-  // 2. REDIRECIONAMENTOS INTELIGENTES PARA A TELA DE ACESSO RESTRITO
-  // Cenários 1 e 2: Sem cadastro no profiles (profileName null), sem role ou sem setores
   if (profileName === null || !roleId || !setores || setores.length === 0) {
     return <Navigate to="/acesso-restrito" replace />;
   }
   
-  // Cenário 3: Tem setor, mas não tem nenhuma permissão cadastrada
   if (!permissoes || permissoes.length === 0) {
     return <Navigate to="/acesso-restrito" replace />;
   }
 
-  // 3. RENDERIZAÇÃO DA HOME (Se passou pelos bloqueios)
   return (
     <div className="max-w-6xl mx-auto animate-in fade-in duration-500">
       
@@ -43,20 +38,19 @@ export function Home() {
           let temPermissaoParaAcessar = false;
 
           if (setor.sigla === 'PA') {
-              // Se ele pode ver a agenda, vai pra agenda. Se só pode criar, vai pro form.
-              rota = podeVerPA ? '/agenda' : '/novo'; 
+              // CORREÇÃO: Prioriza rota /novo
+              rota = podeCriarPA ? '/novo' : '/agenda'; 
               Icone = Stethoscope;
               cor = 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400';
               temPermissaoParaAcessar = podeVerPA || podeCriarPA;
           } else if (setor.sigla === 'AMB') {
-              // Se ele pode ver a fila, vai pra fila. Se só pode criar (ex: Concierge), vai pro form de novo encaminhamento.
-              rota = podeVerAmb ? '/ambulatorio' : '/novo-ambulatorio'; 
+              // CORREÇÃO: Prioriza rota /novo-ambulatorio
+              rota = podeCriarAmb ? '/novo-ambulatorio' : '/ambulatorio'; 
               Icone = ClipboardList;
               cor = 'bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400';
               temPermissaoParaAcessar = podeVerAmb || podeCriarAmb;
           }
 
-          // Se mesmo tendo o setor, ele não tem nenhuma das permissões acima, não renderiza este card
           if (!temPermissaoParaAcessar) return null;
 
           return (

@@ -37,9 +37,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profileName, setProfileName] = useState<string | null>(null);
   const [permissoes, setPermissoes] = useState<string[]>([]);
   const [setores, setSetores] = useState<Setor[]>([]);
+  
+  // O loading inicia em true APENAS para o primeiro carregamento da aplicação
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // 1. CARREGAMENTO INICIAL SILENCIOSO (Primeira vez que a página abre)
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -50,24 +53,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        setLoading(true); // Evita a piscada garantindo que a tela aguarde os dados
-        loadUserProfile(session.user.id);
-      } else {
+    // 2. ESCUTADOR DE MUDANÇAS DE SESSÃO
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, currentSession) => {
+      setSession(currentSession);
+      
+      // Se a sessão expirou ou o usuário deslogou
+      if (!currentSession?.user) {
+        setUser(null);
         setRoleId(null);
         setProfileName(null);
         setPermissoes([]);
         setSetores([]);
         setLoading(false);
+        return;
       }
+
+      // IMPORTANTE: Só aciona o loading se for um novo login e o estado de user estiver vazio.
+      // Se o usuário voltar pra aba e o Supabase apenas mandar um evento de atualização de token, 
+      // a tela não vai piscar.
+      setUser((prevUser) => {
+        if (!prevUser || prevUser.id !== currentSession.user.id) {
+          setLoading(true);
+          loadUserProfile(currentSession.user.id);
+        }
+        return currentSession.user;
+      });
+      
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
+  // Função interna para carregar dados do banco de dados (Apenas roda no loading real)
   const loadUserProfile = async (userId: string) => {
     try {
       const { data: profileData, error: profileError } = await supabase
@@ -84,6 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setProfileName(nomeCorreto);
 
       if (profileData.role_id) {
+        // Busca as permissões
         const { data: permissoesData, error: permissoesError } = await supabase
           .from('role_permissoes')
           .select(`
@@ -103,6 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setPermissoes([]);
         }
 
+        // Busca os setores
         const { data: ligacaoData, error: ligacaoError } = await supabase
           .from('usuario_setores')
           .select('setor_id')
@@ -126,6 +145,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Erro ao carregar dados do usuário:', error);
     } finally {
+      // Sempre remove a tela de loading no final
       setLoading(false);
     }
   };

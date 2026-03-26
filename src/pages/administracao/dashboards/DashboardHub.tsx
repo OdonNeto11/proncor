@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import { useAuth } from "../../../contexts/AuthContext";
 import { Card } from '../../../components/ui/Card';
@@ -11,12 +11,23 @@ import { DashPA } from './DashPA';
 export function DashboardHub() {
   const { loading: authLoading } = useAuth();
   const { podeAcessarDashboard } = usePermissoes();
-  const [currentView, setCurrentView] = useState<'menu' | 'pa'>('menu');
+  
+  const [currentView, setCurrentView] = useState<'menu' | 'pa'>(() => {
+    const savedView = sessionStorage.getItem('hubCurrentDash');
+    return (savedView as 'menu' | 'pa') || 'menu';
+  });
+
+  useEffect(() => {
+    sessionStorage.setItem('hubCurrentDash', currentView);
+  }, [currentView]);
 
   if (authLoading) return null;
   if (!podeAcessarDashboard) return <Navigate to="/" replace />;
 
-  if (currentView === 'pa') return <DashPA onBack={() => setCurrentView('menu')} />;
+  if (currentView === 'pa') return <DashPA onBack={() => {
+    setCurrentView('menu');
+    sessionStorage.removeItem('hubCurrentDash');
+  }} />;
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20 mt-4">
@@ -26,7 +37,8 @@ export function DashboardHub() {
           <span>Home</span>
         </Link>
         <ChevronRight size={14} className="text-slate-400 dark:text-slate-600" />
-        <Link to="/admin" state={{ reset: Date.now() }} className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+        {/* CORREÇÃO: Link do breadcrumb envia o forceAdminHub */}
+        <Link to="/admin" state={{ forceAdminHub: true }} className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
           Administração
         </Link>   
         <ChevronRight size={14} className="text-slate-400 dark:text-slate-600" />
