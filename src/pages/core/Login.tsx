@@ -3,11 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { Lock, User, Loader2, Sun, Moon } from 'lucide-react';
 
-// COMPONENTES OFICIAIS
+// COMPONENTES OFICIAIS SENDO USADOS
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { Logo } from '../../components/ui/Logo';
-import { Title, Description } from '../../components/ui/Typography';
 
 export function Login() {
   const navigate = useNavigate();
@@ -16,7 +15,7 @@ export function Login() {
   const [isDark, setIsDark] = useState(() => {
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme) return savedTheme === 'dark';
-    return true; 
+    return true; // <-- PADRÃO AGORA É DARK MODE
   });
 
   useEffect(() => {
@@ -29,6 +28,7 @@ export function Login() {
       localStorage.setItem('theme', 'light');
     }
   }, [isDark]);
+  // ------------------------------------
 
   const [loginInput, setLoginInput] = useState('');
   const [password, setPassword] = useState('');
@@ -59,34 +59,31 @@ export function Login() {
   };
 
   return (
-    <div className="relative min-h-screen bg-white dark:bg-slate-950 flex items-center justify-center p-4 transition-colors duration-500">
+    <div className="relative min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-4 transition-colors duration-300">
       
       {/* BOTÃO DE SOL/LUA FLUTUANTE */}
       <div className="absolute top-6 right-6">
         <button 
           onClick={() => setIsDark(!isDark)}
-          className="p-3 rounded-full bg-slate-50 dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-yellow-400 hover:ring-2 hover:ring-blue-400 transition-all active:scale-90"
+          className="p-3 rounded-full bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-yellow-400 hover:ring-2 hover:ring-blue-400 transition-all"
           title={isDark ? "Mudar para modo claro" : "Mudar para modo escuro"}
         >
           {isDark ? <Sun size={22} /> : <Moon size={22} />}
         </button>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md p-8 border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-300">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-md p-8 border border-slate-100 dark:border-slate-800">
         
         <div className="text-center mb-8">
-          <Logo className="h-20 mx-auto mb-6" />
+          <Logo className="h-16 mx-auto mb-6" />
           
-          {/* NOME DO SISTEMA NORMALIZADO COM COMPONENTES */}
-          <Title size="2xl">SGFH</Title>
-          <Description size="lg" className="mt-1 font-medium">
-            Portal de Gestão e Fluxo Hospitalar
-          </Description>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">SGFH</h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium">Portal de Gestão e Fluxo Hospitalar</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-5">
           <Input 
-            label="Usuário ou Email"
+            label="Usuário ou Email *"
             value={loginInput}
             onChange={e => setLoginInput(e.target.value)}
             placeholder="Ex: plantonista ou seu@email.com"
@@ -95,7 +92,7 @@ export function Login() {
           />
 
           <Input 
-            label="Senha"
+            label="Senha *"
             type="password"
             value={password}
             onChange={e => setPassword(e.target.value)}
@@ -105,21 +102,29 @@ export function Login() {
           />
 
           {errorMsg && (
-            <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm rounded-lg text-center font-bold border border-red-100 dark:border-red-900/50">
+            <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm rounded-lg text-center font-medium border border-red-100 dark:border-red-900/50">
               {errorMsg}
             </div>
           )}
 
-          <Button type="submit" fullWidth disabled={loading} size="lg">
-            {loading ? <Loader2 className="animate-spin" /> : 'Entrar no Sistema'}
-          </Button>
+          <div className="pt-2">
+            {/* COMPONENTE DE BUTTON USANDO O NOVO SIZE 'lg' */}
+            <Button 
+              type="submit" 
+              fullWidth 
+              size="lg"
+              disabled={loading}
+            >
+              {loading ? <Loader2 className="animate-spin mx-auto" /> : 'Entrar no Sistema'}
+            </Button>
+          </div>
         </form>
+      </div>
 
-        <div className="mt-8 text-center">
-          <p className="text-[10px] text-slate-400 dark:text-slate-600 uppercase tracking-[0.2em] font-bold">
-            Unidade Proncor Ativa
-          </p>
-        </div>
+      <div className="mt-8 text-center opacity-50">
+        <p className="text-[10px] font-bold tracking-widest text-slate-500 dark:text-slate-400 uppercase">
+          Unidade Proncor Ativa
+        </p>
       </div>
     </div>
   );

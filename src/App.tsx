@@ -5,6 +5,7 @@ import { Layout } from './components/Layout';
 // CAMINHOS GEOGRÁFICOS E ARQUITETURA ATUALIZADA
 import { Login } from './pages/core/Login';
 import { Home } from './pages/core/Home';
+import { AcessoRestrito } from './pages/core/AcessoRestrito'; // <-- IMPORTAÇÃO QUE FALTAVA
 import { Admin } from './pages/administracao/Admin';
 import { Agenda } from './pages/pa/Agenda';
 import { Agendar } from './pages/pa/Agendar';
@@ -60,7 +61,10 @@ function AuthGuard({ children, permission, requireProfile = true }: { children: 
   }
 
   if (!user) return <Navigate to="/login" replace />;
-  if (requireProfile && roleId === null) return <Navigate to="/" replace />;
+  
+  // TRAVA CORRIGIDA: Se requer perfil e não tem, manda direto para a tela de bloqueio
+  if (requireProfile && roleId === null) return <Navigate to="/acesso-restrito" replace />;
+  
   if (permission && !permissoes.includes(permission)) return <Navigate to="/" replace />;
 
   return <>{children}</>;
@@ -74,9 +78,18 @@ export default function App() {
           <Route path="/login" element={<Login />} />
 
           <Route path="/" element={
-            <AuthGuard requireProfile={false}>
+            <AuthGuard requireProfile={true}>
               <Layout>
                 <Home />
+              </Layout>
+            </AuthGuard>
+          } />
+
+          {/* NOVA ROTA CADASTRADA: Quebra o loop infinito */}
+          <Route path="/acesso-restrito" element={
+            <AuthGuard requireProfile={false}>
+              <Layout>
+                <AcessoRestrito />
               </Layout>
             </AuthGuard>
           } />

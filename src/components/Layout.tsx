@@ -10,7 +10,8 @@ import { Title, Description } from './ui/Typography';
 export function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { signOut, profileName, roleId } = useAuth();
+  // Incluí a extração do 'user' para podermos pegar o email dele
+  const { user, signOut, profileName, roleId } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -20,6 +21,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
     await signOut();
     navigate('/login');
   };
+
+  // VARIÁVEL DINÂMICA DE NOME: Se não tem profileName, mostra o prefixo do e-mail
+  const nomeExibicao = profileName || (user?.email ? user.email.split('@')[0] : 'Perfil Incompleto');
 
   return (
     <div className="min-h-screen h-[100dvh] w-full bg-white dark:bg-slate-950 flex flex-col font-sans overflow-hidden transition-colors duration-500">
@@ -62,10 +66,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 {isDark ? <Sun size={18} /> : <Moon size={18} />}
               </Button>
 
-              <div className="flex items-center gap-3 mr-2 bg-gray-50 dark:bg-slate-800 px-3 py-2 rounded-lg border border-gray-100 dark:border-slate-700 transition-colors">
-                  <Description className="!text-sm !font-bold m-0">{profileName || 'Usuário'}</Description>
-                  <UserCircle size={24} className="text-gray-400 dark:text-slate-500" />
-              </div>
+<div 
+  className="flex items-center gap-3 mr-2 bg-gray-50 dark:bg-slate-800 px-3 py-2 rounded-lg border border-gray-100 dark:border-slate-700 transition-colors"
+  title={nomeExibicao}
+>
+    <Description className="!text-sm !font-bold m-0 max-w-[150px] truncate">
+      {nomeExibicao}
+    </Description>
+    <UserCircle size={24} className="text-gray-400 dark:text-slate-500 flex-shrink-0" />
+</div>
 
               <Button 
                 variant="ghostDanger"
@@ -107,7 +116,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <div className="flex flex-col p-2 space-y-1">
                 <div className="px-4 py-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg mb-2 border border-blue-100 dark:border-blue-900/30 flex items-center gap-3">
                   <UserCircle size={24} className="text-blue-500 dark:text-blue-400" />
-                  <Description className="!text-sm !font-bold m-0 text-gray-800 dark:text-slate-200">{profileName || 'Usuário'}</Description>
+                  <Description className="!text-sm !font-bold m-0 text-gray-800 dark:text-slate-200 truncate">{nomeExibicao}</Description>
                 </div>
 
                 <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive('/') ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-semibold' : 'text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800'}`}>

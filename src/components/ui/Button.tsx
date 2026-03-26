@@ -2,9 +2,8 @@ import { ButtonHTMLAttributes, ReactNode } from 'react';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
-  // Adicionado 'rose' e 'amber' aqui:
   variant?: 'primary' | 'secondary' | 'outline' | 'danger' | 'success' | 'warning' | 'purple' | 'indigo' | 'ghostDanger' | 'ghost' | 'rose' | 'amber';
-  size?: 'sm' | 'md' | 'icon';
+  size?: 'sm' | 'md' | 'lg' | 'icon'; // <-- 'lg' adicionado aqui
   fullWidth?: boolean;
   justify?: 'center' | 'start' | 'between';
 }
@@ -23,6 +22,7 @@ export function Button({
   const sizeStyles = {
     sm: 'px-4 py-2 text-sm',
     md: 'px-6 py-3',
+    lg: 'px-6 py-3.5 text-[15px]', // <-- Novo tamanho para o botão do Login
     icon: 'p-2.5 justify-center',
   };
 
@@ -43,8 +43,6 @@ export function Button({
     indigo: 'bg-indigo-50 text-indigo-600 border border-indigo-100 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-400 dark:border-indigo-900/50 dark:hover:bg-indigo-900/40',
     ghostDanger: 'bg-transparent border-transparent text-red-500 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20 shadow-none',
     ghost: 'bg-transparent text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 shadow-none',
-    
-    // NOVAS CORES PARA STATUS DE PERDA (Fila Ambulatório)
     rose: 'bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 dark:bg-rose-900/20 dark:text-rose-400 dark:border-rose-900/50 dark:hover:bg-rose-900/40',
     amber: 'bg-amber-50 text-amber-700 border border-amber-100 hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-900/50 dark:hover:bg-amber-900/40',
   };
