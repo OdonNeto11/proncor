@@ -162,10 +162,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
             
             <div className="text-center md:text-left">
               <Title className="!text-sm !font-bold tracking-tight m-0 text-slate-700 dark:text-slate-200">
-                SGFH <span className="text-slate-400 dark:text-slate-500 font-medium">| Sistema de Gestão e Fluxo Hospitalar</span>
+                Proncor Hub <span className="text-slate-400 dark:text-slate-500 font-medium">| Gestão e Fluxo Hospitalar</span>
               </Title>
               <Description className="!text-[10px] text-slate-400 dark:text-slate-600 mt-1 uppercase tracking-[0.1em] m-0">
-                © {new Date().getFullYear()} Desenvolvido por Odon Neto
+                © {new Date().getFullYear()} Hospital Proncor | Departamento de Tecnologia
               </Description>
             </div>
 
@@ -180,7 +180,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <div className="h-4 w-px bg-gray-200 dark:bg-slate-800"></div>
               
               <Description className="!text-[10px] !font-mono text-slate-300 dark:text-slate-700 m-0">
-                SYS.REV.2026_BETA
+                v1.0.0
               </Description>
             </div>
           </div>

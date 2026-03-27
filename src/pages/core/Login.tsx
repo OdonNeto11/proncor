@@ -77,8 +77,8 @@ export function Login() {
         <div className="text-center mb-8">
           <Logo className="h-16 mx-auto mb-6" />
           
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">SGFH</h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium">Portal de Gestão e Fluxo Hospitalar</p>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Proncor Hub</h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium">Gestão e Fluxo Hospitalar</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-5">
@@ -119,12 +119,6 @@ export function Login() {
             </Button>
           </div>
         </form>
-      </div>
-
-      <div className="mt-8 text-center opacity-50">
-        <p className="text-[10px] font-bold tracking-widest text-slate-500 dark:text-slate-400 uppercase">
-          Unidade Proncor Ativa
-        </p>
       </div>
     </div>
   );
