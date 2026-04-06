@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   Search, CheckCircle2, AlertCircle, 
-  HelpCircle, XCircle, Edit, Hash, User, Phone, ShieldOff, FileText, Activity
+  HelpCircle, XCircle, Edit, Hash, User, Phone, ShieldOff, FileText, Activity, AlertTriangle // <-- ADICIONADO AlertTriangle AQUI
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -329,12 +329,34 @@ export function Ambulatorio() {
           tags={selectedEnc.exames_especialidades}
           phoneForWhats={selectedEnc.telefone_paciente}
           obsText={selectedEnc.observacoes || 'Sem observações.'}
-          actionButtons={selectedEnc.status_id === 13 && podeGerenciarStatusAmb && (
-            <Button variant="primary" fullWidth onClick={() => setViewMode('update_status')}>Atualizar Status</Button>
-          )}
-          footerButtons={selectedEnc.status_id === 13 && podeCancelarAmb && (
-            <Button variant="ghostDanger" fullWidth onClick={() => setViewMode('confirm_cancel')}>Cancelar Pedido</Button>
-          )}
+          
+          // CORREÇÃO DOS ÍCONES USANDO A PROP `icon` DO COMPONENTE BUTTON
+          actionButtons={
+            selectedEnc.status_id === 13 && (
+              <>
+                {podeGerenciarStatusAmb && (
+                  <Button 
+                    variant="primary" 
+                    fullWidth 
+                    icon={<CheckCircle2 size={18} />} 
+                    onClick={() => setViewMode('update_status')}
+                  >
+                    Atualizar Status
+                  </Button>
+                )}
+                {podeCancelarAmb && (
+                  <Button 
+                    variant="ghostDanger" 
+                    fullWidth 
+                    icon={<AlertTriangle size={18} />} 
+                    onClick={() => setViewMode('confirm_cancel')}
+                  >
+                    Cancelar Pedido
+                  </Button>
+                )}
+              </>
+            )
+          }
         />
       )}
 
@@ -346,20 +368,45 @@ export function Ambulatorio() {
           theme="purple"
         >
           <div className="flex flex-col gap-3">
-            <Button variant="success" fullWidth justify="start" onClick={prepararAgendamento}>
-              <CheckCircle2 size={18} /> Agendado
+            {/* CORREÇÃO DOS ÍCONES NESTE MODAL TAMBÉM */}
+            <Button 
+              variant="success" 
+              fullWidth 
+              justify="start" 
+              icon={<CheckCircle2 size={18} />}
+              onClick={prepararAgendamento}
+            >
+              Agendado
             </Button>
             
-            <Button variant="rose" fullWidth justify="start" onClick={() => { setStatusSelecionado({ id: 10, msg: 'Plano não atendido registrado.', label: 'Não atendemos o plano' }); setViewMode('confirm_status'); }}>
-              <ShieldOff size={18} /> Não atendemos o plano
+            <Button 
+              variant="rose" 
+              fullWidth 
+              justify="start" 
+              icon={<ShieldOff size={18} />}
+              onClick={() => { setStatusSelecionado({ id: 10, msg: 'Plano não atendido registrado.', label: 'Não atendemos o plano' }); setViewMode('confirm_status'); }}
+            >
+              Não atendemos o plano
             </Button>
 
-            <Button variant="amber" fullWidth justify="start" onClick={() => { setStatusSelecionado({ id: 11, msg: 'Falta de especialidade registrada.', label: 'Não temos a especialidade' }); setViewMode('confirm_status'); }}>
-              <AlertCircle size={18} /> Não temos a especialidade
+            <Button 
+              variant="amber" 
+              fullWidth 
+              justify="start" 
+              icon={<AlertCircle size={18} />}
+              onClick={() => { setStatusSelecionado({ id: 11, msg: 'Falta de especialidade registrada.', label: 'Não temos a especialidade' }); setViewMode('confirm_status'); }}
+            >
+              Não temos a especialidade
             </Button>
             
-            <Button variant="secondary" fullWidth justify="start" onClick={() => { setStatusSelecionado({ id: 12, msg: 'Falha de contato registrada.', label: 'Não conseguimos contato' }); setViewMode('confirm_status'); }}>
-              <HelpCircle size={18} /> Não conseguimos contato
+            <Button 
+              variant="secondary" 
+              fullWidth 
+              justify="start" 
+              icon={<HelpCircle size={18} />}
+              onClick={() => { setStatusSelecionado({ id: 12, msg: 'Falha de contato registrada.', label: 'Não conseguimos contato' }); setViewMode('confirm_status'); }}
+            >
+              Não conseguimos contato
             </Button>
           </div>
         </ModalAtualizarStatusLayout>

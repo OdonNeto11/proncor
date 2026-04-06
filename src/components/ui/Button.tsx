@@ -2,14 +2,16 @@ import { ButtonHTMLAttributes, ReactNode } from 'react';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
+  icon?: ReactNode;
   variant?: 'primary' | 'secondary' | 'outline' | 'danger' | 'success' | 'warning' | 'purple' | 'indigo' | 'ghostDanger' | 'ghost' | 'rose' | 'amber';
-  size?: 'sm' | 'md' | 'lg' | 'icon'; // <-- 'lg' adicionado aqui
+  size?: 'sm' | 'md' | 'lg' | 'icon';
   fullWidth?: boolean;
   justify?: 'center' | 'start' | 'between';
 }
 
 export function Button({
   children,
+  icon,
   variant = 'primary',
   size = 'md',
   fullWidth = false,
@@ -17,12 +19,13 @@ export function Button({
   className = '',
   ...props
 }: ButtonProps) {
-  const baseStyles = 'rounded-xl font-bold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 flex items-center gap-2';
+  // CORREÇÃO: Adicionado o "whitespace-nowrap" no final desta string abaixo
+  const baseStyles = 'rounded-xl font-bold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 flex items-center gap-2 whitespace-nowrap';
 
   const sizeStyles = {
     sm: 'px-4 py-2 text-sm',
     md: 'px-6 py-3',
-    lg: 'px-6 py-3.5 text-[15px]', // <-- Novo tamanho para o botão do Login
+    lg: 'px-6 py-3.5 text-[15px]',
     icon: 'p-2.5 justify-center',
   };
 
@@ -54,6 +57,7 @@ export function Button({
       className={`${baseStyles} ${sizeStyles[size]} ${justifyStyles[justify]} ${variantStyles[variant]} ${widthStyles} ${className}`}
       {...props}
     >
+      {icon && <span className="flex-shrink-0 flex items-center">{icon}</span>}
       {children}
     </button>
   );
