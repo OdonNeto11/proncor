@@ -4,6 +4,7 @@ import DatePicker, { registerLocale } from 'react-datepicker';
 import { ptBR } from 'date-fns/locale';
 import "react-datepicker/dist/react-datepicker.css";
 import { format, isSameDay, setHours, setMinutes } from 'date-fns';
+import imageCompression from 'browser-image-compression'; // <-- IMPORTAÇÃO DO COMPRESSOR
 
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -143,10 +144,31 @@ export function Agendar() {
   };
 
   const uploadArquivoUnico = async (file: File) => {
-    const fileExt = file.name.split('.').pop();
+    let fileToUpload = file;
+
+    // LÓGICA DE COMPRESSÃO ADICIONADA: Verifica se é imagem antes de tentar comprimir
+    if (file.type.startsWith('image/')) {
+      const options = {
+        maxSizeMB: 0.3, // Limita a ~300KB
+        maxWidthOrHeight: 1920, // Resolução máxima
+        useWebWorker: true, // Usa thread paralela para não travar a tela
+      };
+      
+      try {
+        fileToUpload = await imageCompression(file, options);
+      } catch (error) {
+        console.error("Erro ao comprimir imagem, enviando original: ", error);
+        // Em caso de falha silenciosa, ele mantém o arquivo original para não quebrar o fluxo
+      }
+    }
+
+    const fileExt = fileToUpload.name.split('.').pop() || 'jpg';
     const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-    const { error } = await supabase.storage.from('anexos').upload(fileName, file);
+    
+    // Agora o supabase.upload recebe o arquivo espremido (se for imagem)
+    const { error } = await supabase.storage.from('anexos').upload(fileName, fileToUpload);
     if (error) throw error;
+    
     const { data } = supabase.storage.from('anexos').getPublicUrl(fileName);
     return { nome: file.name, url: data.publicUrl };
   };
@@ -299,7 +321,6 @@ export function Agendar() {
 
           <div className="h-px bg-slate-100 my-2"></div>
 
-          {/* CRM REMOVIDO DA DIV E ALINHADO COM OS DEMAIS INPUTS */}
           <Input 
              label="Seu CRM" 
              name="crm_responsavel" 
