@@ -4,7 +4,10 @@ import DatePicker, { registerLocale } from 'react-datepicker';
 import { ptBR } from 'date-fns/locale';
 import "react-datepicker/dist/react-datepicker.css";
 import { format, setHours, setMinutes } from 'date-fns';
+import imageCompression from 'browser-image-compression';
+
 import { Link } from 'react-router-dom';
+
 
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -109,11 +112,30 @@ export function Agendar() {
     setArquivos(prev => prev.filter((_, i) => i !== index));
   };
 
-  const uploadArquivoUnico = async (file: File) => {
-    const fileExt = file.name.split('.').pop();
+const uploadArquivoUnico = async (file: File) => {
+    let fileToUpload = file;
+
+    // COMPRESSOR ADICIONADO AQUI
+    if (file.type.startsWith('image/')) {
+      const options = {
+        maxSizeMB: 0.3, // Limita a ~300KB
+        maxWidthOrHeight: 1920,
+        useWebWorker: true,
+      };
+      
+      try {
+        fileToUpload = await imageCompression(file, options);
+      } catch (error) {
+        console.error("Erro ao comprimir imagem, enviando original: ", error);
+      }
+    }
+
+    const fileExt = fileToUpload.name.split('.').pop() || 'jpg';
     const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-    const { error } = await supabase.storage.from('anexos').upload(fileName, file);
+    
+    const { error } = await supabase.storage.from('anexos').upload(fileName, fileToUpload);
     if (error) throw error;
+    
     const { data } = supabase.storage.from('anexos').getPublicUrl(fileName);
     return { nome: file.name, url: data.publicUrl };
   };

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   Search, CheckCircle2, AlertCircle, 
-  HelpCircle, XCircle, Edit, Hash, User, Phone, ShieldOff, FileText, Activity, AlertTriangle // <-- ADICIONADO AlertTriangle AQUI
+  HelpCircle, XCircle, Edit, Hash, User, Phone, ShieldOff, FileText, Activity, AlertTriangle, Download 
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -16,7 +16,7 @@ import { Modal } from '../../components/ui/Modal';
 import { Button } from '../../components/ui/Button';
 import { Toast } from '../../components/ui/Toast';
 import { Title, Description } from '../../components/ui/Typography';
-import { DatePicker } from '../../components/ui/DatePicker'; // <--- NOVO COMPONENTE
+import { DatePicker } from '../../components/ui/DatePicker'; 
 
 // COMPONENTES COMPARTILHADOS
 import { AtendimentoCard } from '../../components/shared/AtendimentoCard';
@@ -30,6 +30,7 @@ import { maskPhone, capitalizeName } from '../../utils/formUtils';
 import { usePermissoes } from '../../hooks/usePermissoes';
 
 const STATUS_CONFIG_AMB: Record<number, { label: string, color: string, border: string, icon: any }> = {
+  1: { label: 'Aguardando Atendimento', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400', border: 'border-orange-200 dark:border-orange-800/50', icon: AlertCircle },
   13: { label: 'Aguardando Agendamento', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400', border: 'border-orange-200 dark:border-orange-800/50', icon: AlertCircle },
   3: { label: 'Cancelado', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400', border: 'border-red-200 dark:border-red-800/50', icon: XCircle },
   9: { label: 'Agendado', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', border: 'border-emerald-200 dark:border-emerald-800/50', icon: CheckCircle2 },
@@ -65,11 +66,11 @@ export function Ambulatorio() {
   });
 
   const fetchEncaminhamentos = async () => {
-    if (!podeVerAmb) return; // Evita execução desnecessária se não tiver permissão
+    if (!podeVerAmb) return; 
     setLoading(true);
     try {
       const statusMap = { 
-        pendentes: [13], 
+        pendentes: [13, 1], 
         sucesso: [9], 
         perdidos: [3, 10, 11, 12],
         todos: [] 
@@ -176,7 +177,7 @@ export function Ambulatorio() {
   };
 
   const confirmarEdicao = async () => {
-    if (!editForm.nome_paciente || !editForm.telefone_paciente) {
+    if (selectedEnc.atendido_proncor === false && (!editForm.nome_paciente || !editForm.telefone_paciente)) {
       setErrorMsg('Campos obrigatórios vazios.');
       return;
     }
@@ -197,12 +198,11 @@ export function Ambulatorio() {
   };
 
   const listaFiltrada = lista.filter(item => 
-    item.nome_paciente.toLowerCase().includes(busca.toLowerCase()) || 
-    item.numero_atendimento?.includes(busca) ||
-    item.crm_solicitante?.includes(busca)
+    (item.nome_paciente || '').toLowerCase().includes(busca.toLowerCase()) || 
+    (item.numero_atendimento || '').includes(busca) ||
+    (item.crm_solicitante || '').includes(busca)
   );
 
-  // O BLOQUEIO PADRONIZADO (Substituindo o return null)
   if (!podeVerAmb) {
     return (
       <div className="max-w-4xl mx-auto text-center py-20 bg-white dark:bg-slate-900 rounded-xl border border-red-100 dark:border-red-900/30 shadow-sm mt-8 animate-in zoom-in-95 duration-300">
@@ -291,7 +291,7 @@ export function Ambulatorio() {
                 badgeTopRight={statusConfig.label}
                 badgeTopRightColorClasses={`${statusConfig.color} ${statusConfig.border}`}
                 numeroAtendimento={item.numero_atendimento}
-                nomePaciente={item.nome_paciente}
+                nomePaciente={item.nome_paciente || 'Nome não informado'}
                 telefone={item.telefone_paciente}
                 planoSaude={item.plano_saude}
                 crm={item.crm_solicitante}
@@ -310,8 +310,8 @@ export function Ambulatorio() {
           onClose={() => setSelectedEnc(null)}
           title={
             <div className="flex items-center gap-2">
-              <span className="line-clamp-1 dark:text-slate-100">{selectedEnc.nome_paciente}</span>
-              {selectedEnc.status_id === 13 && podeEditarAmb && (
+              <span className="line-clamp-1 dark:text-slate-100">{selectedEnc.nome_paciente || 'Nome não informado'}</span>
+              {[13, 1].includes(selectedEnc.status_id) && podeEditarAmb && (
                 <button onClick={() => setViewMode('edit')} className="p-1.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 rounded-lg transition-colors">
                   <Edit size={18} />
                 </button>
@@ -321,7 +321,7 @@ export function Ambulatorio() {
           infoBoxes={[
             { label: 'Solicitado em', value: format(parseISO(selectedEnc.created_at), "dd/MM · HH:mm"), theme: 'purple' },
             { label: 'Origem', value: selectedEnc.origem, theme: selectedEnc.origem === 'PA' ? 'blue' : 'slate' },
-            { label: 'Atendimento', value: `#${selectedEnc.numero_atendimento}`, theme: 'slate' }
+            { label: 'Atendimento', value: selectedEnc.numero_atendimento ? `#${selectedEnc.numero_atendimento}` : 'N/A', theme: 'slate' }
           ]}
           statusLabel={STATUS_CONFIG_AMB[selectedEnc.status_id]?.label}
           statusClasses={{ color: STATUS_CONFIG_AMB[selectedEnc.status_id]?.color, border: STATUS_CONFIG_AMB[selectedEnc.status_id]?.border }}
@@ -330,32 +330,42 @@ export function Ambulatorio() {
           phoneForWhats={selectedEnc.telefone_paciente}
           obsText={selectedEnc.observacoes || 'Sem observações.'}
           
-          // CORREÇÃO DOS ÍCONES USANDO A PROP `icon` DO COMPONENTE BUTTON
           actionButtons={
-            selectedEnc.status_id === 13 && (
-              <>
-                {podeGerenciarStatusAmb && (
-                  <Button 
-                    variant="primary" 
-                    fullWidth 
-                    icon={<CheckCircle2 size={18} />} 
-                    onClick={() => setViewMode('update_status')}
-                  >
-                    Atualizar Status
-                  </Button>
-                )}
-                {podeCancelarAmb && (
-                  <Button 
-                    variant="ghostDanger" 
-                    fullWidth 
-                    icon={<AlertTriangle size={18} />} 
-                    onClick={() => setViewMode('confirm_cancel')}
-                  >
-                    Cancelar Pedido
-                  </Button>
-                )}
-              </>
-            )
+            <div className="flex flex-col gap-3 w-full">
+              {selectedEnc.anexo_url && (
+                <Button 
+                  variant="secondary" 
+                  fullWidth 
+                  icon={<Download size={18} />} 
+                  onClick={() => {
+                    const { data } = supabase.storage.from('anexos').getPublicUrl(selectedEnc.anexo_url);
+                    window.open(data.publicUrl, '_blank');
+                  }}
+                >
+                  Ver / Baixar Anexo
+                </Button>
+              )}
+              
+              {[13, 1].includes(selectedEnc.status_id) && podeGerenciarStatusAmb && (
+                <Button 
+                  variant="primary" 
+                  fullWidth 
+                  icon={<CheckCircle2 size={18} />} 
+                  onClick={() => setViewMode('update_status')}
+                >
+                  Atualizar Status
+                </Button>
+              )}
+
+              {podeCancelarAmb && [1, 9, 13].includes(selectedEnc.status_id) && (
+                <button 
+                  onClick={() => setViewMode('confirm_cancel')}
+                  className="mt-1 w-full text-center text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 font-bold text-sm transition-colors py-2"
+                >
+                  Cancelar Pedido
+                </button>
+              )}
+            </div>
           }
         />
       )}
@@ -364,11 +374,10 @@ export function Ambulatorio() {
         <ModalAtualizarStatusLayout 
           isOpen 
           onClose={() => setViewMode('details')} 
-          nomePaciente={selectedEnc.nome_paciente} 
+          nomePaciente={selectedEnc.nome_paciente || 'Nome não informado'} 
           theme="purple"
         >
           <div className="flex flex-col gap-3">
-            {/* CORREÇÃO DOS ÍCONES NESTE MODAL TAMBÉM */}
             <Button 
               variant="success" 
               fullWidth 
@@ -416,7 +425,7 @@ export function Ambulatorio() {
         <Modal isOpen onClose={() => setViewMode('update_status')} title={<span className="text-emerald-600 dark:text-emerald-500 font-bold text-lg">Datas de Agendamento</span>}>
           <div className="p-4 space-y-4 animate-in zoom-in-95 duration-200">
             <Description className="text-center mb-6">
-              Informe a data em que cada procedimento foi agendado para <strong className="text-emerald-600 dark:text-emerald-400">{selectedEnc.nome_paciente}</strong>.
+              Informe a data em que cada procedimento foi agendado para <strong className="text-emerald-600 dark:text-emerald-400">{selectedEnc.nome_paciente || 'Nome não informado'}</strong>.
             </Description>
 
             <div className="space-y-3 min-h-[380px] overflow-visible pb-10">
@@ -454,7 +463,7 @@ export function Ambulatorio() {
           isOpen={true}
           onClose={() => setViewMode('update_status')}
           onConfirm={() => atualizarStatus(statusSelecionado.id, statusSelecionado.msg)}
-          nomePaciente={selectedEnc.nome_paciente}
+          nomePaciente={selectedEnc.nome_paciente || 'Nome não informado'}
           statusNome={statusSelecionado.label}
           tipoStatus={statusSelecionado.id === 9 ? 'sucesso' : 'neutro'}
           theme="purple"
@@ -462,7 +471,7 @@ export function Ambulatorio() {
       )}
 
       {selectedEnc && viewMode === 'confirm_cancel' && (
-        <ModalConfirmacaoCancelamentoLayout isOpen onClose={() => setViewMode('details')} onConfirm={() => atualizarStatus(3, 'Cancelado.')} nomePaciente={selectedEnc.nome_paciente} tipoAtendimento="encaminhamento" />
+        <ModalConfirmacaoCancelamentoLayout isOpen onClose={() => setViewMode('details')} onConfirm={() => atualizarStatus(3, 'Cancelado.')} nomePaciente={selectedEnc.nome_paciente || 'Nome não informado'} tipoAtendimento="encaminhamento" />
       )}
 
       {showToast.visible && <Toast message={showToast.message} onClose={() => setShowToast({ ...showToast, visible: false })} />}

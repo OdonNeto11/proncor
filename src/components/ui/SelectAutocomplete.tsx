@@ -10,6 +10,8 @@ interface SelectAutocompleteProps {
   onChange: (value: string) => void;
   placeholder?: string;
   required?: boolean;
+  filterColumn?: string; // ADICIONADO
+  filterValue?: string;  // ADICIONADO
 }
 
 export function SelectAutocomplete({ 
@@ -19,7 +21,9 @@ export function SelectAutocomplete({
   value, 
   onChange, 
   placeholder = "Selecione ou digite...", 
-  required 
+  required,
+  filterColumn, // ADICIONADO
+  filterValue   // ADICIONADO
 }: SelectAutocompleteProps) {
   
   const [options, setOptions] = useState<string[]>([]);
@@ -31,10 +35,18 @@ export function SelectAutocomplete({
   // Busca inicial dos dados no Supabase
   useEffect(() => {
     const fetchOptions = async () => {
-      const { data, error } = await supabase
+      // ADICIONADO: Variável let para podermos encadear o filtro dinamicamente
+      let query = supabase
         .from(tableName)
         .select(columnName)
         .order(columnName);
+      
+      // ADICIONADO: Aplica o filtro se as propriedades existirem
+      if (filterColumn && filterValue) {
+        query = query.eq(filterColumn, filterValue);
+      }
+        
+      const { data, error } = await query;
         
       if (!error && data) {
         const uniqueOptions = Array.from(new Set(data.map((item: any) => item[columnName])));
@@ -43,7 +55,7 @@ export function SelectAutocomplete({
       }
     };
     fetchOptions();
-  }, [tableName, columnName]);
+  }, [tableName, columnName, filterColumn, filterValue]); // ADICIONADO: Dependências do filtro
 
   // Sincroniza o valor externo com o input interno
   useEffect(() => {

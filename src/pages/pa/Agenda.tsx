@@ -29,7 +29,6 @@ import { ProcedimentosSelector } from '../../components/ui/ProcedimentosSelector
 import { maskPhone, capitalizeName } from '../../utils/formUtils';
 import { usePermissoes } from '../../hooks/usePermissoes';
 
-// IMPORTANDO O NOVO HOOK INTELIGENTE
 import { useHorarios } from '../../hooks/useHorarios';
 
 registerLocale('pt-BR', ptBR); 
@@ -47,7 +46,6 @@ const STATUS_CONFIG: Record<number, { label: string, color: string, border: stri
 };
 
 type Anexo = { nome: string; url: string; };
-
 type StatusItem = { id: number; nome: string; agrupamento: string; };
 
 type Agendamento = {
@@ -85,14 +83,12 @@ export function Agenda() {
     numero_atendimento: '', nome: '', telefone: '', diagnostico: '', procedimentos: [] as string[], crm_responsavel: ''
   });
 
-  // === CONSUMINDO A INTELIGÊNCIA DO HOOK (APENAS PARA O REAGENDAR) ===
   const { 
     horariosDisponiveis, 
     checkIsDisabled, 
     isLoadingHorarios, 
     refreshBookedTimes 
   } = useHorarios(reagendarDate);
-  // ====================================================================
 
   if (!podeVerPA) {
     return (
@@ -140,12 +136,22 @@ export function Agenda() {
     const matchCrm = ag.crm_responsavel?.toLowerCase().includes(termo);
 
     let matchStatus = true;
-    const statusId = ag.status_id;
-    const agrupamento = ag.status?.agrupamento;
+    const agrupamento = ag.status?.agrupamento?.toLowerCase() || '';
+    
+    let statusIdNum = Number(ag.status_id);
+    if (!statusIdNum || isNaN(statusIdNum) || statusIdNum === 0) {
+        statusIdNum = 1;
+    }
 
-    if (filtroStatus === 'padrao') matchStatus = agrupamento === 'pendente';
-    else if (filtroStatus === 'todos_ativos') matchStatus = agrupamento !== 'perdido'; 
-    else if (filtroStatus !== '') matchStatus = statusId === parseInt(filtroStatus);
+    if (filtroStatus === 'padrao') {
+        matchStatus = agrupamento.includes('pendent') || statusIdNum === 1 || statusIdNum === 2; 
+    } 
+    else if (filtroStatus === 'todos_ativos') {
+        matchStatus = statusIdNum !== 3; 
+    } 
+    else if (filtroStatus !== '') {
+        matchStatus = statusIdNum === Number(filtroStatus);
+    }
 
     return (matchNome || matchTelefone || matchNumero || matchCrm) && matchStatus;
   });
@@ -212,7 +218,6 @@ export function Agenda() {
       setSelectedAgendamento(null);
       fetchAgendamentos();
       
-      // Atualiza a inteligência do Hook para garantir que a grade estará correta depois
       refreshBookedTimes();
       
     } catch (error) { setErrorMsg("Erro ao salvar reagendamento no banco. Tente novamente."); }
@@ -366,7 +371,7 @@ export function Agenda() {
           title={
             <div className="flex items-center gap-2">
               <span className="line-clamp-1 dark:text-slate-100">{selectedAgendamento.nome_paciente}</span>
-              {selectedAgendamento.status?.agrupamento === 'pendente' && podeEditarPA && (
+              {(!selectedAgendamento.status_id || selectedAgendamento.status_id === 1 || selectedAgendamento.status_id === 2 || selectedAgendamento.status?.agrupamento === 'pendente') && podeEditarPA && (
                 <button onClick={() => setViewMode('edit')} className="p-1.5 bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-blue-600 rounded-lg"><Edit size={18} /></button>
               )}
             </div>
@@ -376,15 +381,15 @@ export function Agenda() {
             { label: 'Hora', value: selectedAgendamento.hora_agendamento, theme: 'blue' },
             { label: 'Atendimento', value: `#${selectedAgendamento.numero_atendimento}`, theme: 'blue' }
           ]}
-          statusLabel={STATUS_CONFIG[selectedAgendamento.status_id]?.label || 'Desconhecido'}
-          statusClasses={{ color: STATUS_CONFIG[selectedAgendamento.status_id]?.color, border: STATUS_CONFIG[selectedAgendamento.status_id]?.border }}
+          statusLabel={STATUS_CONFIG[selectedAgendamento.status_id || 1]?.label || 'Desconhecido'}
+          statusClasses={{ color: STATUS_CONFIG[selectedAgendamento.status_id || 1]?.color, border: STATUS_CONFIG[selectedAgendamento.status_id || 1]?.border }}
           tagsLabel="Procedimentos"
           tags={selectedAgendamento.procedimentos || []}
           phoneForWhats={podeWhatsAppPA ? selectedAgendamento.telefone_paciente : undefined}
           obsLabel="Diagnóstico / Condutas"
           obsText={selectedAgendamento.diagnostico || 'Sem observações.'}
           actionButtons={
-            selectedAgendamento.status?.agrupamento === 'pendente' ? (
+            (!selectedAgendamento.status_id || selectedAgendamento.status_id === 1 || selectedAgendamento.status_id === 2 || selectedAgendamento.status?.agrupamento === 'pendente') ? (
               <>
                 {podeAtualizarStatusPA && <Button variant="primary" fullWidth onClick={() => setViewMode('update_status')}><CheckCircle2 size={18} /> Atualizar Status</Button>}
                 {podeReagendarPA && <Button variant="warning" fullWidth onClick={() => { setViewMode('reschedule'); setReagendarDate(new Date()); }}><AlertTriangle size={18} /> Reagendar</Button>}
@@ -392,7 +397,7 @@ export function Agenda() {
             ) : undefined
           }
           footerButtons={
-            selectedAgendamento.status?.agrupamento === 'pendente' && podeCancelarPA ? (
+            (!selectedAgendamento.status_id || selectedAgendamento.status_id === 1 || selectedAgendamento.status_id === 2 || selectedAgendamento.status?.agrupamento === 'pendente') && podeCancelarPA ? (
               <Button variant="ghostDanger" fullWidth onClick={() => { setTempStatusId(3); setViewMode('confirm_cancel'); }}>Cancelar agendamento</Button>
             ) : undefined
           }
@@ -432,7 +437,6 @@ export function Agenda() {
       {selectedAgendamento && viewMode === 'reschedule' && (
         <Modal isOpen={true} onClose={() => setViewMode('details')} title={<span className="text-orange-600 dark:text-orange-400">Reagendamento</span>} maxWidth="2xl">
            <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
-{/* AVISO DE INSTRUÇÃO COM BRILHO NO MODO DARK */}
 <div className="bg-orange-50 dark:bg-orange-500/10 p-4 rounded-xl border border-orange-100 dark:border-orange-500/30 shadow-sm dark:shadow-[0_0_15px_rgba(249,115,22,0.1)]">
     <p className="text-sm text-orange-800 dark:text-orange-400 text-center font-bold tracking-wide uppercase">
         Selecione a nova data e horário
