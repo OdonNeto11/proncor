@@ -358,12 +358,15 @@ export function Ambulatorio() {
               )}
 
               {podeCancelarAmb && [1, 9, 13].includes(selectedEnc.status_id) && (
-                <button 
+                <Button 
+                  variant="textDanger" 
+                  size="sm" 
+                  fullWidth 
+                  className="mt-1"
                   onClick={() => setViewMode('confirm_cancel')}
-                  className="mt-1 w-full text-center text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 font-bold text-sm transition-colors py-2"
                 >
                   Cancelar Pedido
-                </button>
+                </Button>
               )}
             </div>
           }

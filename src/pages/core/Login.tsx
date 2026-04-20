@@ -80,25 +80,23 @@ export function Login() {
           <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Proncor Hub</h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium">Gestão e Fluxo Hospitalar</p>
         </div>
-
-        <form onSubmit={handleLogin} className="space-y-5">
+        
+<form onSubmit={handleLogin} className="space-y-5">
           <Input 
-            label="Usuário ou Email *"
+            label="Usuário ou Email"
             value={loginInput}
             onChange={e => setLoginInput(e.target.value)}
             placeholder="Ex: plantonista ou seu@email.com"
             icon={<User size={20} />}
-            required
           />
 
           <Input 
-            label="Senha *"
+            label="Senha"
             type="password"
             value={password}
             onChange={e => setPassword(e.target.value)}
             placeholder="••••••••"
             icon={<Lock size={20} />}
-            required
           />
 
           {errorMsg && (

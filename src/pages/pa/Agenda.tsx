@@ -1,34 +1,43 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Calendar as CalendarIcon, Clock, CheckCircle2, 
-  Search, AlertTriangle, ListChecks, Edit, RefreshCw, AlertCircle, FileDown, 
+  Search, AlertTriangle, ListChecks, Edit, RefreshCw, AlertCircle, 
   Hash, Activity, Stethoscope, ArrowRightCircle, HelpCircle, User, Phone
 } from 'lucide-react';
 import { format, parseISO, isToday, isTomorrow, endOfMonth, setHours, setMinutes } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import DatePicker, { registerLocale } from 'react-datepicker'; 
+import DatePicker, { registerLocale } from 'react-datepicker'; // RESTAURADO O DEFAULT IMPORT
 import "react-datepicker/dist/react-datepicker.css"; 
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 
+// COMPONENTES UI
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Textarea } from '../../components/ui/Textarea';
 import { Card } from '../../components/ui/Card';
 import { Toast } from '../../components/ui/Toast';
-import { Title, Description } from '../../components/ui/Typography';
 import { Modal } from '../../components/ui/Modal';
+import { SelectIcon } from '../../components/ui/SelectIcon'; 
+import { EmptyState } from '../../components/ui/EmptyState'; 
+import { Title, Description } from '../../components/ui/Typography'; // RESTAURADO
+
+// COMPONENTES SHARED
+import { PageHeader } from '../../components/shared/PageHeader'; 
+import { DateGroupHeader } from '../../components/shared/DateGroupHeader'; 
+import { DateRangeFilter } from '../../components/shared/DateRangeFilter'; 
 import { ModalDetalhesLayout } from '../../components/shared/ModalDetalhesLayout';
 import { ModalConfirmacaoCancelamentoLayout } from '../../components/shared/ModalConfirmacaoCancelamentoLayout';
 import { ModalAtualizarStatusLayout } from '../../components/shared/ModalAtualizarStatusLayout';
 import { ModalConfirmacaoStatusLayout } from '../../components/shared/ModalConfirmacaoStatusLayout';
 import { AtendimentoCard } from '../../components/shared/AtendimentoCard';
+
+// UTILS E HOOKS
 import { TimeSelector } from '../../components/ui/TimeSelector';
 import { ProcedimentosSelector } from '../../components/ui/ProcedimentosSelector';
 import { maskPhone, capitalizeName } from '../../utils/formUtils';
 import { usePermissoes } from '../../hooks/usePermissoes';
-
 import { useHorarios } from '../../hooks/useHorarios';
 
 registerLocale('pt-BR', ptBR); 
@@ -286,57 +295,57 @@ export function Agenda() {
         <Link to="/agenda" className={`pb-3 text-sm font-bold border-b-2 transition-colors ${window.location.pathname === '/agenda' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 hover:border-gray-300 dark:hover:border-slate-600'}`}>Ver Agenda</Link>
       </div>
 
-      <div className="mb-8">
-        <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-bold text-xs uppercase tracking-widest mb-2">
-           <Activity size={16} /> Módulo: Pronto Atendimento
-        </div>
-        <Title className="mb-2">Agenda de Retornos</Title>
-        <Description>Gerencie os retornos agendados da fila do PA.</Description>
-      </div>
+      <PageHeader 
+        module="Pronto Atendimento"
+        title="Agenda de Retornos"
+        description="Gerencie os retornos agendados da fila do PA."
+        icon={Activity}
+        themeColor="blue"
+      />
 
       <Card className="mb-8 p-4">
         <div className="flex flex-col lg:flex-row gap-4">
           <div className="w-full lg:w-1/3">
-            <Input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Nome, telefone, nº ou CRM..." icon={<Search size={18} />} className="!h-10" />
+            <Input value={busca} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBusca(e.target.value)} placeholder="Nome, telefone, nº ou CRM..." icon={<Search size={18} />} className="!h-10" />
           </div>
-          <div className="flex items-center gap-2 lg:w-1/3">
-            <div className="relative flex-1">
-                <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={16} />
-                <DatePicker selected={dataInicio} onChange={(date: Date | null) => setDataInicio(date)} locale="pt-BR" dateFormat="dd/MM/yyyy" placeholderText="Início" className="custom-datepicker-input !h-10 !text-sm !pl-10 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200" onFocus={(e) => e.target.blur()} />
-            </div>
-            <span className="text-gray-400 text-sm">até</span>
-            <div className="relative flex-1">
-                <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={16} />
-                <DatePicker selected={dataFim} onChange={(date: Date | null) => setDataFim(date)} locale="pt-BR" dateFormat="dd/MM/yyyy" placeholderText="Fim" className="custom-datepicker-input !h-10 !text-sm !pl-10 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200" onFocus={(e) => e.target.blur()} />
-            </div>
+          
+          <div className="lg:w-1/3">
+            <DateRangeFilter 
+              startDate={dataInicio}
+              endDate={dataFim}
+              onStartDateChange={setDataInicio}
+              onEndDateChange={setDataFim}
+            />
           </div>
-          <div className="relative w-full lg:w-1/3">
-              <ListChecks className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-              <select value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)} className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 appearance-none bg-white dark:bg-slate-800 dark:text-slate-200 h-10 shadow-sm transition-all">
-                  <option value="padrao">Padrão (Pendentes)</option>
-                  <option value="todos_ativos">Todos Ativos</option>
-                  {Object.entries(STATUS_CONFIG).map(([id, config]) => (<option key={id} value={id}>{config.label}</option>))}
-              </select>
+
+          <div className="w-full lg:w-1/3">
+              <SelectIcon 
+                icon={ListChecks}
+                value={filtroStatus}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFiltroStatus(e.target.value)}
+                options={[
+                  { value: 'padrao', label: 'Padrão (Pendentes)' },
+                  { value: 'todos_ativos', label: 'Todos Ativos' },
+                  ...Object.entries(STATUS_CONFIG).map(([id, config]) => ({ value: id, label: config.label }))
+                ]}
+              />
           </div>
         </div>
       </Card>
 
-      {loading ? <div className="text-center py-20 text-gray-500 dark:text-slate-400">Carregando...</div> : 
+      {loading ? <div className="text-center py-20 text-gray-500 dark:text-slate-400 font-bold">Carregando...</div> : 
         agendamentosFiltrados.length === 0 ? (
-          <div className="text-center py-20 bg-gray-50 dark:bg-slate-800/50 rounded-xl border border-dashed border-gray-300 dark:border-slate-700">
-            <h3 className="text-gray-600 dark:text-slate-300 font-medium">Nenhum agendamento encontrado</h3>
-            <button onClick={limparFiltros} className="text-blue-600 dark:text-blue-400 font-medium hover:underline flex items-center justify-center gap-2 mx-auto mt-2"><RefreshCw size={16} /> Limpar Filtros</button>
-          </div>
+          <EmptyState 
+            message="Nenhum agendamento encontrado para os filtros selecionados."
+            icon={Search}
+            onAction={limparFiltros}
+          />
         ) : (
         <div className="space-y-8">
           {Object.entries(grupos).map(([data, itens]) => (
             <div key={data} className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-              <div className="flex items-center gap-3 mb-4 bg-blue-50 dark:bg-blue-900/20 p-2 rounded-lg w-full border border-blue-100 dark:border-blue-900/30 shadow-sm">
-                <CalendarIcon className="text-blue-600 dark:text-blue-400" size={18} />
-                <h2 className="font-bold text-gray-800 dark:text-slate-200 capitalize text-sm">
-                    {isToday(parseISO(data)) ? 'Hoje' : isTomorrow(parseISO(data)) ? 'Amanhã' : format(parseISO(data), "EEEE, d 'de' MMMM", { locale: ptBR })}
-                </h2>
-              </div>
+              <DateGroupHeader date={data} theme="blue" />
+              
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {itens.map((item) => {
                   const statusInfo = STATUS_CONFIG[item.status_id] || STATUS_CONFIG[1];
@@ -391,14 +400,14 @@ export function Agenda() {
           actionButtons={
             (!selectedAgendamento.status_id || selectedAgendamento.status_id === 1 || selectedAgendamento.status_id === 2 || selectedAgendamento.status?.agrupamento === 'pendente') ? (
               <>
-                {podeAtualizarStatusPA && <Button variant="primary" fullWidth onClick={() => setViewMode('update_status')}><CheckCircle2 size={18} /> Atualizar Status</Button>}
-                {podeReagendarPA && <Button variant="warning" fullWidth onClick={() => { setViewMode('reschedule'); setReagendarDate(new Date()); }}><AlertTriangle size={18} /> Reagendar</Button>}
+                {podeAtualizarStatusPA && <Button variant="primary" fullWidth onClick={() => setViewMode('update_status')} icon={<CheckCircle2 size={18} />}>Atualizar Status</Button>}
+                {podeReagendarPA && <Button variant="warning" fullWidth onClick={() => { setViewMode('reschedule'); setReagendarDate(new Date()); }} icon={<AlertTriangle size={18} />}>Reagendar</Button>}
               </>
             ) : undefined
           }
           footerButtons={
             (!selectedAgendamento.status_id || selectedAgendamento.status_id === 1 || selectedAgendamento.status_id === 2 || selectedAgendamento.status?.agrupamento === 'pendente') && podeCancelarPA ? (
-              <Button variant="ghostDanger" fullWidth onClick={() => { setTempStatusId(3); setViewMode('confirm_cancel'); }}>Cancelar agendamento</Button>
+              <Button variant="textDanger" size="sm" fullWidth className="mt-1" onClick={() => { setTempStatusId(3); setViewMode('confirm_cancel'); }}>Cancelar agendamento</Button>
             ) : undefined
           }
         />
@@ -407,76 +416,77 @@ export function Agenda() {
       {selectedAgendamento && viewMode === 'update_status' && (
         <ModalAtualizarStatusLayout isOpen={true} onClose={() => setViewMode('details')} nomePaciente={selectedAgendamento.nome_paciente} theme="blue">
           <div className="flex flex-col gap-2">
-            <Button variant="success" fullWidth justify="start" onClick={() => solicitarAtualizacaoStatus(5)}><CheckCircle2 size={18}/> Finalizado</Button>
-            <Button variant="purple" fullWidth justify="start" onClick={() => solicitarAtualizacaoStatus(6)}><ArrowRightCircle size={18}/> Encaminhado ao Ambulatório</Button>
-            <Button variant="indigo" fullWidth justify="start" onClick={() => solicitarAtualizacaoStatus(7)}><Stethoscope size={18}/> Retorno ao PA</Button>
-            {selectedAgendamento?.status_id === 2 && (<Button variant="secondary" fullWidth justify="start" onClick={() => solicitarAtualizacaoStatus(4)}><AlertCircle size={18}/> Não respondeu após reagendamento</Button>)}
+            <Button variant="success" fullWidth justify="start" onClick={() => solicitarAtualizacaoStatus(5)} icon={<CheckCircle2 size={18}/>}>Finalizado</Button>
+            <Button variant="purple" fullWidth justify="start" onClick={() => solicitarAtualizacaoStatus(6)} icon={<ArrowRightCircle size={18}/>}>Encaminhado ao Ambulatório</Button>
+            <Button variant="indigo" fullWidth justify="start" onClick={() => solicitarAtualizacaoStatus(7)} icon={<Stethoscope size={18}/>}>Retorno ao PA</Button>
+            {selectedAgendamento?.status_id === 2 && (<Button variant="secondary" fullWidth justify="start" onClick={() => solicitarAtualizacaoStatus(4)} icon={<AlertCircle size={18}/>}>Não respondeu após reagendamento</Button>)}
           </div>
         </ModalAtualizarStatusLayout>
       )}
 
       {selectedAgendamento && viewMode === 'confirm_status_update' && tempStatusId && (
-        <ModalConfirmacaoStatusLayout isOpen={true} onClose={() => setViewMode('update_status')} onConfirm={executarAtualizacaoStatus} nomePaciente={selectedAgendamento.nome_paciente} statusNome={STATUS_CONFIG[tempStatusId]?.label || "Finalizado"} tipoStatus={tempStatusId === 5 ? "sucesso" : "neutro"} errorMsg={errorMsg} customInput={<Input label="Seu CRM (Obrigatório)" value={actionCrm} onChange={(e) => setActionCrm(e.target.value.replace(/\D/g, '').slice(0, 5))} placeholder="Apenas números" icon={<Stethoscope size={18} />} />} />
+        <ModalConfirmacaoStatusLayout isOpen={true} onClose={() => setViewMode('update_status')} onConfirm={executarAtualizacaoStatus} nomePaciente={selectedAgendamento.nome_paciente} statusNome={STATUS_CONFIG[tempStatusId]?.label || "Finalizado"} tipoStatus={tempStatusId === 5 ? "sucesso" : "neutro"} errorMsg={errorMsg} customInput={<Input label="Seu CRM (Obrigatório)" value={actionCrm} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setActionCrm(e.target.value.replace(/\D/g, '').slice(0, 5))} placeholder="Apenas números" icon={<Stethoscope size={18} />} />} />
       )}
 
       {selectedAgendamento && viewMode === 'edit' && (
-        <Modal isOpen={true} onClose={() => setViewMode('details')} title={<span className="text-blue-600 dark:text-blue-400">Editando dados</span>}>
+        <Modal isOpen={true} onClose={() => setViewMode('details')} title={<span className="text-blue-600 dark:text-blue-400 font-bold">Editando dados</span>}>
             <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
-               <Input label="Nº Atendimento" value={editForm.numero_atendimento} onChange={e => setEditForm({ ...editForm, numero_atendimento: e.target.value.replace(/\D/g, '') })} icon={<Hash size={18} />} maxLength={10} />
-               <Input label="Nome do Paciente" value={editForm.nome} onChange={e => setEditForm({ ...editForm, nome: capitalizeName(e.target.value) })} icon={<User size={18} />} />
-               <Input label="Telefone / WhatsApp" value={editForm.telefone} onChange={e => setEditForm({ ...editForm, telefone: maskPhone(e.target.value) })} icon={<Phone size={18} />} maxLength={15} />
-               <Textarea label="Diagnóstico / Condutas" value={editForm.diagnostico} onChange={e => setEditForm({ ...editForm, diagnostico: e.target.value })} rows={3} />
+               <Input label="Nº Atendimento" value={editForm.numero_atendimento} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm({ ...editForm, numero_atendimento: e.target.value.replace(/\D/g, '') })} icon={<Hash size={18} />} maxLength={10} />
+               <Input label="Nome do Paciente" value={editForm.nome} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm({ ...editForm, nome: capitalizeName(e.target.value) })} icon={<User size={18} />} />
+               <Input label="Telefone / WhatsApp" value={editForm.telefone} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm({ ...editForm, telefone: maskPhone(e.target.value) })} icon={<Phone size={18} />} maxLength={15} />
+               <Textarea label="Diagnóstico / Condutas" value={editForm.diagnostico} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setEditForm({ ...editForm, diagnostico: e.target.value })} rows={3} />
                <ProcedimentosSelector opcoes={OPCOES_PROCEDIMENTOS} selecionados={editForm.procedimentos} onToggle={toggleProcedimentoEdit} />
-               <Input label="Seu CRM (Obrigatório para salvar)" value={editForm.crm_responsavel} onChange={e => setEditForm({ ...editForm, crm_responsavel: e.target.value.replace(/\D/g, '').slice(0, 5) })} icon={<Stethoscope size={18} />} placeholder="Apenas números" />
-               {errorMsg && (<div className="mb-2 p-3 bg-red-50 text-red-600 rounded-xl text-sm flex items-center gap-2"><AlertCircle size={18} /><span className="font-semibold">{errorMsg}</span></div>)}
+               <Input label="Seu CRM (Obrigatório para salvar)" value={editForm.crm_responsavel} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditForm({ ...editForm, crm_responsavel: e.target.value.replace(/\D/g, '').slice(0, 5) })} icon={<Stethoscope size={18} />} placeholder="Apenas números" />
+               {errorMsg && (<div className="mb-2 p-3 bg-red-50 text-red-600 rounded-xl text-sm flex items-center gap-2 font-bold"><AlertCircle size={18} /><span>{errorMsg}</span></div>)}
                <div className="flex gap-2 pt-2"><Button variant="secondary" fullWidth onClick={() => setViewMode('details')}>Cancelar</Button><Button variant="primary" fullWidth onClick={confirmarEdicao}>Salvar Dados</Button></div>
             </div>
         </Modal>
       )}
 
       {selectedAgendamento && viewMode === 'reschedule' && (
-        <Modal isOpen={true} onClose={() => setViewMode('details')} title={<span className="text-orange-600 dark:text-orange-400">Reagendamento</span>} maxWidth="2xl">
+        <Modal isOpen={true} onClose={() => setViewMode('details')} title={<span className="text-orange-600 dark:text-orange-400 font-bold">Reagendamento</span>} maxWidth="2xl">
            <div className="space-y-6 animate-in slide-in-from-right-4 duration-300">
-<div className="bg-orange-50 dark:bg-orange-500/10 p-4 rounded-xl border border-orange-100 dark:border-orange-500/30 shadow-sm dark:shadow-[0_0_15px_rgba(249,115,22,0.1)]">
-    <p className="text-sm text-orange-800 dark:text-orange-400 text-center font-bold tracking-wide uppercase">
-        Selecione a nova data e horário
-    </p>
-</div>              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                      <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Nova Data</label>
-                      <div className="relative">
-                          <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 z-10" size={20} />
-                          <DatePicker selected={reagendarDate} onChange={(d: Date | null) => setReagendarDate(d)} minDate={new Date()} locale="pt-BR" dateFormat="dd/MM/yyyy" placeholderText="Selecione o dia" popperPlacement="bottom-start" className="w-full pl-10 pr-3 py-3 rounded-xl border shadow-sm outline-none focus:ring-4 focus:ring-blue-500/10 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200" onFocus={(e) => e.target.blur()} />
-                      </div>
-                  </div>
-                  <div>
-                     {!reagendarDate ? (
-                        <div><label className="text-xs font-bold text-slate-500 uppercase mb-3 block">Novo Horário</label><div className="h-10 flex items-center text-slate-400 text-sm italic">Selecione uma data primeiro.</div></div>
-                     ) : (
-                        <TimeSelector 
-                          horarios={horariosDisponiveis} 
-                          selectedTime={reagendarTime} 
-                          onSelectTime={handleSelectRescheduleTime} 
-                          checkIsDisabled={checkIsDisabled} 
-                          isLoading={isLoadingHorarios} 
-                          gridClassName="grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-2" 
-                        />
-                     )}
-                  </div>
-              </div>
-              <Textarea label="Motivo do Reagendamento" placeholder="Ex.: Paciente pediu para remarcar." value={reagendarMotivo} onChange={e => setReagendarMotivo(e.target.value)} rows={2} />
-              <Input label="Seu CRM (Obrigatório)" value={actionCrm} onChange={e => setActionCrm(e.target.value.replace(/\D/g, '').slice(0, 5))} placeholder="Apenas números" icon={<Stethoscope size={18} />} />
-              {errorMsg && (<div className="mb-2 p-3 bg-red-50 text-red-600 rounded-xl text-sm flex items-center gap-2"><AlertCircle size={18} /><span className="font-semibold">{errorMsg}</span></div>)}
-              <div className="flex gap-2 pt-2"><Button variant="secondary" className="flex-1" onClick={() => setViewMode('details')}>Voltar</Button><Button variant="warning" className="flex-1" onClick={confirmarReagendamento}>Confirmar</Button></div>
+            <div className="bg-orange-50 dark:bg-orange-500/10 p-4 rounded-xl border border-orange-100 dark:border-orange-500/30 shadow-sm">
+                <p className="text-sm text-orange-800 dark:text-orange-400 text-center font-bold tracking-wide uppercase">
+                    Selecione a nova data e horário
+                </p>
+            </div>              
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Nova Data</label>
+                    <div className="relative">
+                        <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 z-10" size={20} />
+                        <DatePicker selected={reagendarDate} onChange={(d: Date | null) => setReagendarDate(d)} minDate={new Date()} locale="pt-BR" dateFormat="dd/MM/yyyy" placeholderText="Selecione o dia" popperPlacement="bottom-start" className="w-full pl-10 pr-3 py-3 rounded-xl border shadow-sm outline-none focus:ring-4 focus:ring-blue-500/10 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200" onFocus={(e) => (e.target as HTMLInputElement).blur()} />
+                    </div>
+                </div>
+                <div>
+                    {!reagendarDate ? (
+                      <div><label className="text-xs font-bold text-slate-500 uppercase mb-3 block">Novo Horário</label><div className="h-10 flex items-center text-slate-400 text-sm italic">Selecione uma data primeiro.</div></div>
+                    ) : (
+                      <TimeSelector 
+                        horarios={horariosDisponiveis} 
+                        selectedTime={reagendarTime} 
+                        onSelectTime={handleSelectRescheduleTime} 
+                        checkIsDisabled={checkIsDisabled} 
+                        isLoading={isLoadingHorarios} 
+                        gridClassName="grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-2" 
+                      />
+                    )}
+                </div>
+            </div>
+            <Textarea label="Motivo do Reagendamento" placeholder="Ex.: Paciente pediu para remarcar." value={reagendarMotivo} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setReagendarMotivo(e.target.value)} rows={2} />
+            <Input label="Seu CRM (Obrigatório)" value={actionCrm} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setActionCrm(e.target.value.replace(/\D/g, '').slice(0, 5))} placeholder="Apenas números" icon={<Stethoscope size={18} />} />
+            {errorMsg && (<div className="mb-2 p-3 bg-red-50 text-red-600 rounded-xl text-sm flex items-center gap-2 font-bold"><AlertCircle size={18} /><span>{errorMsg}</span></div>)}
+            <div className="flex gap-2 pt-2"><Button variant="secondary" className="flex-1" onClick={() => setViewMode('details')}>Voltar</Button><Button variant="warning" className="flex-1" onClick={confirmarReagendamento}>Confirmar</Button></div>
            </div>
         </Modal>
       )}
 
       {selectedAgendamento && viewMode === 'confirm_cancel' && (
-        <ModalConfirmacaoCancelamentoLayout isOpen={true} onClose={() => setViewMode('details')} onConfirm={() => { setTempStatusId(3); executarAtualizacaoStatus(); }} nomePaciente={selectedAgendamento.nome_paciente} tipoAtendimento="agendamento" customInput={<Input label="Seu CRM (Obrigatório)" value={actionCrm} onChange={(e) => setActionCrm(e.target.value.replace(/\D/g, '').slice(0, 5))} placeholder="Apenas números" icon={<Stethoscope size={18} />} />} errorMsg={errorMsg} />
+        <ModalConfirmacaoCancelamentoLayout isOpen={true} onClose={() => setViewMode('details')} onConfirm={() => { setTempStatusId(3); executarAtualizacaoStatus(); }} nomePaciente={selectedAgendamento.nome_paciente} tipoAtendimento="agendamento" customInput={<Input label="Seu CRM (Obrigatório)" value={actionCrm} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setActionCrm(e.target.value.replace(/\D/g, '').slice(0, 5))} placeholder="Apenas números" icon={<Stethoscope size={18} />} />} errorMsg={errorMsg} />
       )}
 
-      {showToast.visible && <Toast message={showToast.message} onClose={() => setShowToast({ visible: false, message: '' })} />}
+      {showToast.visible && <Toast message={showToast.message} onClose={() => setShowToast({ ...showToast, visible: false, message: '' })} />}
     </div>
   );
 }

@@ -118,8 +118,8 @@ export function NovoAmbulatorio() {
 
     // Validação Condicional
     if (formData.atendido_proncor === false) {
-      if (!formData.nome_paciente || !formData.telefone_paciente || !formData.cpf || !formData.plano_saude) {
-        setErrorMsg('Preencha todos os campos obrigatórios (Nome, Celular, CPF e Plano).');
+      if (!formData.nome_paciente || !formData.telefone_paciente || !formData.plano_saude) {
+        setErrorMsg('Preencha todos os campos obrigatórios (Nome, Celular e Plano).');
         setLoading(false);
         return;
       }
@@ -244,8 +244,7 @@ export function NovoAmbulatorio() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Input label={`Nome do Paciente${formData.atendido_proncor === true ? ' (Opcional)' : ''}`} name="nome_paciente" value={formData.nome_paciente} onChange={handleChange} icon={<User size={20} />} required={formData.atendido_proncor === false} />
                 <Input label={`Telefone / WhatsApp${formData.atendido_proncor === true ? ' (Opcional)' : ''}`} name="telefone_paciente" value={formData.telefone_paciente} onChange={handlePhoneChange} placeholder="(xx) xxxxx-xxxx" icon={<Phone size={20} />} maxLength={15} required={formData.atendido_proncor === false} />
-                <Input label={`CPF${formData.atendido_proncor === true ? ' (Opcional)' : ''}`} name="cpf" value={formData.cpf} onChange={(e) => setFormData({...formData, cpf: maskCPF(e.target.value)})} icon={<FileText size={20} />} maxLength={14} required={formData.atendido_proncor === false} />
-                <SelectAutocomplete label={`Plano de Saúde${formData.atendido_proncor === true ? ' (Opcional)' : ''}`} tableName="planos_saude" columnName="nome" value={formData.plano_saude} onChange={val => setFormData({ ...formData, plano_saude: val })} required={formData.atendido_proncor === false} />
+                <Input label="CPF (Opcional)" name="cpf" value={formData.cpf} onChange={(e) => setFormData({...formData, cpf: maskCPF(e.target.value)})} icon={<FileText size={20} />} maxLength={14} />                <SelectAutocomplete label={`Plano de Saúde${formData.atendido_proncor === true ? ' (Opcional)' : ''}`} tableName="planos_saude" columnName="nome" value={formData.plano_saude} onChange={val => setFormData({ ...formData, plano_saude: val })} required={formData.atendido_proncor === false} />
               </div>
 
               <div className="bg-slate-50 dark:bg-slate-800/20 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 transition-colors">

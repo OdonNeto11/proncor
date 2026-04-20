@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { supabase } from "../../../lib/supabase"; 
 import { useTheme } from '../../../contexts/ThemeContext';
 import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, LabelList,
+  ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, LabelList,
   PieChart, Pie, Cell, Legend
 } from 'recharts';
 
@@ -11,7 +11,7 @@ import { Card } from '../../../components/ui/Card';
 import { Title, Description } from '../../../components/ui/Typography';
 import { Button } from '../../../components/ui/Button';
 
-import { Download, X, Filter, Calendar as CalendarIcon, User, Activity, ChevronRight, Home } from 'lucide-react';
+import { Download, X, Filter, Calendar as CalendarIcon, User, Activity, ChevronRight, Home, HelpCircle } from 'lucide-react';
 import DatePicker from 'react-datepicker';
 import { format, parseISO } from 'date-fns';
 import * as XLSX from 'xlsx';
@@ -71,7 +71,15 @@ export function DashPA({ onBack }: DashPAProps) {
       for (let i = 5; i >= 0; i--) {
         const d = new Date();
         d.setMonth(d.getMonth() - i);
-        ultimos6Meses.push({ num: d.getMonth(), name: mesesNomes[d.getMonth()], year: d.getFullYear(), todos: 0, sucesso: 0 });
+        ultimos6Meses.push({ 
+          num: d.getMonth(), 
+          name: mesesNomes[d.getMonth()], 
+          year: d.getFullYear(), 
+          todos: 0, 
+          sucesso: 0, 
+          perdidos: 0, 
+          labelPerdidos: '' 
+        });
       }
 
       let countTotalGeral = 0, countFila = 0, countAgendados = 0, countReagendados = 0, countSucesso = 0, countSemConversao = 0;
@@ -104,11 +112,20 @@ export function DashPA({ onBack }: DashPAProps) {
             if (agrupamento === 'sucesso') {
               mesRef.sucesso++; 
             }
+            if (statusId === 4) {
+              mesRef.perdidos++;
+            }
           }
         }
 
         if (!statusMap[statusId]) statusMap[statusId] = { nome: item.status.nome, count: 0 };
         statusMap[statusId].count++;
+      });
+
+      // Cálculo de percentual e labels para a linha de perdidos
+      ultimos6Meses.forEach(mes => {
+        const percentual = mes.todos > 0 ? Math.round((mes.perdidos / mes.todos) * 100) : 0;
+        mes.labelPerdidos = mes.perdidos > 0 ? `${mes.perdidos} (${percentual}%)` : '';
       });
 
       const statusFormatted = Object.keys(statusMap).map(key => {
@@ -120,31 +137,39 @@ export function DashPA({ onBack }: DashPAProps) {
         };
       }).sort((a, b) => b.value - a.value);
 
-      setStats({ totalGeral: countTotalGeral, sucesso: countSucesso, filaAgendados: countFila, agendadosCount: countAgendados, reagendadosCount: countReagendados, semConversao: countSemConversao, mensal: ultimos6Meses, porStatus: statusFormatted });
-    } catch (err) { console.error('Erro ao buscar KPIs:', err); }
+      setStats({ 
+        totalGeral: countTotalGeral, 
+        sucesso: countSucesso, 
+        filaAgendados: countFila, 
+        agendadosCount: countAgendados, 
+        reagendadosCount: countReagendados, 
+        semConversao: countSemConversao, 
+        mensal: ultimos6Meses, 
+        porStatus: statusFormatted 
+      });
+    } catch (err) { 
+      console.error('Erro ao buscar KPIs:', err); 
+    }
   }
 
   useEffect(() => { fetchStats(); }, [dataInicio, dataFim, statusFiltro, crmFiltro]);
 
   const openModal = (title: string, filtroFn: (item: any) => boolean) => {
-    setModalTitle(title); setModalData(rawAgendamentos.filter(filtroFn)); setIsModalOpen(true);
+    setModalTitle(title); 
+    setModalData(rawAgendamentos.filter(filtroFn)); 
+    setIsModalOpen(true);
   };
 
   const handleBarClick = (data: any) => {
     if (!data) return;
-    
     const titulo = `Agendamentos - ${data.name}/${data.year} (${tipoGraficoMensal === 'todos' ? 'Todos' : 'Sucesso'})`;
-    
     openModal(titulo, (item) => {
       if (item.status_id === 3) return false; 
-
       if (!item.data_agendamento) return false;
       const [y, m, d] = item.data_agendamento.split('-').map(Number);
       const isSameMonth = (m - 1 === data.num) && (y === data.year);
       if (!isSameMonth) return false;
-
       if (tipoGraficoMensal === 'sucesso' && item.status?.agrupamento !== 'sucesso') return false;
-
       return true;
     });
   };
@@ -152,8 +177,10 @@ export function DashPA({ onBack }: DashPAProps) {
   const exportToExcel = () => {
     const dataToExport = modalData.map(item => ({
       'Data': item.data_agendamento ? format(parseISO(item.data_agendamento), 'dd/MM/yyyy') : '-',
-      'Hora': item.hora_agendamento || '-', 'Nº Atendimento': item.numero_atendimento || '-',
-      'Paciente': item.nome_paciente || '-', 'CRM': item.crm_responsavel || '-',
+      'Hora': item.hora_agendamento || '-', 
+      'Nº Atendimento': item.numero_atendimento || '-',
+      'Paciente': item.nome_paciente || '-', 
+      'CRM': item.crm_responsavel || '-',
       'Status': CONFIG_STATUS[item.status_id]?.label?.toUpperCase() || 'DESCONHECIDO'
     }));
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
@@ -163,12 +190,12 @@ export function DashPA({ onBack }: DashPAProps) {
   };
 
   const renderCustomLegend = () => (
-    <ul className="grid grid-cols-2 gap-x-4 gap-y-2 m-0 p-0 list-none text-[12px] font-bold text-slate-600 dark:text-slate-300">
+    <ul className="grid grid-cols-2 gap-x-2 gap-y-3 m-0 p-0 list-none mt-4">
       {stats.porStatus.map((entry, index) => (
         <li key={`legend-${index}`} className="flex items-center gap-2">
           <span className="w-3 h-3 rounded-full shrink-0 shadow-sm" style={{ backgroundColor: entry.color }} />
-          <span className="truncate">{entry.name}</span>
-          <span className="font-black text-slate-800 dark:text-white ml-auto">{entry.value}</span>
+          <span className="font-black text-slate-800 dark:text-white text-sm">{entry.value}</span>
+          <span className="truncate font-medium text-slate-500 dark:text-slate-400 text-xs">{entry.name}</span>
         </li>
       ))}
     </ul>
@@ -185,7 +212,6 @@ export function DashPA({ onBack }: DashPAProps) {
         <nav className="flex items-center space-x-2 text-xs md:text-sm text-slate-500 dark:text-slate-400 font-medium mb-5 overflow-x-auto whitespace-nowrap">
           <Link to="/" className="hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-1 transition-colors"><Home size={14} /> <span>Home</span></Link>
           <ChevronRight size={14} className="text-slate-400" />
-          {/* CORREÇÃO: Link do breadcrumb envia o forceAdminHub */}
           <Link to="/admin" state={{ forceAdminHub: true }} className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Administração</Link>
           <ChevronRight size={14} className="text-slate-400" />
           <button onClick={onBack} className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Dashboards</button>
@@ -273,32 +299,62 @@ export function DashPA({ onBack }: DashPAProps) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         <Card className="p-4 md:p-6 overflow-hidden">
-          <div className="flex justify-between items-center mb-8">
-            <Title className="!text-lg !mb-0 text-gray-700 dark:text-slate-200">Evolução de Agendamentos</Title>
+          <div className="flex justify-between items-start sm:items-center mb-8 flex-col sm:flex-row gap-4 sm:gap-0">
+            <div>
+              <Title className="!text-lg !mb-0 text-gray-700 dark:text-slate-200">Evolução de Agendamentos</Title>
+              <Description className="!mt-0 !text-xs">Visualização dos últimos 6 meses</Description>
+            </div>
             
-            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
-              <button 
-                onClick={() => setTipoGraficoMensal('todos')} 
-                className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${tipoGraficoMensal === 'todos' ? 'bg-white dark:bg-slate-700 shadow-sm text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}`}
-              >
-                Todos
-              </button>
-              <button 
-                onClick={() => setTipoGraficoMensal('sucesso')} 
-                className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${tipoGraficoMensal === 'sucesso' ? 'bg-white dark:bg-slate-700 shadow-sm text-green-600 dark:text-green-400' : 'text-slate-500 dark:text-slate-400'}`}
-              >
-                Sucesso
-              </button>
+            <div className="flex items-center gap-3">
+              <div className="group relative flex items-center justify-center">
+                <HelpCircle size={18} className="text-slate-400 hover:text-blue-500 cursor-help transition-colors" />
+                <div className="absolute right-0 top-6 w-60 p-3 bg-slate-800 dark:bg-slate-700 text-white text-xs rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 pointer-events-none">
+                   <p className="font-bold mb-2 border-b border-slate-600 pb-1">Regras do Filtro:</p>
+                   <div className="text-[11px]">
+                     <span className="font-bold text-green-400 mb-1 block">Sucesso:</span>
+                     <span className="text-slate-300">Contabiliza apenas os status:</span>
+                     <ul className="mt-1.5 ml-4 space-y-1 list-disc text-slate-200">
+                       <li><strong>Finalizado</strong></li>
+                       <li><strong>Encaminhado Amb</strong></li>
+                       <li><strong>Retorno ao PA</strong></li>
+                     </ul>
+                   </div>
+                </div>
+              </div>
+
+              <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
+                <button 
+                  onClick={() => setTipoGraficoMensal('todos')} 
+                  className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${tipoGraficoMensal === 'todos' ? 'bg-white dark:bg-slate-700 shadow-sm text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}`}
+                >
+                  Todos
+                </button>
+                <button 
+                  onClick={() => setTipoGraficoMensal('sucesso')} 
+                  className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${tipoGraficoMensal === 'sucesso' ? 'bg-white dark:bg-slate-700 shadow-sm text-green-600 dark:text-green-400' : 'text-slate-500 dark:text-slate-400'}`}
+                >
+                  Sucesso
+                </button>
+              </div>
             </div>
           </div>
 
           <div className="h-[300px] md:h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={stats.mensal}>
+              {/* MARGEM ADICIONADA: resolve o problema da barra mais alta cortando o número */}
+              <ComposedChart data={stats.mensal} margin={{ top: 25, right: 5, left: 5, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? '#1e293b' : '#f1f5f9'} />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 12 }} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 12 }} />
-                <RechartsTooltip cursor={{fill: isDark ? '#1e293b' : '#f8fafc', opacity: 0.4}} contentStyle={{ backgroundColor: isDark ? '#0f172a' : '#ffffff', borderRadius: '12px', border: 'none' }} />
+                
+                {/* TOOLTIP CUSTOMIZADO COM CORREÇÃO DE TS E ORDENAÇÃO */}
+                <RechartsTooltip 
+                  cursor={{fill: isDark ? '#1e293b' : '#f8fafc', opacity: 0.4}} 
+                  contentStyle={{ backgroundColor: isDark ? '#0f172a' : '#ffffff', borderRadius: '12px', border: 'none' }} 
+                  itemSorter={(item) => item.dataKey === 'perdidos' ? 1 : -1}
+                  formatter={(value: any, name: any) => [value, name === 'todos' ? 'Todos' : name === 'sucesso' ? 'Sucesso' : 'Perdidos']}
+                />
+                
                 <Bar 
                   dataKey={tipoGraficoMensal} 
                   fill={tipoGraficoMensal === 'todos' ? '#3b82f6' : '#10b981'} 
@@ -309,7 +365,26 @@ export function DashPA({ onBack }: DashPAProps) {
                 >
                   <LabelList dataKey={tipoGraficoMensal} position="top" style={{ fill: isDark ? '#cbd5e1' : '#1e293b', fontSize: '12px', fontWeight: '900' }} />
                 </Bar>
-              </BarChart>
+
+                {tipoGraficoMensal === 'todos' && (
+                  <Line 
+                    type="monotone" 
+                    dataKey="perdidos" 
+                    stroke={isDark ? '#ff3333' : '#ef4444'} 
+                    strokeWidth={isDark ? 4 : 3} 
+                    dot={{ r: 5, strokeWidth: 2, fill: isDark ? '#ff3333' : '#ef4444' }} 
+                    activeDot={{ r: 7 }}
+                    isAnimationActive={false}
+                  >
+                    <LabelList 
+                      dataKey="labelPerdidos" 
+                      position="top" 
+                      offset={12} 
+                      style={{ fill: isDark ? '#ff3333' : '#ef4444', fontSize: '12px', fontWeight: '900' }} 
+                    />
+                  </Line>
+                )}
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
         </Card>
@@ -331,7 +406,10 @@ export function DashPA({ onBack }: DashPAProps) {
                 >
                   {stats.porStatus.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.color} />))}
                 </Pie>
-                <RechartsTooltip contentStyle={{ backgroundColor: isDark ? '#0f172a' : '#ffffff', borderRadius: '12px', border: 'none' }} />
+                <RechartsTooltip 
+                  contentStyle={{ backgroundColor: isDark ? '#0f172a' : '#ffffff', borderRadius: '12px', border: isDark ? '1px solid #1e293b' : 'none' }} 
+                  itemStyle={{ color: isDark ? '#f8fafc' : '#0f172a', fontWeight: 'bold' }}
+                />
                 <Legend layout="horizontal" verticalAlign="bottom" align="center" content={renderCustomLegend} wrapperStyle={{ paddingTop: '20px' }} />
               </PieChart>
             </ResponsiveContainer>

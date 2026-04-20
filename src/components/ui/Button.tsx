@@ -3,7 +3,7 @@ import { ButtonHTMLAttributes, ReactNode } from 'react';
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
   icon?: ReactNode;
-  variant?: 'primary' | 'secondary' | 'outline' | 'danger' | 'success' | 'warning' | 'purple' | 'indigo' | 'ghostDanger' | 'ghost' | 'rose' | 'amber';
+  variant?: 'primary' | 'secondary' | 'outline' | 'danger' | 'success' | 'warning' | 'purple' | 'indigo' | 'ghostDanger' | 'ghost' | 'rose' | 'amber' | 'textDanger'; // ADICIONADO AQUI
   size?: 'sm' | 'md' | 'lg' | 'icon';
   fullWidth?: boolean;
   justify?: 'center' | 'start' | 'between';
@@ -19,7 +19,6 @@ export function Button({
   className = '',
   ...props
 }: ButtonProps) {
-  // CORREÇÃO: Adicionado o "whitespace-nowrap" no final desta string abaixo
   const baseStyles = 'rounded-xl font-bold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 flex items-center gap-2 whitespace-nowrap';
 
   const sizeStyles = {
@@ -48,6 +47,8 @@ export function Button({
     ghost: 'bg-transparent text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 shadow-none',
     rose: 'bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 dark:bg-rose-900/20 dark:text-rose-400 dark:border-rose-900/50 dark:hover:bg-rose-900/40',
     amber: 'bg-amber-50 text-amber-700 border border-amber-100 hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-900/50 dark:hover:bg-amber-900/40',
+    // ADICIONADO AQUI: Estilo exato sem fundo no hover
+    textDanger: 'bg-transparent border-transparent text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 shadow-none hover:bg-transparent',
   };
 
   const widthStyles = fullWidth ? 'w-full' : '';
