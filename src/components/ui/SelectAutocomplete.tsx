@@ -12,6 +12,7 @@ interface SelectAutocompleteProps {
   required?: boolean;
   filterColumn?: string; // ADICIONADO
   filterValue?: string;  // ADICIONADO
+  error?: string;        // <-- ADICIONADO: Tipagem do erro
 }
 
 export function SelectAutocomplete({ 
@@ -23,7 +24,8 @@ export function SelectAutocomplete({
   placeholder = "Selecione ou digite...", 
   required,
   filterColumn, // ADICIONADO
-  filterValue   // ADICIONADO
+  filterValue,  // ADICIONADO
+  error         // <-- ADICIONADO: Prop do erro
 }: SelectAutocompleteProps) {
   
   const [options, setOptions] = useState<string[]>([]);
@@ -119,7 +121,11 @@ export function SelectAutocomplete({
             setFilteredOptions(options);
           }}
           placeholder={placeholder}
-          className="w-full h-11 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-300 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all outline-none pl-10 pr-10 shadow-sm"
+          className={`w-full h-11 bg-white dark:bg-slate-900 border rounded-xl text-sm text-slate-700 dark:text-slate-300 focus:ring-1 transition-all outline-none pl-10 pr-10 shadow-sm ${
+            error 
+              ? 'border-red-500 focus:border-red-500 focus:ring-red-500' 
+              : 'border-slate-200 dark:border-slate-700 focus:border-purple-500 focus:ring-purple-500'
+          }`} // <-- ADICIONADO: Estilo condicional da borda vermelha
         />
         
         <div 
@@ -129,6 +135,9 @@ export function SelectAutocomplete({
           <ChevronDown size={18} className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
         </div>
       </div>
+
+      {/* ADICIONADO: Renderização da mensagem de erro abaixo do input */}
+      {error && <span className="text-xs text-red-500 font-medium">{error}</span>}
 
       {isOpen && filteredOptions.length > 0 && (
         <ul className="absolute z-[100] w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg max-h-60 overflow-y-auto top-full animate-in fade-in slide-in-from-top-2">

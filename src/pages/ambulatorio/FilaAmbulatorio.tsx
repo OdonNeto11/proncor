@@ -15,6 +15,7 @@ import { Textarea } from '../../components/ui/Textarea';
 import { Modal } from '../../components/ui/Modal';
 import { Button } from '../../components/ui/Button';
 import { Toast } from '../../components/ui/Toast';
+import { ToastError } from '../../components/ui/ToastError'; // PADRÃO CORRETO RESTAURADO
 import { Title, Description } from '../../components/ui/Typography';
 import { DatePicker } from '../../components/ui/DatePicker'; 
 
@@ -22,8 +23,6 @@ import { DatePicker } from '../../components/ui/DatePicker';
 import { AtendimentoCard } from '../../components/shared/AtendimentoCard';
 import { ModalDetalhesLayout } from '../../components/shared/ModalDetalhesLayout';
 import { ModalConfirmacaoCancelamentoLayout } from '../../components/shared/ModalConfirmacaoCancelamentoLayout';
-import { ModalAtualizarStatusLayout } from '../../components/shared/ModalAtualizarStatusLayout';
-import { ModalConfirmacaoStatusLayout } from '../../components/shared/ModalConfirmacaoStatusLayout';
 
 // FUNÇÕES UTILITÁRIAS E PERMISSÕES
 import { maskPhone, capitalizeName } from '../../utils/formUtils';
@@ -33,10 +32,12 @@ const STATUS_CONFIG_AMB: Record<number, { label: string, color: string, border: 
   1: { label: 'Aguardando Atendimento', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400', border: 'border-orange-200 dark:border-orange-800/50', icon: AlertCircle },
   13: { label: 'Aguardando Agendamento', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400', border: 'border-orange-200 dark:border-orange-800/50', icon: AlertCircle },
   3: { label: 'Cancelado', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400', border: 'border-red-200 dark:border-red-800/50', icon: XCircle },
+  5: { label: 'Finalizado', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', border: 'border-emerald-200 dark:border-emerald-800/50', icon: CheckCircle2 },
   9: { label: 'Agendado', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', border: 'border-emerald-200 dark:border-emerald-800/50', icon: CheckCircle2 },
   10: { label: 'Plano não Atendido', color: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400', border: 'border-rose-200 dark:border-rose-800/50', icon: ShieldOff },
   11: { label: 'Sem Especialidade', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400', border: 'border-amber-200 dark:border-amber-800/50', icon: AlertCircle },
   12: { label: 'Sem Contato', color: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400', border: 'border-slate-200 dark:border-slate-700', icon: HelpCircle },
+  14: { label: 'Concluído', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', border: 'border-emerald-200 dark:border-emerald-800/50', icon: CheckCircle2 },
 };
 
 export function Ambulatorio() {
@@ -49,13 +50,15 @@ export function Ambulatorio() {
   const [filtroTab, setFiltroTab] = useState<'todos' | 'pendentes' | 'sucesso' | 'perdidos'>('pendentes');
   const [selectedEnc, setSelectedEnc] = useState<any | null>(null);
   
-  const [viewMode, setViewMode] = useState<'list' | 'details' | 'edit' | 'update_status' | 'confirm_status' | 'confirm_cancel' | 'agendar_exames'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'details' | 'edit' | 'confirm_cancel' | 'agendar_exames'>('list');
   
-  const [statusSelecionado, setStatusSelecionado] = useState<{id: number, msg: string, label: string} | null>(null);
   const [examesAgendamento, setExamesAgendamento] = useState<any[]>([]);
   
   const [showToast, setShowToast] = useState({ visible: false, message: '' });
-  const [errorMsg, setErrorMsg] = useState('');
+  
+  // ESTADOS DO NOVO PADRÃO DE ERRO
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [errorMsg, setErrorMsg] = useState(''); 
 
   const [editForm, setEditForm] = useState({ 
     numero_atendimento: '',
@@ -65,13 +68,27 @@ export function Ambulatorio() {
     observacoes: ''
   });
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && selectedEnc) {
+        if (viewMode === 'details') {
+          setSelectedEnc(null);
+        } else {
+          setViewMode('details');
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedEnc, viewMode]);
+
   const fetchEncaminhamentos = async () => {
     if (!podeVerAmb) return; 
     setLoading(true);
     try {
       const statusMap = { 
         pendentes: [13, 1], 
-        sucesso: [9], 
+        sucesso: [9, 5, 14], 
         perdidos: [3, 10, 11, 12],
         todos: [] 
       };
@@ -110,19 +127,22 @@ export function Ambulatorio() {
       setShowToast({ visible: true, message: msg });
       setViewMode('list');
       setSelectedEnc(null);
-      setStatusSelecionado(null);
       fetchEncaminhamentos();
     } catch (error) {
-      alert('Erro ao atualizar.');
+      setErrorMsg('Falha de comunicação com o banco ao atualizar o status global.');
     }
   };
 
   const prepararAgendamento = async () => {
+    setExamesAgendamento([]); 
+    setErrors({});
+    setErrorMsg('');
     setViewMode('agendar_exames');
+    
     try {
       const { data, error } = await supabase
         .from('encaminhamento_exames')
-        .select('id, nome_customizado, data_agendamento, exames_especialidades(nome)')
+        .select('id, nome_customizado, data_agendamento, status_id, exames_especialidades(nome)')
         .eq('encaminhamento_id', selectedEnc.id);
 
       if (error) throw error;
@@ -131,42 +151,98 @@ export function Ambulatorio() {
         setExamesAgendamento(data.map(d => ({
           id: d.id,
           nome: (d.exames_especialidades as any)?.nome || d.nome_customizado || 'Exame/Especialidade',
-          data_agendamento: d.data_agendamento || ''
+          data_agendamento: d.data_agendamento || '',
+          status_id: d.status_id || ''
         })));
       } else {
         setExamesAgendamento((selectedEnc.exames_especialidades || []).map((nome: string, idx: number) => ({
           id: `legacy-${idx}`,
           nome: nome,
-          data_agendamento: ''
+          data_agendamento: '',
+          status_id: ''
         })));
       }
     } catch (e) {
-      console.error('Erro ao buscar exames do encaminhamento', e);
+      setErrorMsg('Erro ao buscar a lista de exames deste encaminhamento.');
     }
   };
 
-  const confirmarAgendamentoComDatas = async () => {
+const salvarAgendamentoExames = async (concluir: boolean) => {
+    setErrors({});
+    setErrorMsg('');
+    
+    const novosErros: Record<string, string> = {};
+    let temErro = false;
+    
+    // Pega a data de hoje no formato yyyy-MM-dd
+    const dataHoje = new Date().toISOString().split('T')[0];
+
+    examesAgendamento.forEach((ex, index) => {
+      // 1. Validação de Data (Roda sempre que o status for 9 - Agendado)
+      if (Number(ex.status_id) === 9) {
+        if (!ex.data_agendamento) {
+          novosErros[`status_exame_${index}`] = 'Informe a data do agendamento';
+          temErro = true;
+        } else if (ex.data_agendamento < dataHoje) {
+          novosErros[`status_exame_${index}`] = 'A data não pode ser no passado';
+          temErro = true;
+        }
+      }
+
+      // 2. Validação de Status (Roda APENAS se clicar em "Salvar e Concluir")
+      if (concluir && !ex.status_id) {
+        novosErros[`status_exame_${index}`] = 'Este campo é obrigatório para concluir';
+        temErro = true;
+      }
+    });
+
+    // Se encontrou qualquer erro (de data ou status vazio ao concluir), trava o salvamento
+    if (temErro) {
+      setErrors(novosErros);
+      
+      // Define a mensagem dinâmica dependendo do erro
+      const faltouStatus = concluir && examesAgendamento.some(ex => !ex.status_id);
+      setErrorMsg(
+        faltouStatus 
+          ? 'Para concluir o ticket, todos os exames precisam ter um status definido. Caso contrário, utilize o botão "Salvar".'
+          : 'Por favor, preencha corretamente os campos em vermelho.'
+      );
+      
+      return; // O ToastError faz o auto-scroll
+    }
+
     try {
       const updates = examesAgendamento
         .filter(ex => typeof ex.id === 'number')
         .map(ex => 
           supabase.from('encaminhamento_exames')
-            .update({ data_agendamento: ex.data_agendamento || null })
+            .update({ 
+              status_id: ex.status_id || null,
+              data_agendamento: Number(ex.status_id) === 9 ? (ex.data_agendamento || null) : null 
+            })
             .eq('id', ex.id)
         );
       
       await Promise.all(updates);
-      await atualizarStatus(9, 'Datas registradas e agendamento confirmado!');
+      
+      if (concluir) {
+        await atualizarStatus(14, 'Exames atualizados e ticket concluído!');
+      } else {
+        setShowToast({ visible: true, message: 'Progresso salvo! O ticket continua pendente.' });
+        setViewMode('list');
+        setSelectedEnc(null);
+        fetchEncaminhamentos();
+      }
     } catch (error) {
-      alert('Erro ao salvar as datas de agendamento.');
+      setErrorMsg('Ocorreu um erro ao gravar as informações no banco de dados.');
     }
   };
 
   const abrirDetalhes = (item: any) => {
     setSelectedEnc(item);
     setViewMode('details');
+    setErrors({});
     setErrorMsg('');
-    setStatusSelecionado(null);
     setEditForm({
       numero_atendimento: item.numero_atendimento || '',
       nome_paciente: item.nome_paciente || '',
@@ -177,10 +253,21 @@ export function Ambulatorio() {
   };
 
   const confirmarEdicao = async () => {
-    if (selectedEnc.atendido_proncor === false && (!editForm.nome_paciente || !editForm.telefone_paciente)) {
-      setErrorMsg('Campos obrigatórios vazios.');
+    setErrors({});
+    setErrorMsg('');
+    const novosErros: Record<string, string> = {};
+
+    // VALIDAÇÃO: Telefone removido da obrigatoriedade, apenas Nome.
+    if (!editForm.nome_paciente) {
+      novosErros.nome_paciente = 'Este campo é obrigatório';
+    }
+
+    if (Object.keys(novosErros).length > 0) {
+      setErrors(novosErros);
+      setErrorMsg('Por favor, preencha corretamente os campos em vermelho.');
       return;
     }
+
     try {
       const { error } = await supabase
         .from('encaminhamentos_ambulatorio')
@@ -188,12 +275,13 @@ export function Ambulatorio() {
         .eq('id', selectedEnc.id);
 
       if (error) throw error;
-      setShowToast({ visible: true, message: 'Dados atualizados!' });
-      setViewMode('list');
-      setSelectedEnc(null);
+      setShowToast({ visible: true, message: 'Dados atualizados com sucesso!' });
+      setViewMode('details');
       fetchEncaminhamentos();
+      
+      setSelectedEnc({ ...selectedEnc, ...editForm });
     } catch (e) {
-      setErrorMsg('Erro ao salvar.');
+      setErrorMsg('Ocorreu uma falha ao salvar as alterações. Tente novamente.');
     }
   };
 
@@ -221,7 +309,7 @@ export function Ambulatorio() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto animate-in fade-in duration-500 pb-20">
+    <div className="max-w-6xl mx-auto animate-in fade-in duration-500 pb-20 relative">
       
       <div className="flex items-center gap-6 mb-8 border-b border-slate-200 dark:border-slate-800 px-2">
         {podeCriarAmb && (
@@ -263,7 +351,7 @@ export function Ambulatorio() {
                 onClick={() => setFiltroTab(t)} 
                 className={`flex-1 lg:flex-none whitespace-nowrap px-6 py-2 rounded-lg text-sm font-bold transition-all ${filtroTab === t ? 'bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
               >
-                {t === 'todos' ? 'Todos' : t === 'pendentes' ? 'Pendentes' : t === 'sucesso' ? 'Agendados' : 'Perdidos'}
+                {t === 'todos' ? 'Todos' : t === 'pendentes' ? 'Pendentes' : t === 'sucesso' ? 'Agendados/Concluídos' : 'Perdidos'}
               </button>
             ))}
           </div>
@@ -351,7 +439,7 @@ export function Ambulatorio() {
                   variant="primary" 
                   fullWidth 
                   icon={<CheckCircle2 size={18} />} 
-                  onClick={() => setViewMode('update_status')}
+                  onClick={prepararAgendamento}
                 >
                   Atualizar Status
                 </Button>
@@ -373,104 +461,95 @@ export function Ambulatorio() {
         />
       )}
 
-      {selectedEnc && viewMode === 'update_status' && (
-        <ModalAtualizarStatusLayout 
-          isOpen 
-          onClose={() => setViewMode('details')} 
-          nomePaciente={selectedEnc.nome_paciente || 'Nome não informado'} 
-          theme="purple"
-        >
-          <div className="flex flex-col gap-3">
-            <Button 
-              variant="success" 
-              fullWidth 
-              justify="start" 
-              icon={<CheckCircle2 size={18} />}
-              onClick={prepararAgendamento}
-            >
-              Agendado
-            </Button>
-            
-            <Button 
-              variant="rose" 
-              fullWidth 
-              justify="start" 
-              icon={<ShieldOff size={18} />}
-              onClick={() => { setStatusSelecionado({ id: 10, msg: 'Plano não atendido registrado.', label: 'Não atendemos o plano' }); setViewMode('confirm_status'); }}
-            >
-              Não atendemos o plano
-            </Button>
-
-            <Button 
-              variant="amber" 
-              fullWidth 
-              justify="start" 
-              icon={<AlertCircle size={18} />}
-              onClick={() => { setStatusSelecionado({ id: 11, msg: 'Falta de especialidade registrada.', label: 'Não temos a especialidade' }); setViewMode('confirm_status'); }}
-            >
-              Não temos a especialidade
-            </Button>
-            
-            <Button 
-              variant="secondary" 
-              fullWidth 
-              justify="start" 
-              icon={<HelpCircle size={18} />}
-              onClick={() => { setStatusSelecionado({ id: 12, msg: 'Falha de contato registrada.', label: 'Não conseguimos contato' }); setViewMode('confirm_status'); }}
-            >
-              Não conseguimos contato
-            </Button>
-          </div>
-        </ModalAtualizarStatusLayout>
-      )}
-
-      {selectedEnc && viewMode === 'agendar_exames' && (
-        <Modal isOpen onClose={() => setViewMode('update_status')} title={<span className="text-emerald-600 dark:text-emerald-500 font-bold text-lg">Datas de Agendamento</span>}>
+      {selectedEnc && viewMode === 'edit' && (
+        <Modal isOpen onClose={() => setViewMode('details')} title={<span className="text-purple-600 dark:text-purple-500 font-bold text-lg">Editar Encaminhamento</span>}>
           <div className="p-4 space-y-4 animate-in zoom-in-95 duration-200">
-            <Description className="text-center mb-6">
-              Informe a data em que cada procedimento foi agendado para <strong className="text-emerald-600 dark:text-emerald-400">{selectedEnc.nome_paciente || 'Nome não informado'}</strong>.
-            </Description>
-
-            <div className="space-y-3 min-h-[380px] overflow-visible pb-10">
-              {examesAgendamento.map((exame, index) => (
-                <div 
-                  key={exame.id} 
-                  className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700/50 flex flex-col md:flex-row md:items-center gap-3 justify-between relative"
-                  style={{ zIndex: 50 - index }} 
-                >
-                  <span className="text-sm font-bold text-slate-700 dark:text-slate-300 flex-1">{exame.nome}</span>
-                  <div className="w-full md:w-48 flex-shrink-0">
-                    <DatePicker 
-                      value={exame.data_agendamento} 
-                      onChange={(e) => {
-                        const novos = [...examesAgendamento];
-                        novos[index].data_agendamento = e.target.value;
-                        setExamesAgendamento(novos);
-                      }} 
-                    />
-                  </div>
-                </div>
-              ))}
+            {/* WRAPPER COM ID PARA O SCROLL FUNCIONAR */}
+            <div id="nome_paciente">
+              <Input label="Nome do Paciente *" value={editForm.nome_paciente} onChange={e => setEditForm({...editForm, nome_paciente: e.target.value})} error={errors.nome_paciente} />
             </div>
-
-            <div className="flex gap-3 pt-6 border-t border-slate-100 dark:border-slate-800 mt-2">
-              <Button variant="secondary" fullWidth onClick={() => setViewMode('update_status')}>Voltar</Button>
-              <Button variant="success" fullWidth onClick={confirmarAgendamentoComDatas}>Confirmar Agendamento</Button>
+            
+            <Input label="Telefone" value={editForm.telefone_paciente} onChange={e => setEditForm({...editForm, telefone_paciente: maskPhone(e.target.value)})} error={errors.telefone_paciente} />
+            <Input label="Plano de Saúde" value={editForm.plano_saude} onChange={e => setEditForm({...editForm, plano_saude: e.target.value})} />
+            <Input label="Nº Atendimento (Opcional)" value={editForm.numero_atendimento} onChange={e => setEditForm({...editForm, numero_atendimento: e.target.value})} />
+            <Textarea label="Observações" value={editForm.observacoes} onChange={e => setEditForm({...editForm, observacoes: e.target.value})} />
+            
+            <div className="flex gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <Button variant="secondary" fullWidth onClick={() => setViewMode('details')}>Cancelar</Button>
+              <Button variant="primary" fullWidth onClick={confirmarEdicao}>Salvar Alterações</Button>
             </div>
           </div>
         </Modal>
       )}
 
-      {selectedEnc && viewMode === 'confirm_status' && statusSelecionado && (
-        <ModalConfirmacaoStatusLayout 
-          isOpen={true}
-          onClose={() => setViewMode('update_status')}
-          onConfirm={() => atualizarStatus(statusSelecionado.id, statusSelecionado.msg)}
-          nomePaciente={selectedEnc.nome_paciente || 'Nome não informado'}
-          statusNome={statusSelecionado.label}
-          tipoStatus={statusSelecionado.id === 9 ? 'sucesso' : 'neutro'}
-          theme="purple"
-        />
+      {selectedEnc && viewMode === 'agendar_exames' && (
+        <Modal isOpen onClose={() => setViewMode('details')} title={<span className="text-purple-600 dark:text-purple-500 font-bold text-lg">Status por Exame/Especialidade</span>}>
+          <div className="p-4 space-y-4 animate-in zoom-in-95 duration-200">
+            <Description className="text-center mb-6">
+              Atualize o status individual de cada solicitação feita para <strong className="text-purple-600 dark:text-purple-400">{selectedEnc.nome_paciente || 'Nome não informado'}</strong>.
+            </Description>
+
+            <div className="space-y-4 min-h-[380px] overflow-visible pb-10">
+              {examesAgendamento.map((exame, index) => (
+                <div 
+                  key={exame.id} 
+                  id={`status_exame_${index}`}
+                  className={`bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border ${errors[`status_exame_${index}`] ? 'border-red-500 shadow-sm shadow-red-500/20' : 'border-slate-200 dark:border-slate-700/50'} flex flex-col gap-3 relative transition-all`}
+                  style={{ zIndex: 50 - index }} 
+                >
+                  <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{exame.nome}</span>
+                  
+                  <div className="flex flex-col md:flex-row gap-3">
+                    <div className="flex-1 flex flex-col">
+                      <select 
+                        value={exame.status_id || ''}
+                        onChange={(e) => {
+                          const novos = [...examesAgendamento];
+                          novos[index].status_id = e.target.value;
+                          setExamesAgendamento(novos);
+                          if(errors[`status_exame_${index}`]) {
+                            const newErros = {...errors};
+                            delete newErros[`status_exame_${index}`];
+                            setErrors(newErros);
+                          }
+                        }}
+                        className={`w-full px-3 py-2.5 rounded-lg border bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 text-sm outline-none transition-colors focus:ring-2 focus:ring-purple-500 ${errors[`status_exame_${index}`] ? 'border-red-500' : 'border-slate-200 dark:border-slate-700'}`}
+                      >
+                        <option value="">Aguardando tratativa...</option>
+                        <option value="9">Agendado</option>
+                        <option value="10">Plano não Atendido</option>
+                        <option value="11">Sem Especialidade</option>
+                        <option value="12">Sem Contato</option>
+                      </select>
+                      {errors[`status_exame_${index}`] && (
+                        <span className="text-xs text-red-500 font-medium mt-1">{errors[`status_exame_${index}`]}</span>
+                      )}
+                    </div>
+
+                    {Number(exame.status_id) === 9 && (
+                      <div className="flex-1 flex-shrink-0 animate-in fade-in duration-200">
+                        <DatePicker 
+                          value={exame.data_agendamento} 
+                          onChange={(e) => {
+                            const novos = [...examesAgendamento];
+                            novos[index].data_agendamento = e.target.value;
+                            setExamesAgendamento(novos);
+                          }} 
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex flex-col md:flex-row gap-3 pt-6 border-t border-slate-100 dark:border-slate-800 mt-2">
+              <Button variant="secondary" fullWidth onClick={() => setViewMode('details')}>Voltar</Button>
+              <Button variant="primary" fullWidth onClick={() => salvarAgendamentoExames(false)}>Salvar</Button>
+              <Button variant="success" fullWidth onClick={() => salvarAgendamentoExames(true)}>Salvar e Concluir</Button>
+            </div>
+          </div>
+        </Modal>
       )}
 
       {selectedEnc && viewMode === 'confirm_cancel' && (
@@ -478,6 +557,12 @@ export function Ambulatorio() {
       )}
 
       {showToast.visible && <Toast message={showToast.message} onClose={() => setShowToast({ ...showToast, visible: false })} />}
+      
+      <ToastError 
+        message={errorMsg} 
+        errors={errors} 
+        onClose={() => setErrorMsg('')} 
+      />
     </div>
   );
 }
