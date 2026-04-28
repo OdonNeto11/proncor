@@ -1,8 +1,7 @@
 import React from 'react';
 
-// Adicionamos 'icon' aqui também
 interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
-  label: string;
+  label?: string;
   error?: string;
   icon?: React.ReactNode;
 }
@@ -10,32 +9,49 @@ interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement
 export function Textarea({ label, error, icon, className = '', ...props }: TextareaProps) {
   return (
     <div className="flex flex-col gap-1.5 w-full">
-      <label className="text-sm font-semibold text-slate-700">
-        {label} {props.required && <span className="text-red-500">*</span>}
-      </label>
+      {label && (
+        <label className="text-sm font-bold text-slate-700 dark:text-slate-300 transition-colors">
+          {label} {props.required && <span className="text-red-500">*</span>}
+        </label>
+      )}
       
       <div className="relative">
-        {/* Ícone no textarea geralmente fica no topo */}
         {icon && (
-          <div className="absolute left-3 top-3 text-slate-400 pointer-events-none">
+          <div className="absolute left-3 top-3.5 text-slate-400 pointer-events-none z-10">
             {icon}
           </div>
         )}
-
+        
         <textarea 
           className={`
-            w-full min-h-[80px] rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm 
-            placeholder:text-slate-400 focus:border-blue-500 focus:outline-none 
-            focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-50
-            ${icon ? 'pl-10' : ''} /* Padding para não escrever em cima do ícone */
-            ${error ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''} 
+            w-full rounded-xl px-3 py-3 text-sm transition-all duration-200 min-h-[100px]
+            
+            /* BORDAS E SOMBRAS VISÍVEIS RESTAURADAS */
+            appearance-none outline-none border shadow-sm
+            border-slate-300 dark:border-slate-600
+            
+            /* ESTADOS VISUAIS DE FOCO (LINHA E ANEL AZUL) */
+            focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 
+            dark:focus:border-blue-500 dark:focus:ring-blue-500/40
+            disabled:cursor-not-allowed disabled:opacity-50
+            
+            /* CORES BASE */
+            bg-white dark:bg-slate-800
+            text-slate-900 dark:text-slate-100
+            placeholder:text-slate-400 dark:placeholder:text-slate-500
+            
+            /* ESPAÇAMENTO DO ÍCONE */
+            ${icon ? 'pl-10' : ''} 
+            
+            /* MODO ERRO */
+            ${error ? '!border-red-500 !ring-2 !ring-red-500/30' : ''} 
             ${className}
           `}
           {...props}
         />
       </div>
-
-      {error && <span className="text-xs text-red-500 font-medium">{error}</span>}
+      
+      {error && <span className="text-xs text-red-500 font-medium mt-1">{error}</span>}
     </div>
   );
 }

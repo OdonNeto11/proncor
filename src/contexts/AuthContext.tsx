@@ -1,100 +1,164 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { User, Session } from '@supabase/supabase-js';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 
-type UserRole = 'chefe' | 'plantonista' | null;
+export type Setor = {
+  id: number;
+  nome: string;
+  sigla: string;
+};
 
 interface AuthContextType {
-  user: User | null;
   session: Session | null;
-  role: UserRole;
-  profileName: string | null; // <--- NOVO: Guardar o nome
-  signIn: (email: string) => Promise<void>;
-  signOut: () => Promise<void>;
+  user: User | null;
+  roleId: number | null;
+  profileName: string | null;
+  permissoes: string[];
+  setores: Setor[];
   loading: boolean;
+  signOut: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType>({
+  session: null,
+  user: null,
+  roleId: null,
+  profileName: null,
+  permissoes: [],
+  setores: [],
+  loading: true,
+  signOut: async () => {},
+});
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
-  const [role, setRole] = useState<UserRole>(null);
-  const [profileName, setProfileName] = useState<string | null>(null); // <--- Estado do Nome
+  const [user, setUser] = useState<User | null>(null);
+  const [roleId, setRoleId] = useState<number | null>(null);
+  const [profileName, setProfileName] = useState<string | null>(null);
+  const [permissoes, setPermissoes] = useState<string[]>([]);
+  const [setores, setSetores] = useState<Setor[]>([]);
+  
+  // O loading inicia em true APENAS para o primeiro carregamento da aplicação
   const [loading, setLoading] = useState(true);
 
-  const fetchUserProfile = async (userId: string, userEmail?: string) => {
-    try {
-      // <--- MUDANÇA: Agora buscamos 'role' E 'nome'
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('role, nome') 
-        .eq('id', userId)
-        .single();
-
-      if (error || !data) {
-        setRole('plantonista');
-        // Se não tiver perfil, tenta pegar a primeira parte do email (ex: 'plantonista' de 'plantonista@proncor...')
-        setProfileName(userEmail?.split('@')[0] || 'Usuário'); 
-      } else {
-        setRole(data.role as UserRole);
-        // Se o nome no banco for nulo, usa o email formatado
-        setProfileName(data.nome || userEmail?.split('@')[0] || 'Usuário'); 
-      }
-    } catch (error) {
-      console.error('Erro ao buscar perfil:', error);
-      setRole('plantonista');
-      setProfileName('Usuário');
-    }
-  };
-
   useEffect(() => {
+    // 1. CARREGAMENTO INICIAL SILENCIOSO (Primeira vez que a página abre)
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchUserProfile(session.user.id, session.user.email);
+        loadUserProfile(session.user.id);
+      } else {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchUserProfile(session.user.id, session.user.email);
-      } else {
-        setRole(null);
+    // 2. ESCUTADOR DE MUDANÇAS DE SESSÃO
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, currentSession) => {
+      setSession(currentSession);
+      
+      // Se a sessão expirou ou o usuário deslogou
+      if (!currentSession?.user) {
+        setUser(null);
+        setRoleId(null);
         setProfileName(null);
+        setPermissoes([]);
+        setSetores([]);
+        setLoading(false);
+        return;
       }
-      setLoading(false);
+
+      // IMPORTANTE: Só aciona o loading se for um novo login e o estado de user estiver vazio.
+      // Se o usuário voltar pra aba e o Supabase apenas mandar um evento de atualização de token, 
+      // a tela não vai piscar.
+      setUser((prevUser) => {
+        if (!prevUser || prevUser.id !== currentSession.user.id) {
+          setLoading(true);
+          loadUserProfile(currentSession.user.id);
+        }
+        return currentSession.user;
+      });
+      
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
+  // Função interna para carregar dados do banco de dados (Apenas roda no loading real)
+  const loadUserProfile = async (userId: string) => {
+    try {
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (profileError) throw profileError;
+
+      setRoleId(profileData.role_id);
+      
+      const nomeCorreto = profileData.full_name || profileData.nome || profileData.nome_completo || 'Profissional';
+      setProfileName(nomeCorreto);
+
+      if (profileData.role_id) {
+        // Busca as permissões
+        const { data: permissoesData, error: permissoesError } = await supabase
+          .from('role_permissoes')
+          .select(`
+            permissoes (
+              nome
+            )
+          `)
+          .eq('role_id', profileData.role_id);
+
+        if (!permissoesError && permissoesData) {
+          const permissoesArray = permissoesData
+            .map((item: any) => item.permissoes?.nome)
+            .filter(Boolean);
+            
+          setPermissoes(permissoesArray);
+        } else {
+          setPermissoes([]);
+        }
+
+        // Busca os setores
+        const { data: ligacaoData, error: ligacaoError } = await supabase
+          .from('usuario_setores')
+          .select('setor_id')
+          .eq('user_id', userId);
+
+        if (!ligacaoError && ligacaoData && ligacaoData.length > 0) {
+          const idsSetores = ligacaoData.map(l => l.setor_id);
+
+          const { data: setoresData, error: setoresError } = await supabase
+            .from('setores')
+            .select('*')
+            .in('id', idsSetores);
+
+          if (!setoresError && setoresData) {
+            setSetores(setoresData);
+          }
+        } else {
+          setSetores([]);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar dados do usuário:', error);
+    } finally {
+      // Sempre remove a tela de loading no final
+      setLoading(false);
+    }
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
-    setRole(null);
-    setProfileName(null);
-  };
-  
-  const signIn = async (email: string) => { 
-      // logica antiga mantida
   };
 
   return (
-    // <--- Exportamos profileName aqui
-    <AuthContext.Provider value={{ user, session, role, profileName, signIn, signOut, loading }}>
+    <AuthContext.Provider value={{ session, user, roleId, profileName, permissoes, setores, loading, signOut }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+export const useAuth = () => useContext(AuthContext);
