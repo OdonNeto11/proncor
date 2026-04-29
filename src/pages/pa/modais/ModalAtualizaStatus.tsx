@@ -8,7 +8,10 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 
-// Componentes (Caminhos ajustados para a pasta)
+// IMPORT DAS REGRAS PADRONIZADAS
+import { zCrm } from '../../../utils/validations';
+
+// Componentes
 import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
@@ -22,12 +25,9 @@ const STATUS_CONFIG: Record<number, { label: string, color: string }> = {
   3: { label: 'Cancelado', color: 'text-red-600 dark:text-red-400' } 
 };
 
-// === 1. SCHEMA DO ZOD PARA CONFIRMAÇÃO DO CRM ===
+// === 1. SCHEMA UTILIZANDO A REGRA COMPONENTIZADA ===
 const formSchema = z.object({
-  crm: z.string()
-    .min(4, "O CRM deve ter pelo menos 4 dígitos")
-    .max(5, "O CRM deve ter no máximo 5 dígitos")
-    .regex(/^[0-9]+$/, "Apenas números permitidos"),
+  crm: zCrm('Seu CRM'),
 });
 
 type StatusFormType = z.infer<typeof formSchema>;
@@ -37,16 +37,14 @@ interface ModalAtualizaStatusProps {
   onClose: () => void;
   agendamento: any;
   onSuccess: () => void;
-  statusDireto?: number; // Permite pular direto para a tela de CRM (ex: botão de Cancelar passa o 3)
+  statusDireto?: number; 
 }
 
 export function ModalAtualizaStatus({ isOpen, onClose, agendamento, onSuccess, statusDireto }: ModalAtualizaStatusProps) {
   const { user } = useAuth();
   
-  // Controle de fluxo interno do Modal
   const [step, setStep] = useState<'selecionar' | 'confirmar'>('selecionar');
   const [statusSelecionado, setStatusSelecionado] = useState<number | null>(null);
-  
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -61,7 +59,6 @@ export function ModalAtualizaStatus({ isOpen, onClose, agendamento, onSuccess, s
     defaultValues: { crm: '' }
   });
 
-  // Reseta o estado sempre que o modal abre
   useEffect(() => {
     if (isOpen) {
       if (statusDireto) {
@@ -94,7 +91,6 @@ export function ModalAtualizaStatus({ isOpen, onClose, agendamento, onSuccess, s
 
       if (error) throw error;
 
-      // Regra de negócio isolada: Se for 6, joga pro Ambulatório
       if (statusSelecionado === 6) {
         const examesParaAmbulatorio = agendamento.procedimentos && agendamento.procedimentos.length > 0 
           ? agendamento.procedimentos 
@@ -114,12 +110,18 @@ export function ModalAtualizaStatus({ isOpen, onClose, agendamento, onSuccess, s
         }]);
       }
 
-      onSuccess(); // Grita pra Agenda que finalizou
+      onSuccess();
     } catch (e: any) {
       setErrorMsg('Erro de comunicação com o banco de dados: ' + e.message);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCrmChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Apenas números e limita a 5 dígitos
+    const val = e.target.value.replace(/\D/g, '').slice(0, 5);
+    setValue('crm', val, { shouldValidate: true });
   };
 
   if (!isOpen || !agendamento) return null;
@@ -132,7 +134,6 @@ export function ModalAtualizaStatus({ isOpen, onClose, agendamento, onSuccess, s
     >
       <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
         
-        {/* ETAPA 1: ESCOLHER O STATUS */}
         {step === 'selecionar' && (
           <div className="flex flex-col gap-2">
             <p className="text-sm text-slate-500 mb-2">Para qual status deseja mover o paciente <strong className="text-slate-700 dark:text-slate-300">{agendamento.nome_paciente}</strong>?</p>
@@ -155,7 +156,6 @@ export function ModalAtualizaStatus({ isOpen, onClose, agendamento, onSuccess, s
           </div>
         )}
 
-        {/* ETAPA 2: CONFIRMAR COM O CRM */}
         {step === 'confirmar' && statusSelecionado && (
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
             <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl text-center mb-4 border border-slate-100 dark:border-slate-800">
@@ -167,13 +167,14 @@ export function ModalAtualizaStatus({ isOpen, onClose, agendamento, onSuccess, s
 
             <div id="status-crm">
                 <Input 
-                  label="Seu CRM (Obrigatório) *" 
+                  label="Seu CRM *" 
                   icon={<Stethoscope size={18} />} 
                   placeholder="Apenas números (Ex: 12345)" 
                   maxLength={5}
-                  error={errors.crm?.message as string}
+                  required={true}
+                  error={errors.crm?.message || ''}
                   {...register('crm')}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setValue('crm', e.target.value.replace(/\D/g, '').slice(0, 5), { shouldValidate: true })}
+                  onChange={handleCrmChange}
                 />
             </div>
 

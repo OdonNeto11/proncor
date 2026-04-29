@@ -1,7 +1,7 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { Lock, User, Loader2, Sun, Moon } from 'lucide-react';
+import { Lock, User, Loader2, Sun, Moon, Eye, EyeOff } from 'lucide-react';
 
 // COMPONENTES OFICIAIS SENDO USADOS
 import { Input } from '../../components/ui/Input';
@@ -32,6 +32,7 @@ export function Login() {
 
   const [loginInput, setLoginInput] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false); // ESTADO PARA VISIBILIDADE
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -81,7 +82,7 @@ export function Login() {
           <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium">Gestão e Fluxo Hospitalar</p>
         </div>
         
-<form onSubmit={handleLogin} className="space-y-5">
+        <form onSubmit={handleLogin} className="space-y-5">
           <Input 
             label="Usuário ou Email"
             value={loginInput}
@@ -90,14 +91,25 @@ export function Login() {
             icon={<User size={20} />}
           />
 
-          <Input 
-            label="Senha"
-            type="password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            placeholder="••••••••"
-            icon={<Lock size={20} />}
-          />
+          <div className="relative">
+            <Input 
+              label="Senha"
+              type={showPassword ? "text" : "password"} // ALTERNA O TIPO
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="••••••••"
+              icon={<Lock size={20} />}
+            />
+            {/* BOTÃO DO OLHO POSICIONADO ABSOLUTAMENTE */}
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-[38px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+              tabIndex={-1} // Evita que o Tab pare no olho antes do botão de entrar
+            >
+              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
+          </div>
 
           {errorMsg && (
             <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm rounded-lg text-center font-medium border border-red-100 dark:border-red-900/50">
@@ -106,7 +118,6 @@ export function Login() {
           )}
 
           <div className="pt-2">
-            {/* COMPONENTE DE BUTTON USANDO O NOVO SIZE 'lg' */}
             <Button 
               type="submit" 
               fullWidth 

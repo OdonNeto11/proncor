@@ -25,3 +25,9 @@ export const zDataObrigatoria = (nomeCampo: string) =>
   z.any().refine((val) => val instanceof Date && !isNaN(val.getTime()), { 
     message: `O campo "${nomeCampo}" é obrigatório` 
   });
+
+  // Adicione junto com as outras no validations.ts
+export const zTelefoneOpcional = (nomeCampo: string = 'Telefone') => 
+  z.string().optional().refine(val => !val || val.length >= 14, { 
+    message: `O campo "${nomeCampo}" está incompleto` 
+  });

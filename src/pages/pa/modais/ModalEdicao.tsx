@@ -7,6 +7,9 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 
+// === IMPORT DAS REGRAS PADRONIZADAS ===
+import { zObrigatorio, zCrm, zTelefone } from '../../../utils/validations';
+
 // Componentes (Ajuste os caminhos ../../../ se necessário)
 import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
@@ -20,17 +23,14 @@ import { maskPhone, capitalizeName } from '../../../utils/formUtils';
 
 const OPCOES_PROCEDIMENTOS = ["Exames", "RX", "Tomografia"];
 
-// === 1. SCHEMA DO ZOD ESPECÍFICO PARA EDIÇÃO ===
+// === 1. SCHEMA DO ZOD CORRIGIDO PARA O PADRÃO ===
 const formSchema = z.object({
-  numero_atendimento: z.string().min(1, "Campo obrigatório").max(10, "Máximo de 10 caracteres"),
-  nome_paciente: z.string().min(1, "O nome é obrigatório"),
-  telefone_paciente: z.string().min(14, "Preencha o telefone completo com DDD"),
+  numero_atendimento: zObrigatorio('Número do Atendimento').max(10, "Máximo de 10 caracteres"),
+  nome_paciente: zObrigatorio('Nome do Paciente'),
+  telefone_paciente: zTelefone('Telefone / WhatsApp'),
   diagnostico: z.string().optional(),
   procedimentos: z.array(z.string()).optional(),
-  crm_responsavel: z.string()
-    .min(4, "O CRM deve ter pelo menos 4 dígitos")
-    .max(5, "O CRM deve ter no máximo 5 dígitos")
-    .regex(/^[0-9]+$/, "Apenas números"),
+  crm_responsavel: zCrm('CRM'), 
 });
 
 type EdicaoFormType = z.infer<typeof formSchema>;
