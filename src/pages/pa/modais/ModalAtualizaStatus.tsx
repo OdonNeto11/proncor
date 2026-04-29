@@ -134,9 +134,17 @@ export function ModalAtualizaStatus({ isOpen, onClose, agendamento, onSuccess, s
     >
       <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
         
+        {/* BLOCO DO NOME DO PACIENTE EM EVIDÊNCIA */}
+        <div className="text-center mb-6">
+          <span className="text-sm text-slate-500 block mb-1">Paciente selecionado:</span>
+          <div className="text-xl font-bold text-blue-600 dark:text-blue-400 break-words">
+            {agendamento.nome_paciente || 'Nome não informado'}
+          </div>
+        </div>
+
         {step === 'selecionar' && (
           <div className="flex flex-col gap-2">
-            <p className="text-sm text-slate-500 mb-2">Para qual status deseja mover o paciente <strong className="text-slate-700 dark:text-slate-300">{agendamento.nome_paciente}</strong>?</p>
+            <p className="text-sm text-slate-500 mb-2 text-center">Para qual status deseja movê-lo?</p>
             
             <Button variant="success" fullWidth justify="start" onClick={() => handleSelectStatus(5)} icon={<CheckCircle2 size={18}/>}>
               Finalizado

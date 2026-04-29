@@ -3,7 +3,7 @@ import {
   Clock, CheckCircle2, Search, AlertTriangle, ListChecks, AlertCircle, 
   Activity, Stethoscope, ArrowRightCircle, HelpCircle
 } from 'lucide-react';
-import { format, endOfMonth } from 'date-fns';
+import { format, addDays } from 'date-fns'; // <-- addDays IMPORTADO AQUI
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Link } from 'react-router-dom';
@@ -11,7 +11,6 @@ import { Link } from 'react-router-dom';
 // COMPONENTES UI
 import { Input } from '../../components/ui/Input';
 import { Card } from '../../components/ui/Card';
-import { SelectIcon } from '../../components/ui/SelectIcon'; 
 import { EmptyState } from '../../components/ui/EmptyState'; 
 import { Title, Description } from '../../components/ui/Typography'; 
 
@@ -60,8 +59,10 @@ export function Agenda() {
 
   const [busca, setBusca] = useState('');
   const [filtroStatus, setFiltroStatus] = useState('padrao'); 
+  
+  // <-- LÓGICA DE D+30 CORRIGIDA AQUI -->
   const [dataInicio, setDataInicio] = useState<Date | null>(new Date()); 
-  const [dataFim, setDataFim] = useState<Date | null>(endOfMonth(new Date())); 
+  const [dataFim, setDataFim] = useState<Date | null>(addDays(new Date(), 30)); 
 
   const [selectedAgendamento, setSelectedAgendamento] = useState<Agendamento | null>(null);
   const [viewMode, setViewMode] = useState<ModalView>(null);
@@ -136,7 +137,7 @@ export function Agenda() {
 
   const limparFiltros = () => {
     setDataInicio(new Date()); 
-    setDataFim(endOfMonth(new Date())); 
+    setDataFim(addDays(new Date(), 30)); // <-- LÓGICA DE D+30 CORRIGIDA NO CLEAR AQUI
     setFiltroStatus('padrao');
     setBusca('');
   };
@@ -163,34 +164,23 @@ export function Agenda() {
         themeColor="blue"
       />
 
-      <Card className="mb-8 p-4">
-        <div className="flex flex-col lg:flex-row gap-4">
-          <div className="w-full lg:w-1/3">
-            <Input value={busca} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBusca(e.target.value)} placeholder="Nome, telefone, nº ou CRM..." icon={<Search size={18} />} className="!h-10" />
-          </div>
-          
-          <div className="lg:w-1/3">
-            <DateRangeFilter 
-              startDate={dataInicio}
-              endDate={dataFim}
-              onStartDateChange={setDataInicio}
-              onEndDateChange={setDataFim}
-            />
-          </div>
-
-          <div className="w-full lg:w-1/3">
-              <SelectIcon 
-                icon={ListChecks}
-                value={filtroStatus}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFiltroStatus(e.target.value)}
-                options={[
-                  { value: 'padrao', label: 'Padrão (Pendentes)' },
-                  { value: 'todos_ativos', label: 'Todos Ativos' },
-                  ...Object.entries(STATUS_CONFIG).map(([id, config]) => ({ value: id, label: config.label }))
-                ]}
-              />
-          </div>
-        </div>
+<Card className="mb-8 p-4">
+        <DateRangeFilter 
+          searchValue={busca}
+          onSearchChange={setBusca}
+          searchPlaceholder="Nome, telefone, nº ou CRM..."
+          startDate={dataInicio}
+          endDate={dataFim}
+          onStartDateChange={setDataInicio}
+          onEndDateChange={setDataFim}
+          statusValue={filtroStatus}
+          onStatusChange={setFiltroStatus}
+          statusOptions={[
+            { value: 'padrao', label: 'Padrão (Pendentes)' },
+            { value: 'todos_ativos', label: 'Todos Ativos' },
+            ...Object.entries(STATUS_CONFIG).map(([id, config]) => ({ value: id, label: config.label }))
+          ]}
+        />
       </Card>
 
       {loading ? <div className="text-center py-20 text-gray-500 dark:text-slate-400 font-bold">Carregando...</div> : 

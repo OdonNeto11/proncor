@@ -10,7 +10,6 @@ import { supabase } from '../../lib/supabase';
 
 // COMPONENTES PADRONIZADOS
 import { Card } from '../../components/ui/Card';
-import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { Toast } from '../../components/ui/Toast';
 import { ToastError } from '../../components/ui/ToastError';
@@ -19,11 +18,12 @@ import { Title, Description } from '../../components/ui/Typography';
 // COMPONENTES COMPARTILHADOS E MODAIS
 import { AtendimentoCard } from '../../components/shared/AtendimentoCard';
 import { ModalConfirmacaoCancelamentoLayout } from '../../components/shared/ModalConfirmacaoCancelamentoLayout';
+import { DateRangeFilter } from '../../components/shared/DateRangeFilter'; // NOVO IMPORT
 
 // IMPORTAÇÃO DOS MODAIS SEPARADOS
 import { ModalEdicaoAmb } from './modais/ModalEdicaoAmb';
 import { ModalStatusExames } from './modais/ModalStatusExames';
-import { ModalDetalhesAmb } from './modais/ModalDetalhesAmb'; // NOVO IMPORT
+import { ModalDetalhesAmb } from './modais/ModalDetalhesAmb';
 
 // FUNÇÕES UTILITÁRIAS E PERMISSÕES
 import { usePermissoes } from '../../hooks/usePermissoes';
@@ -46,10 +46,14 @@ export function Ambulatorio() {
 
   const [lista, setLista] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [busca, setBusca] = useState('');
-  const [filtroTab, setFiltroTab] = useState<'todos' | 'pendentes' | 'sucesso' | 'perdidos'>('pendentes');
-  const [selectedEnc, setSelectedEnc] = useState<any | null>(null);
   
+  // ESTADOS DO FILTRO PADRONIZADO
+  const [busca, setBusca] = useState('');
+  const [filtroTab, setFiltroTab] = useState('pendentes');
+  const [dataInicio, setDataInicio] = useState<Date | null>(null); // Vazio por padrão
+  const [dataFim, setDataFim] = useState<Date | null>(null);       // Vazio por padrão
+  
+  const [selectedEnc, setSelectedEnc] = useState<any | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'details' | 'edit' | 'confirm_cancel' | 'agendar_exames'>('list');
   const [showToast, setShowToast] = useState({ visible: false, message: '' });
   const [errorMsg, setErrorMsg] = useState(''); 
@@ -72,7 +76,7 @@ export function Ambulatorio() {
     if (!podeVerAmb) return; 
     setLoading(true);
     try {
-      const statusMap = { 
+      const statusMap: Record<string, number[]> = { 
         pendentes: [13, 1], 
         sucesso: [9, 5, 14], 
         perdidos: [3, 10, 11, 12],
@@ -88,6 +92,14 @@ export function Ambulatorio() {
         query = query.in('status_id', statusMap[filtroTab]);
       }
 
+      // LÓGICA DE FILTRO POR DATA (no banco de dados)
+      if (dataInicio) {
+        query = query.gte('created_at', format(dataInicio, 'yyyy-MM-dd') + 'T00:00:00');
+      }
+      if (dataFim) {
+        query = query.lte('created_at', format(dataFim, 'yyyy-MM-dd') + 'T23:59:59');
+      }
+
       const { data, error } = await query;
       if (error) throw error;
       setLista(data || []);
@@ -100,7 +112,7 @@ export function Ambulatorio() {
 
   useEffect(() => { 
     if (podeVerAmb) fetchEncaminhamentos(); 
-  }, [filtroTab, podeVerAmb]);
+  }, [filtroTab, dataInicio, dataFim, podeVerAmb]); // Adicionado datas na dependência
 
   const atualizarStatus = async (novoStatusId: number, msg: string) => {
     try {
@@ -125,6 +137,7 @@ export function Ambulatorio() {
     setErrorMsg('');
   };
 
+  // O filtro de busca (texto) continua ocorrendo em memória no frontend
   const listaFiltrada = lista.filter(item => 
     (item.nome_paciente || '').toLowerCase().includes(busca.toLowerCase()) || 
     (item.numero_atendimento || '').includes(busca) ||
@@ -174,28 +187,24 @@ export function Ambulatorio() {
       </div>
 
       <Card className="mb-8 p-4">
-        <div className="flex flex-col lg:flex-row gap-4 justify-between items-center">
-          <div className="w-full lg:flex-1">
-            <Input 
-              value={busca} 
-              onChange={(e) => setBusca(e.target.value)} 
-              placeholder="Buscar por paciente, atendimento ou CRM..." 
-              icon={<Search size={18} />} 
-              className="!h-10"
-            />
-          </div>
-          <div className="flex w-full lg:w-auto bg-slate-100 dark:bg-slate-800/50 p-1 rounded-xl border border-slate-200 dark:border-slate-700/50 overflow-x-auto">
-            {(['todos', 'pendentes', 'sucesso', 'perdidos'] as const).map((t) => (
-              <button 
-                key={t}
-                onClick={() => setFiltroTab(t)} 
-                className={`flex-1 lg:flex-none whitespace-nowrap px-6 py-2 rounded-lg text-sm font-bold transition-all ${filtroTab === t ? 'bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
-              >
-                {t === 'todos' ? 'Todos' : t === 'pendentes' ? 'Pendentes' : t === 'sucesso' ? 'Agendados/Concluídos' : 'Perdidos'}
-              </button>
-            ))}
-          </div>
-        </div>
+        {/* COMPONENTE DE FILTRO PADRONIZADO */}
+        <DateRangeFilter 
+          searchValue={busca}
+          onSearchChange={setBusca}
+          searchPlaceholder="Paciente, atendimento ou CRM..."
+          startDate={dataInicio}
+          endDate={dataFim}
+          onStartDateChange={setDataInicio}
+          onEndDateChange={setDataFim}
+          statusValue={filtroTab}
+          onStatusChange={setFiltroTab}
+          statusOptions={[
+            { value: 'pendentes', label: 'Pendentes' },
+            { value: 'sucesso', label: 'Agendados/Concluídos' },
+            { value: 'perdidos', label: 'Perdidos' },
+            { value: 'todos', label: 'Todos' }
+          ]}
+        />
       </Card>
 
       {loading ? (

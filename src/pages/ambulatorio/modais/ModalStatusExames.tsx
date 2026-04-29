@@ -138,8 +138,17 @@ export function ModalStatusExames({ isOpen, onClose, encaminhamento, onSuccess, 
       title={<span className="text-purple-600 dark:text-purple-500 font-bold text-lg">Status por Exame/Especialidade</span>}
     >
       <form onSubmit={handleSubmit(onSubmit, onError)} className="space-y-4 animate-in zoom-in-95 duration-200" noValidate>
+        
+        {/* BLOCO DO NOME DO PACIENTE EM EVIDÊNCIA */}
+        <div className="text-center mb-2">
+          <span className="text-sm text-slate-500 block mb-1">Paciente selecionado:</span>
+          <div className="text-xl font-bold text-purple-600 dark:text-purple-400 break-words">
+            {encaminhamento.nome_paciente || 'Nome não informado'}
+          </div>
+        </div>
+
         <Description className="text-center mb-6">
-          Atualize o status individual de cada solicitação feita para <strong className="text-purple-600 dark:text-purple-400">{encaminhamento.nome_paciente || 'Nome não informado'}</strong>.
+          Atualize o status individual de cada solicitação abaixo:
         </Description>
 
         <div className="space-y-4 min-h-[300px] max-h-[450px] overflow-y-auto pr-1 pb-10">
