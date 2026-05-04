@@ -1,9 +1,16 @@
-import React, { useState, FormEvent, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   User, FileText, Hash, Plus, Trash2, AlertCircle, Activity, Phone, Upload, X 
 } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
+
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm, Controller, useFieldArray } from 'react-hook-form';
+
+// IMPORT DAS REGRAS PADRONIZADAS
+import { zObrigatorio } from '../../utils/validations';
 
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -19,31 +26,78 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePermissoes } from '../../hooks/usePermissoes';
 
+// === 1. SCHEMA DE VALIDAÇÃO DINÂMICO COM PADRÃO DE MENSAGENS ===
+const formSchema = z.object({
+  atendido_proncor: z.any().refine((val) => typeof val === 'boolean', {
+    message: 'O campo "Paciente foi atendido no Proncor?" é obrigatório'
+  }),
+  cpf: z.string().optional(),
+  nome_paciente: z.string().optional(),
+  telefone_paciente: z.string().optional(),
+  plano_saude: z.string().optional(),
+  observacoes: z.string().optional(),
+  crm_solicitante: z.string().optional(),
+  exames: z.array(z.object({ value: z.string() })),
+  especialidades: z.array(z.object({ value: z.string() })),
+  exames_especialidades: z.string().optional(),
+}).superRefine((data, ctx) => {
+  
+  if (data.atendido_proncor === false) {
+    if (!data.nome_paciente) {
+      ctx.addIssue({ code: 'custom', message: 'O campo "Nome do Paciente" é obrigatório', path: ['nome_paciente'] });
+    }
+    
+    if (!data.telefone_paciente) {
+      ctx.addIssue({ code: 'custom', message: 'O campo "Telefone / WhatsApp" é obrigatório', path: ['telefone_paciente'] });
+    } else if (data.telefone_paciente.length < 15) {
+      ctx.addIssue({ code: 'custom', message: 'O campo "Telefone / WhatsApp" está incompleto', path: ['telefone_paciente'] });
+    }
+    
+    if (!data.plano_saude) {
+      ctx.addIssue({ code: 'custom', message: 'O campo "Plano de Saúde" é obrigatório', path: ['plano_saude'] });
+    }
+  }
+
+  if (data.atendido_proncor === true) {
+    if (!data.crm_solicitante) {
+      ctx.addIssue({ code: 'custom', message: 'O campo "Seu CRM" é obrigatório', path: ['crm_solicitante'] });
+    } else if (data.crm_solicitante.length < 4) {
+      ctx.addIssue({ code: 'custom', message: 'O campo "Seu CRM" está incompleto', path: ['crm_solicitante'] });
+    }
+  }
+  
+  const temExame = data.exames.some(e => e.value.trim() !== "");
+  const temEspecialidade = data.especialidades.some(e => e.value.trim() !== "");
+  if (!temExame && !temEspecialidade) {
+    ctx.addIssue({ code: 'custom', message: 'O campo "Exames ou Especialidades" é obrigatório', path: ['exames_especialidades'] });
+  }
+});
+
+type AmbulatorioFormType = z.infer<typeof formSchema>;
+
 export function NovoAmbulatorio() {
   const { user } = useAuth();
   const { podeCriarAmb, podeVerAmb } = usePermissoes();
   
-  const [formData, setFormData] = useState({
-    atendido_proncor: null as boolean | null,
-    cpf: '',
-    nome_paciente: '',
-    telefone_paciente: '',
-    plano_saude: '',
-    observacoes: '',
-    crm_solicitante: '' 
-  });
-
-  const [exames, setExames] = useState<string[]>(['']);
-  const [especialidades, setEspecialidades] = useState<string[]>(['']);
   const [anexo, setAnexo] = useState<File | null>(null);
   const [bibliotecaExames, setBibliotecaExames] = useState<any[]>([]);
-
   const [loading, setLoading] = useState(false);
   const [showToast, setShowToast] = useState(false);
-  
-  // PADRÃO DE ERRO
-  const [errors, setErrors] = useState<Record<string, string>>({});
   const [errorMsg, setErrorMsg] = useState('');
+
+  const { register, handleSubmit, control, setValue, watch, reset, formState: { errors } } = useForm<AmbulatorioFormType>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      atendido_proncor: undefined,
+      exames: [{ value: '' }],
+      especialidades: [{ value: '' }]
+    }
+  });
+
+  const { fields: fieldsExames, append: appendExame, remove: removeExame } = useFieldArray({ control, name: "exames" });
+  const { fields: fieldsEspecialidades, append: appendEspecialidade, remove: removeEspecialidade } = useFieldArray({ control, name: "especialidades" });
+
+  const atendidoProncor = watch('atendido_proncor');
 
   useEffect(() => {
     const fetchExames = async () => {
@@ -60,12 +114,8 @@ export function NovoAmbulatorio() {
           <AlertCircle size={48} className="text-red-400 dark:text-red-500" />
         </div>
         <Title className="mb-2">Acesso Negado</Title>
-        <Description className="max-w-sm mx-auto">
-          O seu perfil não tem permissão para criar novos encaminhamentos manuais.
-        </Description>
-        <Link to="/" className="inline-block mt-8 px-6 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-          Voltar para Início
-        </Link>
+        <Description className="max-w-sm mx-auto">O seu perfil não tem permissão para criar novos encaminhamentos manuais.</Description>
+        <Link to="/" className="inline-block mt-8 px-6 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">Voltar para Início</Link>
       </div>
     );
   }
@@ -73,96 +123,20 @@ export function NovoAmbulatorio() {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    try {
+      const compressedFile = await imageCompression(file, { maxSizeMB: 0.3, maxWidthOrHeight: 1920, useWebWorker: true });
+      setAnexo(compressedFile);
+    } catch (error) { setAnexo(file); }
+  };
 
-    if (file.type.startsWith('image/')) {
-      try {
-        const options = {
-          maxSizeMB: 0.3,
-          maxWidthOrHeight: 1920,
-          useWebWorker: true
-        };
-        const compressedFile = await imageCompression(file, options);
-        setAnexo(compressedFile);
-        setErrors(prev => ({ ...prev, anexo: '' }));
-        setErrorMsg('');
-      } catch (error) {
-        console.error("Erro na compressão:", error);
-        setAnexo(file);
-        setErrors(prev => ({ ...prev, anexo: '' }));
-        setErrorMsg('');
-      }
-    } else {
-      setAnexo(file);
-      setErrors(prev => ({ ...prev, anexo: '' }));
-      setErrorMsg('');
+  const onSubmit = async (data: AmbulatorioFormType) => {
+    if (data.atendido_proncor === true && !anexo) {
+        setErrorMsg('O campo "Anexo" é obrigatório para pacientes atendidos no Proncor.');
+        return;
     }
-  };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: name === 'nome_paciente' ? capitalizeName(value) : value }));
-    setErrorMsg('');
-    setErrors(prev => ({ ...prev, [name]: '' }));
-  };
-
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({ ...prev, telefone_paciente: maskPhone(e.target.value) }));
-    setErrorMsg('');
-    setErrors(prev => ({ ...prev, telefone_paciente: '' }));
-  };
-
-  const handleCrmChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, '').slice(0, 5);
-    setFormData(prev => ({ ...prev, crm_solicitante: value }));
-    setErrorMsg('');
-    setErrors(prev => ({ ...prev, crm_solicitante: '' }));
-  };
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
     setLoading(true);
     setErrorMsg('');
-    setErrors({});
-
-    const novosErros: Record<string, string> = {};
-
-// 1. Validação do Bloco Inicial
-    if (formData.atendido_proncor === null) {
-      novosErros.atendido_proncor = 'Este campo é obrigatório';
-    } else if (formData.atendido_proncor === false) {
-      // 2. Validação para Não Atendidos
-      if (!formData.nome_paciente) {
-        novosErros.nome_paciente = 'Este campo é obrigatório';
-      }
-      
-      if (!formData.telefone_paciente) {
-        novosErros.telefone_paciente = 'Este campo é obrigatório';
-      } else if (formData.telefone_paciente.length < 15) {
-        novosErros.telefone_paciente = 'Telefone incompleto. Informe 11 dígitos (com DDD)';
-      }
-      
-      if (!formData.plano_saude) {
-        novosErros.plano_saude = 'Este campo é obrigatório';
-      }
-    } else {
-      // 3. Validação para Já Atendidos (Sim)
-      if (!anexo) novosErros.anexo = 'Este campo é obrigatório';
-      if (!formData.crm_solicitante) novosErros.crm_solicitante = 'Este campo é obrigatório';
-    }
-
-    // 4. Validação de Exames/Especialidades
-    const todosItens = [...exames, ...especialidades].filter(i => i.trim() !== '');
-    if (formData.atendido_proncor !== null && todosItens.length === 0) {
-      novosErros.exames_especialidades = 'Informe pelo menos um exame ou especialidade';
-    }
-
-    // 5. Acionamento do Padrão de Erro
-    if (Object.keys(novosErros).length > 0) {
-      setErrors(novosErros);
-      setErrorMsg('Por favor, preencha corretamente os campos em vermelho.');
-      setLoading(false);
-      return; // ToastError faz o auto-scroll a partir daqui
-    }
 
     try {
       let anexoUrl = null;
@@ -174,18 +148,20 @@ export function NovoAmbulatorio() {
         anexoUrl = fileName;
       }
 
+      const todosItens = [...data.exames, ...data.especialidades].map(i => i.value).filter(v => v.trim() !== "");
+
       const { data: novoEnc, error: cabecalhoError } = await supabase.from('encaminhamentos_ambulatorio').insert([{
-        atendido_proncor: formData.atendido_proncor,
-        cpf: formData.cpf || null,
-        nome_paciente: formData.nome_paciente || null,
-        telefone_paciente: formData.telefone_paciente || null,
-        plano_saude: formData.plano_saude || null,
+        atendido_proncor: data.atendido_proncor,
+        cpf: data.cpf || null,
+        nome_paciente: data.nome_paciente || null,
+        telefone_paciente: data.telefone_paciente || null,
+        plano_saude: data.plano_saude || null,
         exames_especialidades: todosItens,
-        observacoes: formData.observacoes,
+        observacoes: data.observacoes,
         criado_por: user?.id,
-        status_id: 13,
+        status_id: 13, 
         origem: 'MANUAL', 
-        crm_solicitante: formData.crm_solicitante || null,
+        crm_solicitante: data.crm_solicitante || null,
         anexo_url: anexoUrl
       }]).select().single();
       
@@ -204,18 +180,17 @@ export function NovoAmbulatorio() {
       }
 
       setShowToast(true);
-      setFormData({
-        atendido_proncor: null, cpf: '', nome_paciente: '', telefone_paciente: '', plano_saude: '', observacoes: '', crm_solicitante: ''
-      });
-      setExames(['']);
-      setEspecialidades(['']);
+      reset();
       setAnexo(null);
       
-    } catch (error: any) { 
-      setErrorMsg('Erro ao salvar no banco de dados: ' + error.message);
-    } finally { 
-      setLoading(false); 
-    }
+    } catch (error: any) { setErrorMsg('Erro ao salvar no banco: ' + error.message); }
+    finally { setLoading(false); }
+  };
+
+  const onError = (erros: any) => {
+    const firstError = Object.keys(erros)[0];
+    document.getElementById(firstError)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setErrorMsg('Por favor, preencha corretamente os campos em vermelho.');
   };
 
   return (
@@ -232,90 +207,137 @@ export function NovoAmbulatorio() {
       </div>
 
       <Card>
-        <form onSubmit={handleSubmit} className="space-y-6 p-6" noValidate>
+        <form onSubmit={handleSubmit(onSubmit, onError)} className="space-y-6 p-6" noValidate>
           
           <div id="atendido_proncor" className={`space-y-3 border p-5 rounded-xl transition-colors ${errors.atendido_proncor ? 'border-red-500 bg-red-50 dark:bg-red-900/10' : 'border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/20'}`}>
             <label className={`text-sm font-semibold flex items-center gap-2 ${errors.atendido_proncor ? 'text-red-500' : 'text-slate-700 dark:text-slate-300'}`}>
               Paciente foi atendido no Proncor? <span className="text-red-500">*</span>
             </label>
             <div className="flex gap-3 max-w-xs">
-              <button type="button" onClick={() => { setFormData({ ...formData, atendido_proncor: true }); setErrors(prev => ({ ...prev, atendido_proncor: '' })); setErrorMsg(''); }} className={`flex-1 py-2 text-sm rounded-lg font-medium border transition-all ${formData.atendido_proncor === true ? 'bg-purple-600 text-white border-purple-600 shadow-sm' : 'bg-white dark:bg-slate-900 text-slate-500 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>Sim</button>
-              <button type="button" onClick={() => { setFormData({ ...formData, atendido_proncor: false }); setErrors(prev => ({ ...prev, atendido_proncor: '' })); setErrorMsg(''); }} className={`flex-1 py-2 text-sm rounded-lg font-medium border transition-all ${formData.atendido_proncor === false ? 'bg-purple-600 text-white border-purple-600 shadow-sm' : 'bg-white dark:bg-slate-900 text-slate-500 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>Não</button>
+              <button type="button" onClick={() => setValue('atendido_proncor', true, { shouldValidate: true })} className={`flex-1 py-2 text-sm rounded-lg font-medium border transition-all ${atendidoProncor === true ? 'bg-purple-600 text-white border-purple-600 shadow-sm' : 'bg-white dark:bg-slate-900 text-slate-500 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>Sim</button>
+              <button type="button" onClick={() => setValue('atendido_proncor', false, { shouldValidate: true })} className={`flex-1 py-2 text-sm rounded-lg font-medium border transition-all ${atendidoProncor === false ? 'bg-purple-600 text-white border-purple-600 shadow-sm' : 'bg-white dark:bg-slate-900 text-slate-500 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>Não</button>
             </div>
-            {errors.atendido_proncor && <span className="text-xs text-red-500 font-medium">{errors.atendido_proncor}</span>}
+            {errors.atendido_proncor && <span className="text-xs text-red-500 font-medium">{errors.atendido_proncor.message as string}</span>}
           </div>
 
-          {formData.atendido_proncor !== null && (
+          {atendidoProncor !== undefined && (
             <div className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
               
-              {formData.atendido_proncor === true && (
+              {atendidoProncor === true && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-5 bg-purple-50/50 dark:bg-purple-900/10 rounded-2xl border border-dashed border-purple-200 dark:border-purple-800">
                   <div className="space-y-2" id="anexo">
                     <label className="text-sm font-bold text-purple-900 dark:text-purple-300 flex items-center gap-2"><Upload size={18} /> Anexo (Imagem ou PDF) <span className="text-red-500">*</span></label>
                     <div className="relative group">
                       <input type="file" accept="image/*,.pdf" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
-                      <div className={`h-11 flex items-center px-4 rounded-xl border-2 border-dashed transition-all ${anexo ? 'border-green-500 bg-green-50 dark:bg-green-900/10' : errors.anexo ? 'border-red-500 bg-red-50 dark:bg-red-900/10' : 'border-purple-200 dark:border-purple-800 bg-white dark:bg-slate-900'}`}>
+                      <div className={`h-11 flex items-center px-4 rounded-xl border-2 border-dashed transition-all ${anexo ? 'border-green-500 bg-green-50 dark:bg-green-900/10' : 'border-purple-200 dark:border-purple-800 bg-white dark:bg-slate-900'}`}>
                         <span className="text-xs font-medium truncate flex-1">{anexo ? anexo.name : 'Clique para anexar arquivo'}</span>
                         {anexo && <X size={18} className="text-red-500 cursor-pointer z-20 relative" onClick={(e) => { e.stopPropagation(); setAnexo(null); }} />}
                       </div>
                     </div>
-                    {errors.anexo && <span className="text-xs text-red-500 font-medium mt-1 block">{errors.anexo}</span>}
                   </div>
                   <div id="crm_solicitante">
-                    <Input label="Seu CRM" name="crm_solicitante" value={formData.crm_solicitante} onChange={handleCrmChange} placeholder="Apenas números" icon={<Hash size={20} />} maxLength={5} required error={errors.crm_solicitante} />
+                    <Input 
+                      label="Seu CRM" 
+                      icon={<Hash size={20} />} 
+                      maxLength={5} 
+                      required={true}
+                      error={errors.crm_solicitante?.message || ''} 
+                      {...register('crm_solicitante')} 
+                      onChange={e => setValue('crm_solicitante', e.target.value.replace(/\D/g, ''), { shouldValidate: true })} 
+                    />
                   </div>
                 </div>
               )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div id="nome_paciente">
-                  <Input label={`Nome do Paciente${formData.atendido_proncor === true ? ' (Opcional)' : ''}`} name="nome_paciente" value={formData.nome_paciente} onChange={handleChange} icon={<User size={20} />} required={formData.atendido_proncor === false} error={errors.nome_paciente} />
+                  <Input 
+                    label={`Nome do Paciente${atendidoProncor === true ? ' (Opcional)' : ''}`} 
+                    icon={<User size={20} />} 
+                    required={atendidoProncor === false}
+                    error={errors.nome_paciente?.message || ''} 
+                    {...register('nome_paciente')} 
+                    onChange={e => setValue('nome_paciente', capitalizeName(e.target.value), { shouldValidate: true })} 
+                  />
                 </div>
                 <div id="telefone_paciente">
-                  <Input label={`Telefone / WhatsApp${formData.atendido_proncor === true ? ' (Opcional)' : ''}`} name="telefone_paciente" value={formData.telefone_paciente} onChange={handlePhoneChange} placeholder="(xx) xxxxx-xxxx" icon={<Phone size={20} />} maxLength={15} required={formData.atendido_proncor === false} error={errors.telefone_paciente} />
+                  <Input 
+                    label={`Telefone / WhatsApp${atendidoProncor === true ? ' (Opcional)' : ''}`} 
+                    placeholder="(xx) xxxxx-xxxx" 
+                    icon={<Phone size={20} />} 
+                    maxLength={15} 
+                    required={atendidoProncor === false}
+                    error={errors.telefone_paciente?.message || ''} 
+                    {...register('telefone_paciente')} 
+                    onChange={e => setValue('telefone_paciente', maskPhone(e.target.value), { shouldValidate: true })} 
+                  />
                 </div>
                 <div id="cpf">
-                  <Input label="CPF (Opcional)" name="cpf" value={formData.cpf} onChange={(e) => setFormData({...formData, cpf: maskCPF(e.target.value)})} icon={<FileText size={20} />} maxLength={14} />                
+                  <Input 
+                    label="CPF (Opcional)" 
+                    icon={<FileText size={20} />} 
+                    maxLength={14} 
+                    error={errors.cpf?.message || ''} 
+                    {...register('cpf')} 
+                    onChange={e => setValue('cpf', maskCPF(e.target.value))} 
+                  />
                 </div>
                 <div id="plano_saude">
-                  <SelectAutocomplete label={`Plano de Saúde${formData.atendido_proncor === true ? ' (Opcional)' : ''}`} tableName="planos_saude" columnName="nome" value={formData.plano_saude} onChange={val => { setFormData({ ...formData, plano_saude: val }); setErrors(prev => ({ ...prev, plano_saude: '' })); setErrorMsg(''); }} required={formData.atendido_proncor === false} error={errors.plano_saude} />
+                  <Controller control={control} name="plano_saude" render={({ field }) => (
+                    <SelectAutocomplete 
+                      label={`Plano de Saúde${atendidoProncor === true ? ' (Opcional)' : ''}`} 
+                      tableName="planos_saude" 
+                      columnName="nome" 
+                      value={field.value || ''} 
+                      required={atendidoProncor === false}
+                      error={errors.plano_saude?.message || ''} 
+                      onChange={field.onChange} 
+                    />
+                  )} />
                 </div>
               </div>
 
-              {/* WRAPPER COM ID PARA OS EXAMES E ESPECIALIDADES (VALIAÇÃO) */}
               <div id="exames_especialidades" className={`p-1 rounded-2xl transition-all ${errors.exames_especialidades ? 'border border-red-500 bg-red-50/50 dark:bg-red-900/10 shadow-sm shadow-red-500/20' : 'border border-transparent'}`}>
                 {errors.exames_especialidades && (
-                  <span className="text-sm text-red-500 font-bold flex items-center gap-2 mb-2 px-2 pt-2"><AlertCircle size={18} /> {errors.exames_especialidades}</span>
+                  <span className="text-sm text-red-500 font-bold flex items-center gap-2 mb-2 px-2 pt-2"><AlertCircle size={18} /> {errors.exames_especialidades.message as string}</span>
                 )}
                 
                 <div className={`p-5 rounded-2xl border transition-colors mb-4 ${errors.exames_especialidades ? 'bg-white dark:bg-slate-900 border-red-200 dark:border-red-800/50' : 'bg-slate-50 dark:bg-slate-800/20 border-slate-200 dark:border-slate-800'}`}>
                   <label className="text-sm font-semibold mb-3 flex items-center gap-2"><Activity size={18} className="text-purple-600" /> Exames</label>
                   <div className="space-y-3">
-                    {exames.map((exame, index) => (
-                      <div key={index} className="flex items-center gap-3 relative" style={{ zIndex: 50 - index }}>
-                        <div className="flex-1"><SelectAutocomplete tableName="exames_especialidades" columnName="nome" filterColumn="tipo" filterValue="EXAME" value={exame} onChange={(val) => { const n = [...exames]; n[index] = val; setExames(n); setErrors(prev => ({ ...prev, exames_especialidades: '' })); setErrorMsg(''); }} /></div>
-                        {exames.length > 1 && <button type="button" onClick={() => setExames(exames.filter((_, i) => i !== index))} className="p-2 text-slate-400 hover:text-red-500"><Trash2 size={20} /></button>}
+                    {fieldsExames.map((field, index) => (
+                      <div key={field.id} className="flex items-center gap-3 relative" style={{ zIndex: 50 - index }}>
+                        <div className="flex-1">
+                          <Controller control={control} name={`exames.${index}.value`} render={({ field: f }) => (
+                            <SelectAutocomplete tableName="exames_especialidades" columnName="nome" filterColumn="tipo" filterValue="EXAME" value={f.value || ''} onChange={f.onChange} />
+                          )} />
+                        </div>
+                        {fieldsExames.length > 1 && <button type="button" onClick={() => removeExame(index)} className="p-2 text-slate-400 hover:text-red-500"><Trash2 size={20} /></button>}
                       </div>
                     ))}
-                    {exames.length < 5 && <button type="button" onClick={() => setExames([...exames, ''])} className="text-xs font-bold text-purple-600 flex items-center gap-1 mt-2"><Plus size={14} /> Adicionar exame</button>}
+                    {fieldsExames.length < 5 && <button type="button" onClick={() => appendExame({ value: '' })} className="text-xs font-bold text-purple-600 flex items-center gap-1 mt-2"><Plus size={14} /> Adicionar exame</button>}
                   </div>
                 </div>
 
                 <div className={`p-5 rounded-2xl border transition-colors ${errors.exames_especialidades ? 'bg-white dark:bg-slate-900 border-red-200 dark:border-red-800/50' : 'bg-slate-50 dark:bg-slate-800/20 border-slate-200 dark:border-slate-800'}`}>
                   <label className="text-sm font-semibold mb-3 flex items-center gap-2"><Activity size={18} className="text-purple-600" /> Especialidades</label>
                   <div className="space-y-3">
-                    {especialidades.map((esp, index) => (
-                      <div key={index} className="flex items-center gap-3 relative" style={{ zIndex: 40 - index }}>
-                        <div className="flex-1"><SelectAutocomplete tableName="exames_especialidades" columnName="nome" filterColumn="tipo" filterValue="ESPECIALIDADE" value={esp} onChange={(val) => { const n = [...especialidades]; n[index] = val; setEspecialidades(n); setErrors(prev => ({ ...prev, exames_especialidades: '' })); setErrorMsg(''); }} /></div>
-                        {especialidades.length > 1 && <button type="button" onClick={() => setEspecialidades(especialidades.filter((_, i) => i !== index))} className="p-2 text-slate-400 hover:text-red-500"><Trash2 size={20} /></button>}
+                    {fieldsEspecialidades.map((field, index) => (
+                      <div key={field.id} className="flex items-center gap-3 relative" style={{ zIndex: 40 - index }}>
+                        <div className="flex-1">
+                           <Controller control={control} name={`especialidades.${index}.value`} render={({ field: f }) => (
+                            <SelectAutocomplete tableName="exames_especialidades" columnName="nome" filterColumn="tipo" filterValue="ESPECIALIDADE" value={f.value || ''} onChange={f.onChange} />
+                          )} />
+                        </div>
+                        {fieldsEspecialidades.length > 1 && <button type="button" onClick={() => removeEspecialidade(index)} className="p-2 text-slate-400 hover:text-red-500"><Trash2 size={20} /></button>}
                       </div>
                     ))}
-                    {especialidades.length < 5 && <button type="button" onClick={() => setEspecialidades([...especialidades, ''])} className="text-xs font-bold text-purple-600 flex items-center gap-1 mt-2"><Plus size={14} /> Adicionar especialidade</button>}
+                    {fieldsEspecialidades.length < 5 && <button type="button" onClick={() => appendEspecialidade({ value: '' })} className="text-xs font-bold text-purple-600 flex items-center gap-1 mt-2"><Plus size={14} /> Adicionar especialidade</button>}
                   </div>
                 </div>
               </div>
 
-              <Textarea label="Observações" name="observacoes" value={formData.observacoes} onChange={handleChange} rows={3} icon={<FileText size={20} />} />
+              <Textarea label="Observações" rows={3} icon={<FileText size={20} />} error={errors.observacoes?.message || ''} {...register('observacoes')} />
               
               <Button type="submit" disabled={loading} fullWidth className="!bg-purple-600">{loading ? 'Salvando...' : 'Enviar para o Concierge'}</Button>
             </div>
@@ -325,11 +347,7 @@ export function NovoAmbulatorio() {
       
       {showToast && <Toast message="Encaminhamento criado com sucesso!" onClose={() => setShowToast(false)} />}
       
-      <ToastError 
-        message={errorMsg} 
-        errors={errors} 
-        onClose={() => setErrorMsg('')} 
-      />
+      <ToastError message={errorMsg} onClose={() => setErrorMsg('')} />
     </div>
   );
 }
