@@ -48,6 +48,7 @@ export function EsqueciSenha() {
     setLoading(true);
     setErrorMsg('');
     try {
+      // 1. VALIDAÇÃO EXPLÍCITA NO BANCO
       const { data: emailExiste, error: rpcError } = await supabase.rpc('verificar_email_existe', {
         p_email: data.email
       });
@@ -63,6 +64,7 @@ export function EsqueciSenha() {
         return;
       }
 
+      // 2. SOLICITAÇÃO AO SUPABASE
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(data.email, {
         redirectTo: `${window.location.origin}/trocar-senha`,
       });
@@ -71,7 +73,12 @@ export function EsqueciSenha() {
       
       setSucesso(true);
     } catch (error: any) {
-      setErrorMsg(error.message || 'Erro ao solicitar recuperação. Tente novamente.');
+      // TRATAMENTO DE ERRO DE RATE LIMIT (HUMANIZADO)
+      if (error.message?.includes('rate limit') || error.status === 429) {
+        setErrorMsg('Muitas solicitações em pouco tempo. Por segurança, aguarde alguns minutos antes de tentar novamente.');
+      } else {
+        setErrorMsg(error.message || 'Erro ao solicitar recuperação. Tente novamente.');
+      }
     } finally {
       setLoading(false);
     }
@@ -115,7 +122,7 @@ export function EsqueciSenha() {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
             <div>
               <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Seu E-mail</label>
-<div className="relative">
+              <div className="relative">
                 <Mail size={20} className="absolute left-3 top-3 text-slate-400" />
                 <input 
                   type="email" 
