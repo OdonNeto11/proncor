@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Navigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { Clock, LayoutDashboard, Settings, ChevronRight, Home } from 'lucide-react';
+import { Clock, LayoutDashboard, Settings, ChevronRight, Home, Users } from 'lucide-react';
 
 import { DashboardHub } from './dashboards/DashboardHub'; 
 import { GerenciarHorarios } from './GerenciarHorarios';
+import { GerenciarUsuarios } from './GerenciarUsuarios'; // NOVO IMPORT
 
 import { Card } from '../../components/ui/Card';
 import { Title, Description } from '../../components/ui/Typography';
 
-type AdminView = 'hub' | 'horarios' | 'dashboard';
+// ADICIONADO 'usuarios' NO TYPE
+type AdminView = 'hub' | 'horarios' | 'dashboard' | 'usuarios';
 
 export function Admin() {
   const { roleId, loading: authLoading } = useAuth();
@@ -61,7 +63,7 @@ export function Admin() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in slide-in-from-bottom-4 duration-300">
-            {/* CORREÇÃO: Limpa a memória do hub ao clicar para sempre exibir os botões */}
+            {/* CARD 1: Dashboard */}
             <Card hoverable onClick={() => {
               sessionStorage.removeItem('hubCurrentDash');
               setView('dashboard');
@@ -73,6 +75,7 @@ export function Admin() {
                <Description className="text-sm">Acesse as métricas gerais e indicadores.</Description>
             </Card>
 
+            {/* CARD 2: Horários */}
             <Card hoverable onClick={() => {
               sessionStorage.removeItem('hubCurrentDash');
               setView('horarios');
@@ -83,12 +86,31 @@ export function Admin() {
                <Title className="text-lg mb-2">Horários de Agendamento</Title>
                <Description className="text-sm">Gerencie a grade de horários da agenda.</Description>
             </Card>
+
+            {/* CARD 3: NOVO - Gestão de Usuários */}
+            <Card hoverable onClick={() => {
+              sessionStorage.removeItem('hubCurrentDash');
+              setView('usuarios');
+            }} className="group">
+               <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <Users size={24} />
+               </div>
+               <Title className="text-lg mb-2">Gestão de Usuários</Title>
+               <Description className="text-sm">Crie contas e gerencie os acessos do sistema.</Description>
+            </Card>
           </div>
         </>
       )}
 
+      {/* RENDERIZAÇÃO DOS COMPONENTES */}
       {view === 'dashboard' && <DashboardHub />}
       {view === 'horarios' && <GerenciarHorarios onBack={() => {
+        setView('hub');
+        sessionStorage.removeItem('adminCurrentView');
+      }} />}
+      
+      {/* NOVO RENDER DO GERENCIAR USUARIOS */}
+      {view === 'usuarios' && <GerenciarUsuarios onBack={() => {
         setView('hub');
         sessionStorage.removeItem('adminCurrentView');
       }} />}

@@ -15,6 +15,8 @@ interface AuthContextType {
   profileName: string | null;
   permissoes: string[];
   setores: Setor[];
+  isActive: boolean | null;
+  primeiroAcesso: boolean | null; // <-- ADICIONADO
   loading: boolean;
   signOut: () => Promise<void>;
 }
@@ -26,6 +28,8 @@ const AuthContext = createContext<AuthContextType>({
   profileName: null,
   permissoes: [],
   setores: [],
+  isActive: null,
+  primeiroAcesso: null, // <-- ADICIONADO
   loading: true,
   signOut: async () => {},
 });
@@ -37,6 +41,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profileName, setProfileName] = useState<string | null>(null);
   const [permissoes, setPermissoes] = useState<string[]>([]);
   const [setores, setSetores] = useState<Setor[]>([]);
+  const [isActive, setIsActive] = useState<boolean | null>(null);
+  const [primeiroAcesso, setPrimeiroAcesso] = useState<boolean | null>(null); // <-- ESTADO CRIADO
   
   // O loading inicia em true APENAS para o primeiro carregamento da aplicação
   const [loading, setLoading] = useState(true);
@@ -64,6 +70,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfileName(null);
         setPermissoes([]);
         setSetores([]);
+        setIsActive(null);
+        setPrimeiroAcesso(null); // <-- LIMPA O ESTADO NO LOGOUT
         setLoading(false);
         return;
       }
@@ -96,6 +104,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (profileError) throw profileError;
 
       setRoleId(profileData.role_id);
+      setIsActive(profileData.is_active); 
+      setPrimeiroAcesso(profileData.primeiro_acesso); // <-- GUARDA O STATUS DO BANCO NO ESTADO
       
       const nomeCorreto = profileData.full_name || profileData.nome || profileData.nome_completo || 'Profissional';
       setProfileName(nomeCorreto);
@@ -155,7 +165,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, roleId, profileName, permissoes, setores, loading, signOut }}>
+    <AuthContext.Provider value={{ session, user, roleId, profileName, permissoes, setores, isActive, primeiroAcesso, loading, signOut }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,5 +1,5 @@
 import { useState, useEffect, FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { Lock, User, Loader2, Sun, Moon, Eye, EyeOff } from 'lucide-react';
 
@@ -41,21 +41,37 @@ export function Login() {
     setLoading(true);
     setErrorMsg('');
 
-    let emailParaEnviar = loginInput.trim();
-    if (!emailParaEnviar.includes('@')) {
-      emailParaEnviar = `${emailParaEnviar}@proncor.com.br`;
-    }
+    let loginFinal = loginInput.trim();
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email: emailParaEnviar,
-      password,
-    });
+    try {
+      // LÓGICA DE LOGIN POR CRM
+      if (!loginFinal.includes('@')) {
+        const { data: emailEncontrado, error: rpcError } = await supabase.rpc('get_email_por_crm', {
+          p_crm: loginFinal
+        });
 
-    if (error) {
-      setErrorMsg('Usuário ou senha incorretos.');
-      setLoading(false);
-    } else {
+        // O CONSOLE LOG ESTÁ AQUI PARA DEBUG DA NOSSA FUNÇÃO
+        console.log("Resultado da busca do CRM:", { crmBuscado: loginFinal, emailEncontrado, rpcError });
+
+        // Se encontrou o email associado ao CRM, substitui. 
+        if (!rpcError && emailEncontrado) {
+          loginFinal = emailEncontrado;
+        }
+      }
+
+      // Agora fazemos o login normal do Supabase com o email (digitado ou traduzido do CRM)
+      const { error } = await supabase.auth.signInWithPassword({
+        email: loginFinal,
+        password,
+      });
+
+      if (error) throw error;
+      
       navigate('/');
+    } catch (error: any) {
+      setErrorMsg('Usuário, CRM ou senha incorretos.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -87,28 +103,37 @@ export function Login() {
             label="Usuário ou Email"
             value={loginInput}
             onChange={e => setLoginInput(e.target.value)}
-            placeholder="Ex: plantonista ou seu@email.com"
+            placeholder="Ex: 12345 ou seu@email.com"
             icon={<User size={20} />}
           />
 
-          <div className="relative">
-            <Input 
-              label="Senha"
-              type={showPassword ? "text" : "password"} // ALTERNA O TIPO
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              placeholder="••••••••"
-              icon={<Lock size={20} />}
-            />
-            {/* BOTÃO DO OLHO POSICIONADO ABSOLUTAMENTE */}
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-[38px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
-              tabIndex={-1} // Evita que o Tab pare no olho antes do botão de entrar
-            >
-              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-            </button>
+          <div>
+            <div className="relative">
+              <Input 
+                label="Senha"
+                type={showPassword ? "text" : "password"} // ALTERNA O TIPO
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="••••••••"
+                icon={<Lock size={20} />}
+              />
+              {/* BOTÃO DO OLHO POSICIONADO ABSOLUTAMENTE */}
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-[38px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                tabIndex={-1} // Evita que o Tab pare no olho antes do botão de entrar
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
+            
+            {/* LINK DE ESQUECI A SENHA */}
+            <div className="flex justify-end mt-2">
+              <Link to="/esqueci-senha" className="text-sm font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors">
+                Esqueci minha senha?
+              </Link>
+            </div>
           </div>
 
           {errorMsg && (

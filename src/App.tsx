@@ -5,12 +5,14 @@ import { Layout } from './components/Layout';
 // CAMINHOS GEOGRÁFICOS E ARQUITETURA ATUALIZADA
 import { Login } from './pages/core/Login';
 import { Home } from './pages/core/Home';
-import { AcessoRestrito } from './pages/core/AcessoRestrito'; // <-- IMPORTAÇÃO QUE FALTAVA
+import { AcessoRestrito } from './pages/core/AcessoRestrito'; 
+import { TrocarSenha } from './pages/core/TrocarSenha'; 
 import { Admin } from './pages/administracao/Admin';
 import { Agenda } from './pages/pa/Agenda';
 import { Agendar } from './pages/pa/Agendar';
 import { Ambulatorio as FilaAmbulatorio } from './pages/ambulatorio/FilaAmbulatorio'; 
 import { NovoAmbulatorio } from './pages/ambulatorio/NovoAmbulatorio';
+import { EsqueciSenha } from './pages/core/EsqueciSenha';
 
 // CONTEXTOS E COMPONENTES UI
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -18,8 +20,18 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { Button } from './components/ui/Button';
 import { Description } from './components/ui/Typography';
 
-function AuthGuard({ children, permission, requireProfile = true }: { children: React.ReactNode, permission?: string, requireProfile?: boolean }) {
-  const { user, roleId, permissoes, loading } = useAuth();
+function AuthGuard({ 
+  children, 
+  permission, 
+  requireProfile = true, 
+  checkPrimeiroAcesso = true 
+}: { 
+  children: React.ReactNode, 
+  permission?: string, 
+  requireProfile?: boolean,
+  checkPrimeiroAcesso?: boolean 
+}) {
+  const { user, roleId, permissoes, setores, isActive, primeiroAcesso, loading } = useAuth();
   const [isHanging, setIsHanging] = useState(false);
 
   useEffect(() => {
@@ -62,8 +74,13 @@ function AuthGuard({ children, permission, requireProfile = true }: { children: 
 
   if (!user) return <Navigate to="/login" replace />;
   
-  // TRAVA CORRIGIDA: Se requer perfil e não tem, manda direto para a tela de bloqueio
-  if (requireProfile && roleId === null) return <Navigate to="/acesso-restrito" replace />;
+  if (requireProfile && (isActive === false || roleId === null || !setores?.length || !permissoes?.length)) {
+    return <Navigate to="/acesso-restrito" replace />;
+  }
+
+  if (checkPrimeiroAcesso && primeiroAcesso === true) {
+    return <Navigate to="/trocar-senha" replace />;
+  }
   
   if (permission && !permissoes.includes(permission)) return <Navigate to="/" replace />;
 
@@ -75,8 +92,11 @@ export default function App() {
     <ThemeProvider>
       <AuthProvider>
         <Routes>
+          {/* ROTAS PÚBLICAS */}
           <Route path="/login" element={<Login />} />
+          <Route path="/esqueci-senha" element={<EsqueciSenha />} />
 
+          {/* ROTAS PROTEGIDAS */}
           <Route path="/" element={
             <AuthGuard requireProfile={true}>
               <Layout>
@@ -85,11 +105,18 @@ export default function App() {
             </AuthGuard>
           } />
 
-          {/* NOVA ROTA CADASTRADA: Quebra o loop infinito */}
           <Route path="/acesso-restrito" element={
             <AuthGuard requireProfile={false}>
               <Layout>
                 <AcessoRestrito />
+              </Layout>
+            </AuthGuard>
+          } />
+
+          <Route path="/trocar-senha" element={
+            <AuthGuard requireProfile={false} checkPrimeiroAcesso={false}>
+              <Layout>
+                <TrocarSenha />
               </Layout>
             </AuthGuard>
           } />
@@ -111,7 +138,7 @@ export default function App() {
             </AuthGuard>
           } />
 
-          {/* ADMINISTRAÇÃO (HUB, DASHBOARDS E HORÁRIOS) */}
+          {/* ADMINISTRAÇÃO */}
           <Route path="/admin" element={
             <AuthGuard>
               <Layout>
@@ -120,7 +147,7 @@ export default function App() {
             </AuthGuard>
           } />
 
-          {/* AMBULATÓRIO - PRONCOR */}
+          {/* AMBULATÓRIO */}
           <Route path="/novo-ambulatorio" element={
             <AuthGuard>
               <Layout>
