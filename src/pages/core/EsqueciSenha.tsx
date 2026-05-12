@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Mail, ArrowLeft, Send, Sun, Moon } from 'lucide-react';
+import { Mail, ArrowLeft, Send } from 'lucide-react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -8,6 +8,7 @@ import { useForm } from 'react-hook-form';
 import { supabase } from '../../lib/supabase';
 import { Button } from '../../components/ui/Button';
 import { ToastError } from '../../components/ui/ToastError';
+import { AuthLayout } from '../../components/AuthLayout';
 
 const formSchema = z.object({
   email: z.string().min(1, 'O E-mail é obrigatório').email('Digite um e-mail válido')
@@ -16,25 +17,6 @@ const formSchema = z.object({
 type EsqueciSenhaFormType = z.infer<typeof formSchema>;
 
 export function EsqueciSenha() {
-  // --- LÓGICA DO MODO DARK ---
-  const [isDark, setIsDark] = useState(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme) return savedTheme === 'dark';
-    return true;
-  });
-
-  useEffect(() => {
-    const root = window.document.documentElement;
-    if (isDark) {
-      root.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      root.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-  }, [isDark]);
-  // ---------------------------
-
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [sucesso, setSucesso] = useState(false);
@@ -85,19 +67,7 @@ export function EsqueciSenha() {
   };
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center p-4 bg-slate-50 dark:bg-slate-950 transition-colors duration-500">
-      
-      {/* BOTÃO DE SOL/LUA FLUTUANTE */}
-      <div className="absolute top-6 right-6 z-50">
-        <button 
-          onClick={() => setIsDark(!isDark)}
-          className="p-3 rounded-full bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-yellow-400 hover:ring-2 hover:ring-blue-400 transition-all"
-          title={isDark ? "Mudar para modo claro" : "Mudar para modo escuro"}
-        >
-          {isDark ? <Sun size={22} /> : <Moon size={22} />}
-        </button>
-      </div>
-
+    <AuthLayout>
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-md p-8 border border-slate-200 dark:border-slate-800/50 animate-in fade-in zoom-in-95 duration-500">
         
         <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center mb-6">
@@ -149,6 +119,6 @@ export function EsqueciSenha() {
         )}
       </div>
       <ToastError message={errorMsg} onClose={() => setErrorMsg('')} />
-    </div>
+    </AuthLayout>
   );
 }

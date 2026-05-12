@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { AlertCircle, Trash2 } from 'lucide-react';
-import { Button } from '../../../components/ui/Button';
+import { Button } from '../../../../components/ui/Button';
 
 interface ModalExcluirUsuarioProps {
   isOpen: boolean;

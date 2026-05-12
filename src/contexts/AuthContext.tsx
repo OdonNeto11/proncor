@@ -93,7 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Função interna para carregar dados do banco de dados (Apenas roda no loading real)
-  const loadUserProfile = async (userId: string) => {
+const loadUserProfile = async (userId: string) => {
     try {
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
@@ -103,9 +103,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (profileError) throw profileError;
 
+      // TRAVA DE USUÁRIO INATIVO:
+      if (profileData.is_active === false) {
+        setLoading(false);
+        await supabase.auth.signOut();
+        // Opcional: Você pode redirecionar ou emitir um alerta aqui
+        return;
+      }
+
       setRoleId(profileData.role_id);
       setIsActive(profileData.is_active); 
-      setPrimeiroAcesso(profileData.primeiro_acesso); // <-- GUARDA O STATUS DO BANCO NO ESTADO
+      setPrimeiroAcesso(profileData.primeiro_acesso);
       
       const nomeCorreto = profileData.full_name || profileData.nome || profileData.nome_completo || 'Profissional';
       setProfileName(nomeCorreto);

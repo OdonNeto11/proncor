@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
-import { supabase } from '../../../lib/supabase';
-import { Button } from '../../../components/ui/Button';
-import { ToastError } from '../../../components/ui/ToastError';
+import { supabase } from '../../../../lib/supabase';
+import { Button } from '../../../../components/ui/Button';
+import { ToastError } from '../../../../components/ui/ToastError';
 
 import { X, Mail, Shield, Building2, User } from 'lucide-react';
 import { z } from 'zod';

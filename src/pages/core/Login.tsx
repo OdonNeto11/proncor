@@ -1,35 +1,17 @@
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { Lock, User, Loader2, Sun, Moon, Eye, EyeOff } from 'lucide-react';
+import { Lock, User, Loader2, Eye, EyeOff } from 'lucide-react';
 
 // COMPONENTES OFICIAIS SENDO USADOS
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { Logo } from '../../components/ui/Logo';
+import { AuthLayout } from '../../components/AuthLayout';
 
 export function Login() {
   const navigate = useNavigate();
   
-  // --- LÓGICA DO MODO DARK NO LOGIN ---
-  const [isDark, setIsDark] = useState(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme) return savedTheme === 'dark';
-    return true; // <-- PADRÃO AGORA É DARK MODE
-  });
-
-  useEffect(() => {
-    const root = window.document.documentElement;
-    if (isDark) {
-      root.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      root.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-  }, [isDark]);
-  // ------------------------------------
-
   const [loginInput, setLoginInput] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false); // ESTADO PARA VISIBILIDADE
@@ -69,26 +51,14 @@ export function Login() {
       
       navigate('/');
     } catch (error: any) {
-      setErrorMsg('Usuário, CRM ou senha incorretos.');
+      setErrorMsg('E-mail, CRM ou senha incorretos.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="relative min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-4 transition-colors duration-300">
-      
-      {/* BOTÃO DE SOL/LUA FLUTUANTE */}
-      <div className="absolute top-6 right-6">
-        <button 
-          onClick={() => setIsDark(!isDark)}
-          className="p-3 rounded-full bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-yellow-400 hover:ring-2 hover:ring-blue-400 transition-all"
-          title={isDark ? "Mudar para modo claro" : "Mudar para modo escuro"}
-        >
-          {isDark ? <Sun size={22} /> : <Moon size={22} />}
-        </button>
-      </div>
-
+    <AuthLayout>
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-md p-8 border border-slate-100 dark:border-slate-800">
         
         <div className="text-center mb-8">
@@ -154,6 +124,6 @@ export function Login() {
           </div>
         </form>
       </div>
-    </div>
+    </AuthLayout>
   );
 }

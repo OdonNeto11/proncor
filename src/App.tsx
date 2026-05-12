@@ -1,20 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Layout } from './components/Layout';
 
-// CAMINHOS GEOGRÁFICOS E ARQUITETURA ATUALIZADA
+// PÁGINAS CORE
 import { Login } from './pages/core/Login';
 import { Home } from './pages/core/Home';
 import { AcessoRestrito } from './pages/core/AcessoRestrito'; 
 import { TrocarSenha } from './pages/core/TrocarSenha'; 
+import { EsqueciSenha } from './pages/core/EsqueciSenha';
+import { LinkExpirado } from './pages/core/LinkExpirado';
+
+// PÁGINAS DE MÓDULOS
 import { Admin } from './pages/administracao/Admin';
 import { Agenda } from './pages/pa/Agenda';
 import { Agendar } from './pages/pa/Agendar';
 import { Ambulatorio as FilaAmbulatorio } from './pages/ambulatorio/FilaAmbulatorio'; 
 import { NovoAmbulatorio } from './pages/ambulatorio/NovoAmbulatorio';
-import { EsqueciSenha } from './pages/core/EsqueciSenha';
 
-// CONTEXTOS E COMPONENTES UI
+// CONTEXTOS E UI
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { Button } from './components/ui/Button';
@@ -33,6 +36,7 @@ function AuthGuard({
 }) {
   const { user, roleId, permissoes, setores, isActive, primeiroAcesso, loading } = useAuth();
   const [isHanging, setIsHanging] = useState(false);
+  const location = useLocation();
 
   useEffect(() => {
     let timeout: any;
@@ -50,6 +54,16 @@ function AuthGuard({
     window.location.href = '/login'; 
   };
 
+  // 1. GESTÃO DE ERROS DE TOKEN NA URL (EX: LINK EXPIRADO)
+  const hashParams = new URLSearchParams(location.hash.replace('#', '?'));
+  const isTokenExpired = hashParams.get('error_code') === 'otp_expired' || 
+                         new URLSearchParams(location.search).get('error_code') === 'otp_expired';
+
+  if (isTokenExpired) {
+    return <Navigate to="/link-expirado" replace />;
+  }
+
+  // 2. TELA DE LOADING
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-slate-950 transition-colors duration-500 space-y-6">
@@ -57,14 +71,10 @@ function AuthGuard({
         {isHanging && (
           <div className="text-center animate-in fade-in duration-500 max-w-sm px-4">
             <Description className="!mb-4 !font-medium text-slate-600 dark:text-slate-300">
-              Sua sessão expirou.
+              Aguardando resposta do servidor...
             </Description>
-            <Button 
-              onClick={forceClearCache} 
-              variant="primary" 
-              fullWidth
-            >
-              Atualizar Sessão
+            <Button onClick={forceClearCache} variant="primary" fullWidth>
+              Voltar ao Login
             </Button>
           </div>
         )}
@@ -72,17 +82,37 @@ function AuthGuard({
     );
   }
 
-  if (!user) return <Navigate to="/login" replace />;
+  // 3. VERIFICAÇÃO DE USUÁRIO LOGADO
+  if (!user) {
+    // Se houver tentativa de recuperação de senha (type=recovery), não redireciona.
+    // Aguarda o Supabase processar o hash da URL.
+    const isRecovering = location.hash.includes('type=recovery') || location.hash.includes('access_token');
+    
+    if (isRecovering) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-950">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-500"></div>
+        </div>
+      );
+    }
+
+    return <Navigate to="/login" replace />;
+  }
   
+  // 4. TRAVA DE USUÁRIO INATIVO OU SEM PERFIL
   if (requireProfile && (isActive === false || roleId === null || !setores?.length || !permissoes?.length)) {
     return <Navigate to="/acesso-restrito" replace />;
   }
 
+  // 5. TRAVA DE PRIMEIRO ACESSO (TROCA DE SENHA OBRIGATÓRIA)
   if (checkPrimeiroAcesso && primeiroAcesso === true) {
     return <Navigate to="/trocar-senha" replace />;
   }
   
-  if (permission && !permissoes.includes(permission)) return <Navigate to="/" replace />;
+  // 6. VALIDAÇÃO DE PERMISSÃO ESPECÍFICA
+  if (permission && !permissoes.includes(permission)) {
+    return <Navigate to="/" replace />;
+  }
 
   return <>{children}</>;
 }
@@ -95,75 +125,37 @@ export default function App() {
           {/* ROTAS PÚBLICAS */}
           <Route path="/login" element={<Login />} />
           <Route path="/esqueci-senha" element={<EsqueciSenha />} />
+          <Route path="/link-expirado" element={<LinkExpirado />} />
 
-          {/* ROTAS PROTEGIDAS */}
+          {/* ROTAS PROTEGIDAS PELO AUTHGUARD */}
           <Route path="/" element={
             <AuthGuard requireProfile={true}>
-              <Layout>
-                <Home />
-              </Layout>
+              <Layout><Home /></Layout>
             </AuthGuard>
           } />
 
           <Route path="/acesso-restrito" element={
             <AuthGuard requireProfile={false}>
-              <Layout>
-                <AcessoRestrito />
-              </Layout>
+              {/* REMOVIDO O <Layout> DAQUI */}
+              <AcessoRestrito />
             </AuthGuard>
           } />
 
           <Route path="/trocar-senha" element={
             <AuthGuard requireProfile={false} checkPrimeiroAcesso={false}>
-              <Layout>
-                <TrocarSenha />
-              </Layout>
+              {/* REMOVIDO O <Layout> DAQUI */}
+              <TrocarSenha />
             </AuthGuard>
           } />
 
-          {/* PRONTO ATENDIMENTO */}
-          <Route path="/agenda" element={
-            <AuthGuard>
-              <Layout>
-                <Agenda />
-              </Layout>
-            </AuthGuard>
-          } />
+          {/* MÓDULOS ESPECÍFICOS */}
+          <Route path="/agenda" element={<AuthGuard><Layout><Agenda /></Layout></AuthGuard>} />
+          <Route path="/novo" element={<AuthGuard><Layout><Agendar /></Layout></AuthGuard>} />
+          <Route path="/admin" element={<AuthGuard><Layout><Admin /></Layout></AuthGuard>} />
+          <Route path="/novo-ambulatorio" element={<AuthGuard><Layout><NovoAmbulatorio /></Layout></AuthGuard>} />
+          <Route path="/ambulatorio" element={<AuthGuard><Layout><FilaAmbulatorio /></Layout></AuthGuard>} />
 
-          <Route path="/novo" element={
-            <AuthGuard>
-              <Layout>
-                <Agendar />
-              </Layout>
-            </AuthGuard>
-          } />
-
-          {/* ADMINISTRAÇÃO */}
-          <Route path="/admin" element={
-            <AuthGuard>
-              <Layout>
-                <Admin />
-              </Layout>
-            </AuthGuard>
-          } />
-
-          {/* AMBULATÓRIO */}
-          <Route path="/novo-ambulatorio" element={
-            <AuthGuard>
-              <Layout>
-                <NovoAmbulatorio />
-              </Layout>
-            </AuthGuard>
-          } />
-
-          <Route path="/ambulatorio" element={
-            <AuthGuard>
-              <Layout>
-                <FilaAmbulatorio />
-              </Layout>
-            </AuthGuard>
-          } />
-
+          {/* REDIRECIONAMENTO PADRÃO */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>

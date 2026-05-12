@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { KeyRound, ShieldCheck, LogOut, Eye, EyeOff, Sun, Moon } from 'lucide-react';
+import React, { useState } from 'react';
+import { KeyRound, ShieldCheck, LogOut, Eye, EyeOff } from 'lucide-react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -8,6 +8,8 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../../components/ui/Button';
 import { ToastError } from '../../components/ui/ToastError';
+import { AuthLayout } from '../../components/AuthLayout';
+import { MedidorForcaSenha } from '../../components/ui/MedidorForcaSenha';
 
 const formSchema = z.object({
   senha: z.string().min(6, 'A senha deve ter no mínimo 6 caracteres'),
@@ -22,35 +24,18 @@ type TrocarSenhaFormType = z.infer<typeof formSchema>;
 export function TrocarSenha() {
   const { user, signOut } = useAuth();
   
-  // --- LÓGICA DO MODO DARK ---
-  const [isDark, setIsDark] = useState(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme) return savedTheme === 'dark';
-    return true;
-  });
-
-  useEffect(() => {
-    const root = window.document.documentElement;
-    if (isDark) {
-      root.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      root.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-  }, [isDark]);
-  // ---------------------------
-
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [mostrarConfirmar, setMostrarConfirmar] = useState(false);
 
-  const { register, handleSubmit, formState: { errors } } = useForm<TrocarSenhaFormType>({
+  const { register, handleSubmit, watch, formState: { errors } } = useForm<TrocarSenhaFormType>({
     resolver: zodResolver(formSchema),
     defaultValues: { senha: '', confirmarSenha: '' }
   });
+
+  const senhaAtual = watch('senha');
 
   const onSubmit = async (data: TrocarSenhaFormType) => {
     if (!user) return;
@@ -59,10 +44,13 @@ export function TrocarSenha() {
 
     try {
       const { error: authError } = await supabase.auth.updateUser({ password: data.senha });
+      
+      // IGNORA O ERRO DE SENHA IGUAL (BYPASS)
       if (authError && !authError.message.toLowerCase().includes('different from the old password')) {
         throw authError; 
       }
 
+      // EXECUTA A SUA FUNÇÃO RPC INTACTA
       const { error: profileError } = await supabase.rpc('concluir_primeiro_acesso');
       if (profileError) throw profileError;
 
@@ -70,24 +58,13 @@ export function TrocarSenha() {
       window.location.href = '/login';
     } catch (error: any) {
       setErrorMsg(error.message || 'Erro ao processar a troca de senha. Tente novamente.');
+    } finally {
       setLoading(false);
     } 
   };
 
   return (
-    <div className="relative min-h-[80vh] flex items-center justify-center p-4 bg-transparent transition-colors duration-500">
-      
-      {/* BOTÃO DE SOL/LUA FLUTUANTE */}
-      <div className="absolute top-6 right-6 z-50">
-        <button 
-          onClick={() => setIsDark(!isDark)}
-          className="p-3 rounded-full bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-yellow-400 hover:ring-2 hover:ring-blue-400 transition-all"
-          title={isDark ? "Mudar para modo claro" : "Mudar para modo escuro"}
-        >
-          {isDark ? <Sun size={22} /> : <Moon size={22} />}
-        </button>
-      </div>
-
+    <AuthLayout>
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-md p-8 border border-slate-200 dark:border-slate-800/50 animate-in zoom-in-95 duration-300">
         
         <div className="w-16 h-16 bg-blue-100 dark:bg-blue-950/40 rounded-full flex items-center justify-center mx-auto mb-6 border border-blue-200 dark:border-blue-900/30">
@@ -109,10 +86,13 @@ export function TrocarSenha() {
                 placeholder="Mínimo de 6 caracteres"
                 className={`w-full bg-slate-50 dark:bg-slate-950 border ${errors.senha ? 'border-red-500 ring-1 ring-red-500/30' : 'border-gray-200 dark:border-slate-700'} rounded-lg pl-3 pr-10 py-3 text-gray-800 dark:text-slate-200 outline-none focus:border-blue-500 transition-colors`} 
               />
-              <button type="button" onClick={() => setMostrarSenha(!mostrarSenha)} className="absolute right-3 top-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+              <button type="button" onClick={() => setMostrarSenha(!mostrarSenha)} className="absolute right-3 top-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors" tabIndex={-1}>
                 {mostrarSenha ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
             </div>
+
+            <MedidorForcaSenha senha={senhaAtual || ''} />
+
             {errors.senha && <span className="text-xs text-red-500 mt-1 font-bold block">{errors.senha.message}</span>}
           </div>
 
@@ -125,7 +105,7 @@ export function TrocarSenha() {
                 placeholder="Repita a nova senha"
                 className={`w-full bg-slate-50 dark:bg-slate-950 border ${errors.confirmarSenha ? 'border-red-500 ring-1 ring-red-500/30' : 'border-gray-200 dark:border-slate-700'} rounded-lg pl-3 pr-10 py-3 text-gray-800 dark:text-slate-200 outline-none focus:border-blue-500 transition-colors`} 
               />
-              <button type="button" onClick={() => setMostrarConfirmar(!mostrarConfirmar)} className="absolute right-3 top-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+              <button type="button" onClick={() => setMostrarConfirmar(!mostrarConfirmar)} className="absolute right-3 top-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors" tabIndex={-1}>
                 {mostrarConfirmar ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
             </div>
@@ -145,6 +125,6 @@ export function TrocarSenha() {
         </form>
       </div>
       <ToastError message={errorMsg} onClose={() => setErrorMsg('')} />
-    </div>
+    </AuthLayout>
   );
 }

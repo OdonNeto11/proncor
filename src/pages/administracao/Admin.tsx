@@ -5,7 +5,7 @@ import { Clock, LayoutDashboard, Settings, ChevronRight, Home, Users } from 'luc
 
 import { DashboardHub } from './dashboards/DashboardHub'; 
 import { GerenciarHorarios } from './GerenciarHorarios';
-import { GerenciarUsuarios } from './GerenciarUsuarios'; // NOVO IMPORT
+import { GerenciarUsuarios } from './usuarios/GerenciarUsuarios'; // NOVO IMPORT
 
 import { Card } from '../../components/ui/Card';
 import { Title, Description } from '../../components/ui/Typography';
