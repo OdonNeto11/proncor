@@ -10,7 +10,8 @@ import { Title, Description } from './ui/Typography';
 export function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, signOut, profileName, roleId } = useAuth();
+  // Alterado: removido roleId, adicionado permissoes
+  const { user, signOut, profileName, permissoes } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -23,8 +24,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   const nomeExibicao = profileName || (user?.email ? user.email.split('@')[0] : 'Perfil Incompleto');
 
+  // Lógica de visualização do menu admin baseada em permissão técnica
+  const podeAcessarAdmin = permissoes.includes('adm_gerenciar_usuarios');
+
   return (
-    /* REMOVIDO transition-colors e duration-500 PARA EVITAR O BUG HÍBRIDO */
     <div className="min-h-screen h-[100dvh] w-full bg-slate-50 dark:bg-slate-950 flex flex-col font-sans overflow-hidden">
       
       <header className="bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 shadow-sm flex-none z-50 transition-colors duration-300">
@@ -42,7 +45,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <HomeIcon size={18} /> Início
               </Link>
 
-              {roleId === 1 && (
+              {/* Ajustado: Agora verifica a permissão em vez do roleId */}
+              {podeAcessarAdmin && (
                 <Link 
                   to="/admin" 
                   state={{ forceAdminHub: true }}
@@ -120,7 +124,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   <HomeIcon size={18} /> Início
                 </Link>
 
-                {roleId === 1 && (
+                {/* Ajustado no Mobile Menu também */}
+                {podeAcessarAdmin && (
                   <Link 
                     to="/admin" 
                     state={{ forceAdminHub: true }}
@@ -151,7 +156,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
         )}
       </header>
 
-      {/* REMOVIDO transition-colors e duration-500 PARA EVITAR O BUG HÍBRIDO */}
       <main className="flex-1 overflow-y-auto overflow-x-hidden bg-slate-50 dark:bg-slate-950 scroll-smooth w-full flex flex-col">
         <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto flex-1 w-full">
             {children}

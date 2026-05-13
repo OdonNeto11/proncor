@@ -5,16 +5,16 @@ import { Clock, LayoutDashboard, Settings, ChevronRight, Home, Users } from 'luc
 
 import { DashboardHub } from './dashboards/DashboardHub'; 
 import { GerenciarHorarios } from './GerenciarHorarios';
-import { GerenciarUsuarios } from './usuarios/GerenciarUsuarios'; // NOVO IMPORT
+import { GerenciarUsuarios } from './usuarios/GerenciarUsuarios';
 
 import { Card } from '../../components/ui/Card';
 import { Title, Description } from '../../components/ui/Typography';
 
-// ADICIONADO 'usuarios' NO TYPE
 type AdminView = 'hub' | 'horarios' | 'dashboard' | 'usuarios';
 
 export function Admin() {
-  const { roleId, loading: authLoading } = useAuth();
+  // 1. Trocamos roleId por permissoes
+  const { permissoes, loading: authLoading } = useAuth();
   const location = useLocation();
   
   const [view, setView] = useState<AdminView>(() => {
@@ -26,7 +26,6 @@ export function Admin() {
     sessionStorage.setItem('adminCurrentView', view);
   }, [view]);
 
-  // CORREÇÃO: Lê apenas o comando exclusivo do Breadcrumb para resetar
   useEffect(() => {
     if (location.state && (location.state as any).forceAdminHub) {
       setView('hub');
@@ -37,7 +36,12 @@ export function Admin() {
   }, [location.state]);
 
   if (authLoading) return null;
-  if (roleId !== 1) return <Navigate to="/" replace />;
+
+  // 2. NOVA TRAVA: Verifica se o usuário tem a permissão administrativa global
+  // 'adm_gerenciar_usuarios' é uma das chaves que vimos no seu banco
+  const isAdmin = permissoes.includes('adm_gerenciar_usuarios');
+  
+  if (!isAdmin) return <Navigate to="/" replace />;
 
   return (
     <div className="max-w-6xl mx-auto animate-in fade-in duration-500 pb-20 mt-4">
@@ -63,7 +67,6 @@ export function Admin() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in slide-in-from-bottom-4 duration-300">
-            {/* CARD 1: Dashboard */}
             <Card hoverable onClick={() => {
               sessionStorage.removeItem('hubCurrentDash');
               setView('dashboard');
@@ -75,7 +78,6 @@ export function Admin() {
                <Description className="text-sm">Acesse as métricas gerais e indicadores.</Description>
             </Card>
 
-            {/* CARD 2: Horários */}
             <Card hoverable onClick={() => {
               sessionStorage.removeItem('hubCurrentDash');
               setView('horarios');
@@ -87,7 +89,6 @@ export function Admin() {
                <Description className="text-sm">Gerencie a grade de horários da agenda.</Description>
             </Card>
 
-            {/* CARD 3: NOVO - Gestão de Usuários */}
             <Card hoverable onClick={() => {
               sessionStorage.removeItem('hubCurrentDash');
               setView('usuarios');
@@ -102,14 +103,12 @@ export function Admin() {
         </>
       )}
 
-      {/* RENDERIZAÇÃO DOS COMPONENTES */}
       {view === 'dashboard' && <DashboardHub />}
       {view === 'horarios' && <GerenciarHorarios onBack={() => {
         setView('hub');
         sessionStorage.removeItem('adminCurrentView');
       }} />}
       
-      {/* NOVO RENDER DO GERENCIAR USUARIOS */}
       {view === 'usuarios' && <GerenciarUsuarios onBack={() => {
         setView('hub');
         sessionStorage.removeItem('adminCurrentView');

@@ -8,47 +8,50 @@ export type Setor = {
   sigla: string;
 };
 
+export interface Alocacao {
+  setor_id: number;
+  role_id: number;
+  setor_nome: string;
+  role_nome: string;
+}
+
 interface AuthContextType {
   session: Session | null;
   user: User | null;
-  roleId: number | null;
+  alocacoes: Alocacao[];
   profileName: string | null;
   permissoes: string[];
-  setores: Setor[];
   isActive: boolean | null;
-  primeiroAcesso: boolean | null; // <-- ADICIONADO
+  primeiroAcesso: boolean | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   session: null,
   user: null,
-  roleId: null,
+  alocacoes: [],
   profileName: null,
   permissoes: [],
-  setores: [],
   isActive: null,
-  primeiroAcesso: null, // <-- ADICIONADO
+  primeiroAcesso: null,
   loading: true,
   signOut: async () => {},
+  refreshProfile: async () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [roleId, setRoleId] = useState<number | null>(null);
+  const [alocacoes, setAlocacoes] = useState<Alocacao[]>([]);
   const [profileName, setProfileName] = useState<string | null>(null);
   const [permissoes, setPermissoes] = useState<string[]>([]);
-  const [setores, setSetores] = useState<Setor[]>([]);
   const [isActive, setIsActive] = useState<boolean | null>(null);
-  const [primeiroAcesso, setPrimeiroAcesso] = useState<boolean | null>(null); // <-- ESTADO CRIADO
-  
-  // O loading inicia em true APENAS para o primeiro carregamento da aplicação
+  const [primeiroAcesso, setPrimeiroAcesso] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 1. CARREGAMENTO INICIAL SILENCIOSO (Primeira vez que a página abre)
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -59,26 +62,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    // 2. ESCUTADOR DE MUDANÇAS DE SESSÃO
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, currentSession) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, currentSession) => {
       setSession(currentSession);
-      
-      // Se a sessão expirou ou o usuário deslogou
       if (!currentSession?.user) {
-        setUser(null);
-        setRoleId(null);
-        setProfileName(null);
-        setPermissoes([]);
-        setSetores([]);
-        setIsActive(null);
-        setPrimeiroAcesso(null); // <-- LIMPA O ESTADO NO LOGOUT
-        setLoading(false);
+        resetState();
         return;
       }
-
-      // IMPORTANTE: Só aciona o loading se for um novo login e o estado de user estiver vazio.
-      // Se o usuário voltar pra aba e o Supabase apenas mandar um evento de atualização de token, 
-      // a tela não vai piscar.
       setUser((prevUser) => {
         if (!prevUser || prevUser.id !== currentSession.user.id) {
           setLoading(true);
@@ -86,94 +75,100 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         return currentSession.user;
       });
-      
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  // Função interna para carregar dados do banco de dados (Apenas roda no loading real)
-const loadUserProfile = async (userId: string) => {
+  const resetState = () => {
+    setUser(null);
+    setAlocacoes([]);
+    setProfileName(null);
+    setPermissoes([]);
+    setIsActive(null);
+    setPrimeiroAcesso(null);
+    setLoading(false);
+  };
+
+  const loadUserProfile = async (userId: string) => {
     try {
+      // 1. Perfil básico
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('*')
+        .select('nome, is_active, primeiro_acesso')
         .eq('id', userId)
         .single();
 
       if (profileError) throw profileError;
+      
+      setIsActive(profileData.is_active); 
+      setPrimeiroAcesso(profileData.primeiro_acesso);
+      setProfileName(profileData.nome || 'Profissional');
 
-      // TRAVA DE USUÁRIO INATIVO:
       if (profileData.is_active === false) {
         setLoading(false);
-        await supabase.auth.signOut();
-        // Opcional: Você pode redirecionar ou emitir um alerta aqui
         return;
       }
 
-      setRoleId(profileData.role_id);
-      setIsActive(profileData.is_active); 
-      setPrimeiroAcesso(profileData.primeiro_acesso);
-      
-      const nomeCorreto = profileData.full_name || profileData.nome || profileData.nome_completo || 'Profissional';
-      setProfileName(nomeCorreto);
+      // 2. Alocações (Setores e Cargos)
+      const { data: alocData, error: alocError } = await supabase
+        .from('usuario_alocacoes')
+        .select(`
+          setor_id, 
+          role_id, 
+          setores:setor_id(nome), 
+          roles:role_id(nome)
+        `)
+        .eq('user_id', userId);
 
-      if (profileData.role_id) {
-        // Busca as permissões
-        const { data: permissoesData, error: permissoesError } = await supabase
-          .from('role_permissoes')
-          .select(`
-            permissoes (
-              nome
-            )
-          `)
-          .eq('role_id', profileData.role_id);
+      if (alocError) throw alocError;
 
-        if (!permissoesError && permissoesData) {
-          const permissoesArray = permissoesData
-            .map((item: any) => item.permissoes?.nome)
-            .filter(Boolean);
-            
-          setPermissoes(permissoesArray);
-        } else {
-          setPermissoes([]);
-        }
+      const formatadas: Alocacao[] = alocData.map((item: any) => ({
+        setor_id: item.setor_id,
+        role_id: item.role_id,
+        setor_nome: item.setores?.nome || 'Setor não identificado',
+        role_nome: item.roles?.nome || 'Cargo não identificado'
+      }));
+      setAlocacoes(formatadas);
 
-        // Busca os setores
-        const { data: ligacaoData, error: ligacaoError } = await supabase
-          .from('usuario_setores')
-          .select('setor_id')
-          .eq('user_id', userId);
+// No AuthContext.tsx -> loadUserProfile
 
-        if (!ligacaoError && ligacaoData && ligacaoData.length > 0) {
-          const idsSetores = ligacaoData.map(l => l.setor_id);
+// 3. Busca Permissões de todos os cargos vinculados
+const roleIds = formatadas.map(a => a.role_id);
+if (roleIds.length > 0) {
+  const { data: permData } = await supabase
+    .from('role_permissoes')
+    .select(`
+      permissoes:permissao_id (
+        nome
+      )
+    `)
+    .in('role_id', roleIds);
 
-          const { data: setoresData, error: setoresError } = await supabase
-            .from('setores')
-            .select('*')
-            .in('id', idsSetores);
+  // IMPORTANTE: Se o seu SQL retorna 'adm_acessar_dashboard' no campo 'nome' da tabela permissoes
+  const permsStrings = permData
+    ?.map((p: any) => p.permissoes?.nome) // Garanta que aqui bate com o campo da tabela
+    .filter(Boolean) || [];
 
-          if (!setoresError && setoresData) {
-            setSetores(setoresData);
-          }
-        } else {
-          setSetores([]);
-        }
-      }
+  setPermissoes(Array.from(new Set(permsStrings)));
+}
+
     } catch (error) {
-      console.error('Erro ao carregar dados do usuário:', error);
+      console.error('Erro de autenticação RBAC:', error);
     } finally {
-      // Sempre remove a tela de loading no final
+      // O loading só encerra após todas as promessas serem resolvidas
       setLoading(false);
     }
   };
 
-  const signOut = async () => {
-    await supabase.auth.signOut();
-  };
+  const signOut = async () => { await supabase.auth.signOut(); };
+  const refreshProfile = () => loadUserProfile(user?.id || '');
 
   return (
-    <AuthContext.Provider value={{ session, user, roleId, profileName, permissoes, setores, isActive, primeiroAcesso, loading, signOut }}>
+    <AuthContext.Provider value={{ 
+      session, user, alocacoes, profileName, permissoes, 
+      isActive, primeiroAcesso, loading, signOut, refreshProfile 
+    }}>
       {children}
     </AuthContext.Provider>
   );

@@ -33,30 +33,76 @@ export function GerenciarUsuarios({ onBack }: GerenciarUsuariosProps) {
   const fetchDados = async () => {
     setLoading(true);
     try {
-      const { data: rolesData } = await supabase.from('roles').select(`id, nome, role_permissoes ( permissoes ( descricao ) )`).order('nome');
+      // AJUSTE: Buscando a relação de permissões incluindo o setor_id para o filtro dinâmico
+      const { data: rolesData } = await supabase
+        .from('roles')
+        .select(`
+          id, 
+          nome, 
+          role_permissoes ( 
+            permissoes ( 
+              id,
+              nome,
+              descricao,
+              setor_id 
+            ) 
+          )
+        `)
+        .order('nome');
+        
       if (rolesData) setRoles(rolesData);
 
       const { data: setoresData } = await supabase.from('setores').select('id, nome').order('nome');
       if (setoresData) setSetores(setoresData);
 
-      const { data: usersData } = await supabase.from('profiles').select(`id, nome, email, crm, is_active, role_id, roles(nome), usuario_setores ( setor_id, setores (nome) )`).order('nome');
+      const { data: usersData, error: fetchError } = await supabase
+        .from('profiles')
+        .select(`
+          id, nome, email, crm, is_active,
+          usuario_alocacoes (
+            setor_id,
+            setores (nome),
+            role_id,
+            roles (nome)
+          )
+        `)
+        .order('nome');
+
+      if (fetchError) throw fetchError;
       if (usersData) setUsuarios(usersData);
-    } catch (error) {
-      setErrorMsg('Erro ao carregar dados.');
+    } catch (error: any) {
+      setErrorMsg('Erro ao carregar dados: ' + error.message);
     } finally { setLoading(false); }
   };
 
   const handleCreateUser = async (data: UsuarioFormType) => {
     setSubmitting(true);
     try {
+      const alocacoes = data.setoresSelecionados.map(setorId => ({
+        setor_id: setorId,
+        role_id: parseInt(data.roleId)
+      }));
+
       const response = await supabase.functions.invoke('criar-usuario', {
-        body: { nome: data.nome, email: data.email, senha: data.senha, crm: data.crm || null, role_id: parseInt(data.roleId), setores_ids: data.setoresSelecionados }
+        body: { 
+          nome: data.nome, 
+          email: data.email, 
+          senha: data.senha, 
+          crm: data.crm || null, 
+          alocacoes: alocacoes 
+        }
       });
+
+      if (response.error) throw response.error;
       if (response.data?.error) throw new Error(response.data.error);
+
       setShowToast({ visible: true, msg: "Usuário cadastrado!" });
       fetchDados();
-    } catch (error: any) { setErrorMsg(error.message); } 
-    finally { setSubmitting(false); }
+    } catch (error: any) { 
+      setErrorMsg(error.message); 
+    } finally { 
+      setSubmitting(false); 
+    }
   };
 
   const toggleStatusUsuario = async (id: string, statusAtual: boolean) => {
@@ -64,7 +110,6 @@ export function GerenciarUsuarios({ onBack }: GerenciarUsuariosProps) {
     fetchDados();
   };
 
-  // RESTAURAÇÃO DA FUNÇÃO DE EXCLUSÃO (Resolve o erro do setDeletando)
   const confirmarExclusao = async () => {
     if (!usuarioSelecionado) return;
     setDeletando(true);
@@ -103,21 +148,29 @@ export function GerenciarUsuarios({ onBack }: GerenciarUsuariosProps) {
 
       <div className="p-6 space-y-6">
         <FormularioUsuario 
-  roles={roles} 
-  setores={setores} 
-  submitting={submitting} 
-  onSubmit={handleCreateUser} 
-  setErrorMsg={setErrorMsg} // <-- ADICIONE ESTA LINHA
-/>
+          roles={roles} 
+          setores={setores} 
+          submitting={submitting} 
+          onSubmit={handleCreateUser} 
+          setErrorMsg={setErrorMsg}
+        />
 
-        <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl shadow-sm min-h-[500px] flex flex-col">
+        <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl shadow-sm min-h-[500px] flex flex-col overflow-hidden">
           <div className="p-4 border-b border-gray-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 flex justify-between items-center gap-4">
-             <h3 className="font-bold text-gray-800 dark:text-slate-200">Usuários Cadastrados</h3>
-             <div className="relative w-72">
-                <Search size={16} className="absolute left-3 top-2.5 text-gray-400" />
-                <input type="text" placeholder="Buscar..." value={busca} onChange={e => setBusca(e.target.value)} className="w-full pl-9 pr-3 py-2 bg-white dark:bg-slate-950 border border-gray-200 dark:border-slate-700 rounded-lg text-sm" />
-             </div>
+              <h3 className="font-bold text-gray-800 dark:text-slate-200">Usuários Cadastrados</h3>
+              <div className="relative w-72">
+                 <Search size={16} className="absolute left-3 top-2.5 text-gray-400" />
+                 <input type="text" placeholder="Buscar..." value={busca} onChange={e => setBusca(e.target.value)} className="w-full pl-9 pr-3 py-2 bg-white dark:bg-slate-950 border border-gray-200 dark:border-slate-700 rounded-lg text-sm" />
+              </div>
           </div>
+
+          <div className="hidden md:flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800/30 border-b border-gray-100 dark:border-slate-800 text-[10px] uppercase font-bold text-slate-400 tracking-widest">
+            <div className="flex-1">Usuário / E-mail</div>
+            <div className="flex-1 text-center">Cargo</div>
+            <div className="flex-1 text-center">Setor</div>
+            <div className="w-72 text-right pr-8">Ações</div>
+          </div>
+
           <div className="flex-1 overflow-auto divide-y divide-gray-100 dark:divide-slate-800">
             {loading ? <div className="p-10 text-center">Carregando...</div> :
               usuariosFiltrados.map(user => (

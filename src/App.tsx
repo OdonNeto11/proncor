@@ -34,7 +34,7 @@ function AuthGuard({
   requireProfile?: boolean,
   checkPrimeiroAcesso?: boolean 
 }) {
-  const { user, roleId, permissoes, setores, isActive, primeiroAcesso, loading } = useAuth();
+  const { user, alocacoes, permissoes, isActive, primeiroAcesso, loading } = useAuth();
   const [isHanging, setIsHanging] = useState(false);
   const location = useLocation();
 
@@ -54,7 +54,6 @@ function AuthGuard({
     window.location.href = '/login'; 
   };
 
-  // 1. GESTÃO DE ERROS DE TOKEN NA URL (EX: LINK EXPIRADO)
   const hashParams = new URLSearchParams(location.hash.replace('#', '?'));
   const isTokenExpired = hashParams.get('error_code') === 'otp_expired' || 
                          new URLSearchParams(location.search).get('error_code') === 'otp_expired';
@@ -63,7 +62,6 @@ function AuthGuard({
     return <Navigate to="/link-expirado" replace />;
   }
 
-  // 2. TELA DE LOADING
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-slate-950 transition-colors duration-500 space-y-6">
@@ -82,12 +80,8 @@ function AuthGuard({
     );
   }
 
-  // 3. VERIFICAÇÃO DE USUÁRIO LOGADO
   if (!user) {
-    // Se houver tentativa de recuperação de senha (type=recovery), não redireciona.
-    // Aguarda o Supabase processar o hash da URL.
     const isRecovering = location.hash.includes('type=recovery') || location.hash.includes('access_token');
-    
     if (isRecovering) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-950">
@@ -95,21 +89,18 @@ function AuthGuard({
         </div>
       );
     }
-
     return <Navigate to="/login" replace />;
   }
   
-  // 4. TRAVA DE USUÁRIO INATIVO OU SEM PERFIL
-  if (requireProfile && (isActive === false || roleId === null || !setores?.length || !permissoes?.length)) {
+  // TRAVA RBAC: Exige apenas Alocações para liberar a Home (permissoes carregam em segundo plano)
+  if (requireProfile && (isActive === false || !alocacoes?.length)) {
     return <Navigate to="/acesso-restrito" replace />;
   }
 
-  // 5. TRAVA DE PRIMEIRO ACESSO (TROCA DE SENHA OBRIGATÓRIA)
   if (checkPrimeiroAcesso && primeiroAcesso === true) {
     return <Navigate to="/trocar-senha" replace />;
   }
   
-  // 6. VALIDAÇÃO DE PERMISSÃO ESPECÍFICA
   if (permission && !permissoes.includes(permission)) {
     return <Navigate to="/" replace />;
   }
@@ -136,14 +127,12 @@ export default function App() {
 
           <Route path="/acesso-restrito" element={
             <AuthGuard requireProfile={false}>
-              {/* REMOVIDO O <Layout> DAQUI */}
               <AcessoRestrito />
             </AuthGuard>
           } />
 
           <Route path="/trocar-senha" element={
             <AuthGuard requireProfile={false} checkPrimeiroAcesso={false}>
-              {/* REMOVIDO O <Layout> DAQUI */}
               <TrocarSenha />
             </AuthGuard>
           } />

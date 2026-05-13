@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -40,7 +40,41 @@ export function FormularioUsuario({ roles, setores, submitting, onSubmit, setErr
 
   const formValues = watch();
   const senhaAtual = watch('senha');
+
+  // 1. Identifica o Cargo selecionado
   const roleSelecionada = roles.find(r => r.id.toString() === formValues.roleId);
+
+  // 2. FILTRO INVERTIDO: Descobre quais setores esse Cargo tem acesso
+  const setoresExibidos = useMemo(() => {
+    if (!roleSelecionada) return setores; 
+
+    const validSetorIds = new Set(
+      roleSelecionada.role_permissoes
+        .map((rp: any) => rp.permissoes?.setor_id)
+        .filter((id: any) => id !== null) 
+    );
+
+    const temPermissaoGlobal = roleSelecionada.role_permissoes.some((rp: any) => rp.permissoes?.setor_id === null);
+
+    return setores.filter(s => validSetorIds.has(s.id) || temPermissaoGlobal);
+  }, [roleSelecionada, setores]);
+
+  // 3. EFEITO DE LIMPEZA: Se mudar o cargo e o setor antigo não for mais válido, desmarca sozinho
+  useEffect(() => {
+    const setoresMarcados = formValues.setoresSelecionados || [];
+    const validos = setoresMarcados.filter(id => setoresExibidos.some(s => s.id === id));
+    
+    if (setoresMarcados.length !== validos.length) {
+      setValue('setoresSelecionados', validos, { shouldValidate: true });
+    }
+  }, [formValues.roleId, setoresExibidos, setValue]);
+
+  // Filtro do Card Azul: Mostra tudo se nenhum setor estiver marcado, ou filtra pelos marcados.
+  const permissoesExibidas = roleSelecionada?.role_permissoes.filter((rp: any) => {
+    const setorIdPermissao = rp.permissoes?.setor_id;
+    if (formValues.setoresSelecionados.length === 0) return true; 
+    return setorIdPermissao === null || formValues.setoresSelecionados.includes(setorIdPermissao);
+  }) || [];
 
   const toggleSetor = (id: number) => {
     const atuais = formValues.setoresSelecionados || [];
@@ -72,7 +106,20 @@ export function FormularioUsuario({ roles, setores, submitting, onSubmit, setErr
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div id="nome">
             <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">Nome Completo <span className="text-red-500">*</span></label>
-            <input type="text" {...register('nome')} className={`w-full bg-slate-50 dark:bg-slate-950 border ${errors.nome ? 'border-red-500 ring-1 ring-red-500/30' : 'border-gray-200 dark:border-slate-700'} rounded-lg px-3 py-2 text-gray-800 dark:text-slate-200 outline-none focus:border-blue-500`} placeholder="Ex: Dr. João Silva" />
+            <input type="text" 
+              {...register('nome')} 
+              onChange={(e) => {
+                // Formatação: Primeira letra de cada palavra em maiúscula
+                const val = e.target.value
+                  .split(' ')
+                  .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                  .join(' ');
+                e.target.value = val;
+                setValue('nome', val, { shouldValidate: true });
+              }}
+              className={`w-full bg-slate-50 dark:bg-slate-950 border ${errors.nome ? 'border-red-500 ring-1 ring-red-500/30' : 'border-gray-200 dark:border-slate-700'} rounded-lg px-3 py-2 text-gray-800 dark:text-slate-200 outline-none focus:border-blue-500`} 
+              placeholder="Ex: Dr. João Silva" 
+            />
             {errors.nome && <span className="text-xs text-red-500 mt-1 font-bold block">{errors.nome.message}</span>}
           </div>
 
@@ -91,29 +138,14 @@ export function FormularioUsuario({ roles, setores, submitting, onSubmit, setErr
               <Lock size={16} className="absolute left-3 top-3 text-gray-400" />
               <input type="text" {...register('senha')} className={`w-full pl-9 bg-slate-50 dark:bg-slate-950 border ${errors.senha ? 'border-red-500 ring-1 ring-red-500/30' : 'border-gray-200 dark:border-slate-700'} rounded-lg px-3 py-2 text-gray-800 dark:text-slate-200 outline-none focus:border-blue-500`} placeholder="Mínimo 6 caracteres" />
             </div>
-            
             <MedidorForcaSenha senha={senhaAtual || ''} />
-            
             {errors.senha && <span className="text-xs text-red-500 mt-1 font-bold block">{errors.senha.message}</span>}
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
-          <div id="setoresSelecionados">
-            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2 flex items-center gap-1"><Building2 size={14}/> Setores Permitidos <span className="text-red-500">*</span></label>
-            <div className={`space-y-2 bg-slate-50 dark:bg-slate-950 p-3 rounded-lg border ${errors.setoresSelecionados ? 'border-red-500 ring-1 ring-red-500/30' : 'border-gray-200 dark:border-slate-700'} max-h-40 overflow-y-auto`}>
-              {setores.map(s => (
-                <label key={s.id} className="flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-slate-300">
-                  <input type="checkbox" checked={formValues.setoresSelecionados?.includes(s.id)} onChange={() => toggleSetor(s.id)} className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-600" />
-                  {s.nome}
-                </label>
-              ))}
-            </div>
-            {errors.setoresSelecionados && <span className="text-xs text-red-500 mt-1 font-bold block">{errors.setoresSelecionados.message}</span>}
-          </div>
-          
           <div id="roleId">
-            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1 flex items-center gap-1"><Shield size={14}/> Nível de Acesso (Cargo) <span className="text-red-500">*</span></label>
+            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1 flex items-center gap-1"><Shield size={14}/> 1. Nível de Acesso (Cargo) <span className="text-red-500">*</span></label>
             <select {...register('roleId')} className={`w-full bg-slate-50 dark:bg-slate-950 border ${errors.roleId ? 'border-red-500 ring-1 ring-red-500/30' : 'border-gray-200 dark:border-slate-700'} rounded-lg px-3 py-2 text-gray-800 dark:text-slate-200 outline-none focus:border-blue-500`}>
               <option value="">Selecione o Cargo...</option>
               {roles.map(r => <option key={r.id} value={r.id}>{r.nome}</option>)}
@@ -121,6 +153,23 @@ export function FormularioUsuario({ roles, setores, submitting, onSubmit, setErr
             {errors.roleId && <span className="text-xs text-red-500 mt-1 font-bold block">{errors.roleId.message}</span>}
           </div>
 
+          <div id="setoresSelecionados">
+            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2 flex items-center gap-1"><Building2 size={14}/> 2. Setores Permitidos <span className="text-red-500">*</span></label>
+            <div className={`space-y-2 bg-slate-50 dark:bg-slate-950 p-3 rounded-lg border ${errors.setoresSelecionados ? 'border-red-500 ring-1 ring-red-500/30' : 'border-gray-200 dark:border-slate-700'} max-h-40 overflow-y-auto`}>
+              {setoresExibidos.length > 0 ? (
+                setoresExibidos.map(s => (
+                  <label key={s.id} className="flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-slate-300">
+                    <input type="checkbox" checked={formValues.setoresSelecionados?.includes(s.id)} onChange={() => toggleSetor(s.id)} className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-600" />
+                    {s.nome}
+                  </label>
+                ))
+              ) : (
+                <span className="text-xs text-slate-500 italic">Selecione um cargo primeiro...</span>
+              )}
+            </div>
+            {errors.setoresSelecionados && <span className="text-xs text-red-500 mt-1 font-bold block">{errors.setoresSelecionados.message}</span>}
+          </div>
+          
           <div id="crm">
             <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">CRM (Opcional)</label>
             <input type="text" 
@@ -138,13 +187,14 @@ export function FormularioUsuario({ roles, setores, submitting, onSubmit, setErr
           </div>
         </div>
 
-        {roleSelecionada && (
+        {/* Removido o bloqueio que exigia array de setores preenchido */}
+        {roleSelecionada && permissoesExibidas.length > 0 && (
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg p-4 mt-2 animate-in fade-in">
             <h4 className="text-sm font-bold text-blue-800 dark:text-blue-400 flex items-center gap-2 mb-2">
-              <Info size={16}/> Permissões concedidas a este Nível de Acesso:
+              <Info size={16}/> Permissões ativas para este contexto:
             </h4>
             <ul className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-blue-700 dark:text-blue-300 list-inside">
-              {roleSelecionada.role_permissoes.map((rp: any, idx: number) => (
+              {permissoesExibidas.map((rp: any, idx: number) => (
                 <li key={idx} className="flex gap-2 items-start">
                   <CheckCircle2 size={14} className="min-w-[14px] mt-0.5 text-blue-500" />
                   <span>{rp.permissoes.descricao}</span>
