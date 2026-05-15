@@ -4,20 +4,12 @@ import { format, parseISO } from 'date-fns';
 import { Button } from '../../../components/ui/Button';
 import { ModalDetalhesLayout } from '../../../components/shared/ModalDetalhesLayout';
 
-const STATUS_CONFIG: Record<number, { label: string, color: string, border: string }> = {
-  1: { label: 'Agendado', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400', border: 'border-blue-200 dark:border-blue-800' },
-  2: { label: 'Reagendado', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400', border: 'border-orange-200 dark:border-orange-800' },
-  3: { label: 'Cancelado', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400', border: 'border-red-200 dark:border-red-800' },
-  4: { label: 'Não respondeu após reagendamento', color: 'bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-slate-400', border: 'border-gray-200 dark:border-slate-700' },
-  5: { label: 'Finalizado', color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400', border: 'border-green-200 dark:border-green-800' },
-  6: { label: 'Encaminhado PA', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400', border: 'border-purple-200 dark:border-purple-800' },
-  7: { label: 'Retorno ao PA', color: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400', border: 'border-indigo-200 dark:border-indigo-800' },
-};
-
+import { STATUS_CONFIG } from '../../../constants/status';
+import { Agendamento } from '../../../types/agendamento';
 interface ModalDetalhesProps {
   isOpen: boolean;
   onClose: () => void;
-  agendamento: any;
+  agendamento: Agendamento | null;
   podeEditar: boolean;
   podeAtualizar: boolean;
   podeReagendar: boolean;

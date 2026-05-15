@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../../../lib/supabase';
-
+import { ambulatorioService } from '../../../services/ambulatorioService';
+import { EncaminhamentoAmbulatorio } from '../../../types/ambulatorio';
 // React Hook Form + Zod
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -45,7 +45,7 @@ type StatusExamesFormType = z.infer<typeof formSchema>;
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  encaminhamento: any;
+  encaminhamento: EncaminhamentoAmbulatorio | null;
   onSuccess: (message?: string) => void;
   onSaveProgress: () => void;
 }
@@ -64,10 +64,7 @@ export function ModalStatusExames({ isOpen, onClose, encaminhamento, onSuccess, 
   useEffect(() => {
     if (isOpen && encaminhamento) {
       const fetchExames = async () => {
-        const { data, error } = await supabase
-          .from('encaminhamento_exames')
-          .select('id, nome_customizado, data_agendamento, status_id, exames_especialidades(nome)')
-          .eq('encaminhamento_id', encaminhamento.id);
+        const data = await ambulatorioService.fetchEncaminhamentoExames(encaminhamento.id);
 
         if (data && data.length > 0) {
           const payload = data.map(d => ({
@@ -85,29 +82,24 @@ export function ModalStatusExames({ isOpen, onClose, encaminhamento, onSuccess, 
   }, [isOpen, encaminhamento, reset]);
 
   const onSubmit = async (data: StatusExamesFormType) => {
+    if (!encaminhamento) return;
     setLoading(true);
     setErrorMsg('');
     try {
       // 1. Atualiza cada exame individualmente no banco
       const updates = data.exames
         .filter(ex => typeof ex.id === 'number') 
-        .map(ex => supabase.from('encaminhamento_exames').update({ 
-          status_id: ex.status_id ? Number(ex.status_id) : null, 
-          data_agendamento: Number(ex.status_id) === 9 ? ex.data_agendamento : null 
-        }).eq('id', ex.id));
+        .map(ex => ({
+          id: ex.id as number,
+          status_id: ex.status_id ? Number(ex.status_id) : null,
+          data_agendamento: Number(ex.status_id) === 9 ? (ex.data_agendamento || null) : null
+        }));
       
-      const results = await Promise.all(updates);
-      const hasDatabaseError = results.some(r => r.error);
-      if (hasDatabaseError) throw new Error("Erro ao atualizar registros de exames.");
+      await ambulatorioService.updateEncaminhamentoExames(updates);
 
       // 2. Se for 'Salvar e Concluir', atualiza o status principal do ticket
       if (data.is_concluding) {
-        const { error: errorFinal } = await supabase.from('encaminhamentos_ambulatorio').update({ 
-            status_id: 14, 
-            updated_at: new Date().toISOString() 
-        }).eq('id', encaminhamento.id);
-        
-        if (errorFinal) throw errorFinal;
+        await ambulatorioService.updateStatus(encaminhamento.id, 14);
         onSuccess('Exames atualizados e ticket concluído!');
       } else {
         // 3. Se for apenas 'Salvar', avisa a fila para recarregar e fecha

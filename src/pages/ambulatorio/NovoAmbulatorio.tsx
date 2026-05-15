@@ -22,7 +22,7 @@ import { SelectAutocomplete } from '../../components/ui/SelectAutocomplete';
 import { Title, Description } from '../../components/ui/Typography';
 
 import { maskPhone, capitalizeName, maskCPF } from '../../utils/formUtils'; 
-import { supabase } from '../../lib/supabase';
+import { ambulatorioService } from '../../services/ambulatorioService';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePermissoes } from '../../hooks/usePermissoes';
 
@@ -101,8 +101,12 @@ export function NovoAmbulatorio() {
 
   useEffect(() => {
     const fetchExames = async () => {
-      const { data } = await supabase.from('exames_especialidades').select('id, nome, tipo');
-      if (data) setBibliotecaExames(data);
+      try {
+        const data = await ambulatorioService.fetchBibliotecaExames();
+        if (data) setBibliotecaExames(data);
+      } catch (e) {
+        console.error("Erro ao carregar exames", e);
+      }
     };
     fetchExames();
   }, []);
@@ -143,14 +147,12 @@ export function NovoAmbulatorio() {
       if (anexo) {
         const fileExt = anexo.name.split('.').pop();
         const fileName = `${Math.random()}_${Date.now()}.${fileExt}`;
-        const { error: uploadError } = await supabase.storage.from('anexos').upload(fileName, anexo);
-        if (uploadError) throw uploadError;
-        anexoUrl = fileName;
+        anexoUrl = await ambulatorioService.uploadAnexo(fileName, anexo);
       }
 
       const todosItens = [...data.exames, ...data.especialidades].map(i => i.value).filter(v => v.trim() !== "");
 
-      const { data: novoEnc, error: cabecalhoError } = await supabase.from('encaminhamentos_ambulatorio').insert([{
+      const novoEnc = await ambulatorioService.createEncaminhamento({
         atendido_proncor: data.atendido_proncor,
         cpf: data.cpf || null,
         nome_paciente: data.nome_paciente || null,
@@ -163,9 +165,7 @@ export function NovoAmbulatorio() {
         origem: 'MANUAL', 
         crm_solicitante: data.crm_solicitante || null,
         anexo_url: anexoUrl
-      }]).select().single();
-      
-      if (cabecalhoError) throw cabecalhoError;
+      });
       
       if (novoEnc) {
         const itensParaRelacionar = todosItens.map(texto => {
@@ -176,7 +176,7 @@ export function NovoAmbulatorio() {
             nome_customizado: itemNoBanco ? null : texto
           };
         });
-        await supabase.from('encaminhamento_exames').insert(itensParaRelacionar);
+        await ambulatorioService.createEncaminhamentoExames(itensParaRelacionar);
       }
 
       setShowToast(true);

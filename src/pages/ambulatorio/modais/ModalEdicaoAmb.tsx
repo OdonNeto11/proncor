@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { User, Phone, Hash, FileText } from 'lucide-react';
-import { supabase } from '../../../lib/supabase';
-
+import { ambulatorioService } from '../../../services/ambulatorioService';
+import { EncaminhamentoAmbulatorio } from '../../../types/ambulatorio';
 // React Hook Form + Zod
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -32,7 +32,7 @@ type EdicaoAmbFormType = z.infer<typeof formSchema>;
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  encaminhamento: any;
+  encaminhamento: EncaminhamentoAmbulatorio | null;
   onSuccess: () => void;
 }
 
@@ -62,16 +62,14 @@ export function ModalEdicaoAmb({ isOpen, onClose, encaminhamento, onSuccess }: P
     setErrorMsg('');
     
     try {
-      const { error } = await supabase.from('encaminhamentos_ambulatorio').update({ 
+      if (!encaminhamento) return;
+      await ambulatorioService.updateEncaminhamento(encaminhamento.id, { 
         nome_paciente: data.nome_paciente,
         telefone_paciente: data.telefone_paciente,
         plano_saude: data.plano_saude,
         numero_atendimento: data.numero_atendimento,
-        observacoes: data.observacoes,
-        updated_at: new Date().toISOString() 
-      }).eq('id', encaminhamento.id);
-      
-      if (error) throw error;
+        observacoes: data.observacoes
+      });
       
       onSuccess();
     } catch (error: any) {

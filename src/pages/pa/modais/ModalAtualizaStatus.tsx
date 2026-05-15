@@ -17,13 +17,8 @@ import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { ToastError } from '../../../components/ui/ToastError';
 
-const STATUS_CONFIG: Record<number, { label: string, color: string }> = {
-  4: { label: 'Não respondeu após reagendamento', color: 'text-gray-600' },
-  5: { label: 'Finalizado', color: 'text-green-600 dark:text-green-400' },
-  6: { label: 'Encaminhado PA', color: 'text-purple-600 dark:text-purple-400' },
-  7: { label: 'Retorno ao PA', color: 'text-indigo-600 dark:text-indigo-400' },
-  3: { label: 'Cancelado', color: 'text-red-600 dark:text-red-400' } 
-};
+import { STATUS_CONFIG } from '../../../constants/status';
+import { Agendamento } from '../../../types/agendamento';
 
 // === 1. SCHEMA UTILIZANDO A REGRA COMPONENTIZADA ===
 const formSchema = z.object({
@@ -35,7 +30,7 @@ type StatusFormType = z.infer<typeof formSchema>;
 interface ModalAtualizaStatusProps {
   isOpen: boolean;
   onClose: () => void;
-  agendamento: any;
+  agendamento: Agendamento | null;
   onSuccess: () => void;
   statusDireto?: number; 
 }

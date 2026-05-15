@@ -6,7 +6,9 @@ import {
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { supabase } from '../../lib/supabase';
+import { ambulatorioService } from '../../services/ambulatorioService';
+import { EncaminhamentoAmbulatorio } from '../../types/ambulatorio';
+import { STATUS_CONFIG_AMB } from '../../constants/status';
 
 // COMPONENTES PADRONIZADOS
 import { Card } from '../../components/ui/Card';
@@ -27,33 +29,21 @@ import { ModalDetalhesAmb } from './modais/ModalDetalhesAmb';
 
 // FUNÇÕES UTILITÁRIAS E PERMISSÕES
 import { usePermissoes } from '../../hooks/usePermissoes';
+import { useFiltrosAmbulatorio } from '../../hooks/useFiltrosAmbulatorio';
 
-const STATUS_CONFIG_AMB: Record<number, { label: string, color: string, border: string, icon: any }> = {
-  1: { label: 'Aguardando Atendimento', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400', border: 'border-orange-200 dark:border-orange-800/50', icon: AlertCircle },
-  13: { label: 'Aguardando Agendamento', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400', border: 'border-orange-200 dark:border-orange-800/50', icon: AlertCircle },
-  3: { label: 'Cancelado', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400', border: 'border-red-200 dark:border-red-800/50', icon: XCircle },
-  5: { label: 'Finalizado', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', border: 'border-emerald-200 dark:border-emerald-800/50', icon: CheckCircle2 },
-  9: { label: 'Agendado', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', border: 'border-emerald-200 dark:border-emerald-800/50', icon: CheckCircle2 },
-  10: { label: 'Plano não Atendido', color: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400', border: 'border-rose-200 dark:border-rose-800/50', icon: ShieldOff },
-  11: { label: 'Sem Especialidade', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400', border: 'border-amber-200 dark:border-amber-800/50', icon: AlertCircle },
-  12: { label: 'Sem Contato', color: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400', border: 'border-slate-200 dark:border-slate-700', icon: HelpCircle },
-  14: { label: 'Concluído', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', border: 'border-emerald-200 dark:border-emerald-800/50', icon: CheckCircle2 },
-};
 
 export function Ambulatorio() {
   const { podeVerAmb, podeCriarAmb, podeGerenciarStatusAmb, podeEditarAmb, podeCancelarAmb } = usePermissoes();
   const navigate = useNavigate();
 
-  const [lista, setLista] = useState<any[]>([]);
+  const [lista, setLista] = useState<EncaminhamentoAmbulatorio[]>([]);
   const [loading, setLoading] = useState(true);
   
   // ESTADOS DO FILTRO PADRONIZADO
-  const [busca, setBusca] = useState('');
-  const [filtroTab, setFiltroTab] = useState('pendentes');
-  const [dataInicio, setDataInicio] = useState<Date | null>(null); // Vazio por padrão
-  const [dataFim, setDataFim] = useState<Date | null>(null);       // Vazio por padrão
+  const { filtros, listaFiltrada } = useFiltrosAmbulatorio(lista);
+  const { busca, setBusca, filtroTab, setFiltroTab, dataInicio, setDataInicio, dataFim, setDataFim } = filtros;
   
-  const [selectedEnc, setSelectedEnc] = useState<any | null>(null);
+  const [selectedEnc, setSelectedEnc] = useState<EncaminhamentoAmbulatorio | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'details' | 'edit' | 'confirm_cancel' | 'agendar_exames'>('list');
   const [showToast, setShowToast] = useState({ visible: false, message: '' });
   const [errorMsg, setErrorMsg] = useState(''); 
@@ -83,26 +73,15 @@ export function Ambulatorio() {
         todos: [] 
       };
 
-      let query = supabase
-        .from('encaminhamentos_ambulatorio')
-        .select('*, status:status_id(*)')
-        .order('created_at', { ascending: false });
-      
-      if (filtroTab !== 'todos') {
-        query = query.in('status_id', statusMap[filtroTab]);
-      }
+      const dataInicioStr = dataInicio ? format(dataInicio, 'yyyy-MM-dd') : undefined;
+      const dataFimStr = dataFim ? format(dataFim, 'yyyy-MM-dd') : undefined;
 
-      // LÓGICA DE FILTRO POR DATA (no banco de dados)
-      if (dataInicio) {
-        query = query.gte('created_at', format(dataInicio, 'yyyy-MM-dd') + 'T00:00:00');
-      }
-      if (dataFim) {
-        query = query.lte('created_at', format(dataFim, 'yyyy-MM-dd') + 'T23:59:59');
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-      setLista(data || []);
+      const data = await ambulatorioService.fetchEncaminhamentos(
+        statusMap[filtroTab] || [],
+        dataInicioStr,
+        dataFimStr
+      );
+      setLista(data);
     } catch (error) {
       console.error('Erro:', error);
     } finally {
@@ -116,12 +95,7 @@ export function Ambulatorio() {
 
   const atualizarStatus = async (novoStatusId: number, msg: string) => {
     try {
-      const { error } = await supabase
-        .from('encaminhamentos_ambulatorio')
-        .update({ status_id: novoStatusId, updated_at: new Date().toISOString() })
-        .eq('id', selectedEnc.id);
-      
-      if (error) throw error;
+      await ambulatorioService.updateStatus(selectedEnc!.id, novoStatusId);
       setShowToast({ visible: true, message: msg });
       setViewMode('list');
       setSelectedEnc(null);
@@ -131,18 +105,11 @@ export function Ambulatorio() {
     }
   };
 
-  const abrirDetalhes = (item: any) => {
+  const abrirDetalhes = (item: EncaminhamentoAmbulatorio) => {
     setSelectedEnc(item);
     setViewMode('details');
     setErrorMsg('');
   };
-
-  // O filtro de busca (texto) continua ocorrendo em memória no frontend
-  const listaFiltrada = lista.filter(item => 
-    (item.nome_paciente || '').toLowerCase().includes(busca.toLowerCase()) || 
-    (item.numero_atendimento || '').includes(busca) ||
-    (item.crm_solicitante || '').includes(busca)
-  );
 
   if (!podeVerAmb) {
     return (
@@ -216,7 +183,7 @@ export function Ambulatorio() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {listaFiltrada.map((item: any) => {
+          {listaFiltrada.map((item: EncaminhamentoAmbulatorio) => {
             const statusConfig = STATUS_CONFIG_AMB[item.status_id] || STATUS_CONFIG_AMB[13];
             return (
               <AtendimentoCard 
@@ -234,7 +201,7 @@ export function Ambulatorio() {
                 crm={item.crm_solicitante}
                 origem={item.origem} 
                 tagsLabel="Exames/Especialidades"
-                tags={item.exames_especialidades}
+                tags={item.exames_especialidades || []}
               />
             );
           })}

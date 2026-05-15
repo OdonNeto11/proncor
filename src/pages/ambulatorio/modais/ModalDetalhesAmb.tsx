@@ -1,8 +1,8 @@
 import React from 'react';
 import { Download, CheckCircle2, Edit } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
-import { supabase } from '../../../lib/supabase';
-
+import { ambulatorioService } from '../../../services/ambulatorioService';
+import { EncaminhamentoAmbulatorio } from '../../../types/ambulatorio';
 // COMPONENTES UI
 import { Button } from '../../../components/ui/Button';
 import { ModalDetalhesLayout } from '../../../components/shared/ModalDetalhesLayout';
@@ -13,7 +13,7 @@ import { usePermissoes } from '../../../hooks/usePermissoes';
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  encaminhamento: any;
+  encaminhamento: EncaminhamentoAmbulatorio | null;
   statusConfig: { label: string; color: string; border: string };
   onEdit: () => void;
   onUpdateStatus: () => void;
@@ -34,8 +34,9 @@ export function ModalDetalhesAmb({
   if (!encaminhamento) return null;
 
   const handleDownloadAnexo = () => {
-    const { data } = supabase.storage.from('anexos').getPublicUrl(encaminhamento.anexo_url);
-    window.open(data.publicUrl, '_blank');
+    if (!encaminhamento || !encaminhamento.anexo_url) return;
+    const publicUrl = ambulatorioService.getAnexoUrl(encaminhamento.anexo_url);
+    window.open(publicUrl, '_blank');
   };
 
   return (
@@ -77,7 +78,7 @@ export function ModalDetalhesAmb({
       statusLabel={statusConfig?.label}
       statusClasses={{ color: statusConfig?.color, border: statusConfig?.border }}
       tagsLabel="Exames"
-      tags={encaminhamento.exames_especialidades}
+      tags={encaminhamento.exames_especialidades || []}
       phoneForWhats={encaminhamento.telefone_paciente}
       obsText={encaminhamento.observacoes || 'Sem observações.'}
       

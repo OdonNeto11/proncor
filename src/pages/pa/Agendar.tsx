@@ -26,7 +26,7 @@ import { ProcedimentosSelector } from '../../components/ui/ProcedimentosSelector
 import { FileUpload } from '../../components/ui/FileUpload';
 
 import { maskPhone, capitalizeName } from '../../utils/formUtils';
-import { supabase } from '../../lib/supabase';
+import { agendamentoService } from '../../services/agendamentoService';
 import { usePermissoes } from '../../hooks/usePermissoes'; 
 import { useHorarios } from '../../hooks/useHorarios';
 
@@ -155,11 +155,8 @@ export function Agendar() {
     const fileExt = fileToUpload.name.split('.').pop() || 'jpg';
     const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
     
-    const { error } = await supabase.storage.from('anexos').upload(fileName, fileToUpload);
-    if (error) throw error;
-    
-    const { data } = supabase.storage.from('anexos').getPublicUrl(fileName);
-    return { nome: file.name, url: data.publicUrl };
+    const url = await agendamentoService.uploadAnexo(fileName, fileToUpload);
+    return { nome: file.name, url };
   };
 
   const onSubmit = async (data: AgendamentoFormType) => {
@@ -176,7 +173,7 @@ export function Agendar() {
       const dataFormatada = format(data.data_agendamento, 'yyyy-MM-dd');
       const horaFormatada = format(data.hora_agendamento, 'HH:mm');
 
-      const { error } = await supabase.from('agendamentos').insert([{
+      await agendamentoService.createAgendamento({
         data_agendamento: dataFormatada,
         hora_agendamento: horaFormatada,
         numero_atendimento: data.numero_atendimento, 
@@ -188,9 +185,7 @@ export function Agendar() {
         status_id: 1, 
         anexos: listaAnexos,
         crm_responsavel: data.crm_responsavel
-      }]);
-      
-      if (error) throw error;
+      });
       
       setShowToast(true);
       
