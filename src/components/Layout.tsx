@@ -7,6 +7,20 @@ import { Logo } from './ui/Logo';
 import { Button } from './ui/Button';
 import { Title, Description } from './ui/Typography';
 
+// Nova função de negócio para tratamento de string
+function formatarNomeCurto(nomeCompleto: string | null | undefined): string {
+  if (!nomeCompleto) return '';
+  
+  const partes = nomeCompleto.trim().split(/\s+/);
+  
+  if (partes.length <= 1) return nomeCompleto;
+  
+  const primeiroNome = partes[0];
+  const ultimoNome = partes[partes.length - 1];
+  
+  return `${primeiroNome} ${ultimoNome}`;
+}
+
 export function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -22,7 +36,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
     navigate('/login');
   };
 
-  const nomeExibicao = profileName || (user?.email ? user.email.split('@')[0] : 'Perfil Incompleto');
+  // Alterado: aplicando a regra de formatação antes de definir a exibição
+  const nomeFormatado = formatarNomeCurto(profileName);
+  const nomeExibicao = nomeFormatado || (user?.email ? user.email.split('@')[0] : 'Perfil Incompleto');
 
   // Lógica de visualização do menu admin baseada em permissão técnica
   const podeAcessarAdmin = permissoes.includes('adm_gerenciar_usuarios');
@@ -72,7 +88,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 {isDark ? <Sun size={18} /> : <Moon size={18} />}
               </Button>
 
-              <div className="flex items-center gap-3 mr-2 bg-gray-50 dark:bg-slate-800 px-3 py-2 rounded-lg border border-gray-100 dark:border-slate-700 transition-colors" title={nomeExibicao}>
+              <div className="flex items-center gap-3 mr-2 bg-gray-50 dark:bg-slate-800 px-3 py-2 rounded-lg border border-gray-100 dark:border-slate-700 transition-colors" title={profileName || nomeExibicao}>
                 <Description className="!text-sm !font-bold m-0 max-w-[150px] truncate">
                   {nomeExibicao}
                 </Description>
@@ -115,7 +131,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <div className="fixed inset-0 z-40 bg-black/20 dark:bg-black/40 backdrop-blur-sm md:hidden" onClick={() => setIsMobileMenuOpen(false)} />
             <div className="md:hidden absolute top-20 right-4 z-50 w-auto min-w-[240px] bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-gray-100 dark:border-slate-800 animate-in fade-in slide-in-from-top-2 duration-200">
               <div className="flex flex-col p-2 space-y-1">
-                <div className="px-4 py-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg mb-2 border border-blue-100 dark:border-blue-900/30 flex items-center gap-3">
+                <div className="px-4 py-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg mb-2 border border-blue-100 dark:border-blue-900/30 flex items-center gap-3" title={profileName || nomeExibicao}>
                   <UserCircle size={24} className="text-blue-500 dark:text-blue-400" />
                   <Description className="!text-sm !font-bold m-0 text-gray-800 dark:text-slate-200 truncate">{nomeExibicao}</Description>
                 </div>
