@@ -42,12 +42,22 @@ export function Login() {
       }
 
       // Agora fazemos o login normal do Supabase com o email (digitado ou traduzido do CRM)
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: loginFinal,
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        // === INJEÇÃO DE DEBUG PARA DIAGNÓSTICO ===
+        console.error("ERRO REAL DO SUPABASE (GoTrue):", {
+          mensagem: error.message,
+          nome: error.name,
+          status: error.status,
+          emailTentado: loginFinal
+        });
+        
+        throw error;
+      }
       
       navigate('/');
     } catch (error: any) {
