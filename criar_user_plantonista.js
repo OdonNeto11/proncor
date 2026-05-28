@@ -13,6 +13,7 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 // Lista completa (sem a Mariana, que já foi importada)
 const plantonistas = [
   { nome: 'Raphael Pinheiro Nunes', crm: '11306', email: 'raphap69@msn.com' },
+  { nome: 'Mariana Pereira de Souza', crm: '12781', email: 'souzapmariana@hotmail.com' },
   { nome: 'Mirian dos Santos Santana', crm: '16068', email: 'msantanamirian@gmail.com' },
   { nome: 'Kamilla Azevedo Domingos', crm: '14714', email: 'kamilladomingos1@gmail.com' },
   { nome: 'Jéssica Feltraco', crm: '13436', email: 'jessifeltraco@gmail.com' },
