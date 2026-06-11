@@ -14,9 +14,7 @@ const SETOR_AMBULATORIO = 2;
 
 // Lista de Coordenadores
 const coordenadores = [
-  { nome: 'Alex Yonezawa Guimaraes', crm: '7668', email: 'alex.yonezawa@rededor.com.br' },
-  { nome: 'Gabriel Begotto', crm: '11304', email: 'begottog@gmail.com' },
-  { nome: 'Bruno Alexandre da Silva', crm: '8291', email: 'Bruno.alexandres@proncor.com.br' }
+  { nome: 'Neto', crm: '0000', email: 'odonnetocarvalho@gmail.com' },
 ];
 
 async function importarCoordenadores() {
