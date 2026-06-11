@@ -131,32 +131,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }));
       setAlocacoes(formatadas);
 
-// No AuthContext.tsx -> loadUserProfile
+      // 3. Busca Permissões de todos os cargos vinculados com Validação Estrita de Setor
+      const roleIds = formatadas.map(a => a.role_id);
+      if (roleIds.length > 0) {
+        const { data: permData, error: permError } = await supabase
+          .from('role_permissoes')
+          .select(`
+            role_id,
+            permissoes:permissao_id (
+              nome,
+              setor_id
+            )
+          `)
+          .in('role_id', roleIds);
 
-// 3. Busca Permissões de todos os cargos vinculados
-const roleIds = formatadas.map(a => a.role_id);
-if (roleIds.length > 0) {
-  const { data: permData } = await supabase
-    .from('role_permissoes')
-    .select(`
-      permissoes:permissao_id (
-        nome
-      )
-    `)
-    .in('role_id', roleIds);
+        if (permError) throw permError;
 
-  // IMPORTANTE: Se o seu SQL retorna 'adm_acessar_dashboard' no campo 'nome' da tabela permissoes
-  const permsStrings = permData
-    ?.map((p: any) => p.permissoes?.nome) // Garanta que aqui bate com o campo da tabela
-    .filter(Boolean) || [];
+        const permsValidas = new Set<string>();
 
-  setPermissoes(Array.from(new Set(permsStrings)));
-}
+        permData?.forEach((rp: any) => {
+          const permissao = Array.isArray(rp.permissoes) ? rp.permissoes[0] : rp.permissoes;
+          
+          if (!permissao || !permissao.nome) return;
+
+          // Regra 1: Bypass Global. Se a permissão não tem setor atrelado (NULL), ela é válida globalmente.
+          if (permissao.setor_id === null) {
+            permsValidas.add(permissao.nome);
+            return;
+          }
+
+          // Regra 2: Validação Estrita (Local).
+          // O usuário só herda a permissão se a sua alocação ativa bater com o setor exigido pela permissão.
+          const hasValidAllocation = formatadas.some(
+            aloc => aloc.role_id === rp.role_id && aloc.setor_id === permissao.setor_id
+          );
+
+          if (hasValidAllocation) {
+            permsValidas.add(permissao.nome);
+          }
+        });
+
+        setPermissoes(Array.from(permsValidas));
+      }
 
     } catch (error) {
       console.error('Erro de autenticação RBAC:', error);
     } finally {
-      // O loading só encerra após todas as promessas serem resolvidas
       setLoading(false);
     }
   };
