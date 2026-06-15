@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../../lib/supabase';
+import { useAuth } from '../../../contexts/AuthContext';
 import { Users, ChevronRight, Home, Search } from 'lucide-react';
 import { Toast } from '../../../components/ui/Toast';
 import { ToastError } from '../../../components/ui/ToastError';
@@ -14,6 +15,8 @@ import { ModalExcluirUsuario } from './modals/ModalExcluirUsuario';
 interface GerenciarUsuariosProps { onBack: () => void; }
 
 export function GerenciarUsuarios({ onBack }: GerenciarUsuariosProps) {
+  const { user: currentUser } = useAuth();
+  
   const [usuarios, setUsuarios] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
   const [setores, setSetores] = useState<any[]>([]);
@@ -33,7 +36,6 @@ export function GerenciarUsuarios({ onBack }: GerenciarUsuariosProps) {
   const fetchDados = async () => {
     setLoading(true);
     try {
-      // AJUSTE: Buscando a relação de permissões incluindo o setor_id para o filtro dinâmico
       const { data: rolesData } = await supabase
         .from('roles')
         .select(`
@@ -106,12 +108,24 @@ export function GerenciarUsuarios({ onBack }: GerenciarUsuariosProps) {
   };
 
   const toggleStatusUsuario = async (id: string, statusAtual: boolean) => {
+    const usuarioAlvo = usuarios.find(u => u.id === id);
+    if (id === currentUser?.id || (usuarioAlvo && usuarioAlvo.email === currentUser?.email)) {
+      setErrorMsg('Operação negada: Você não pode bloquear sua própria conta ativa.');
+      return;
+    }
     await supabase.from('profiles').update({ is_active: !statusAtual }).eq('id', id);
     fetchDados();
   };
 
   const confirmarExclusao = async () => {
     if (!usuarioSelecionado) return;
+    
+    if (usuarioSelecionado.id === currentUser?.id || usuarioSelecionado.email === currentUser?.email) {
+      setErrorMsg('Operação negada: Você não pode excluir sua própria conta ativa.');
+      setModalExcluirOpen(false);
+      return;
+    }
+
     setDeletando(true);
     try {
       const response = await supabase.functions.invoke('deletar-usuario', {
@@ -174,7 +188,14 @@ export function GerenciarUsuarios({ onBack }: GerenciarUsuariosProps) {
           <div className="flex-1 overflow-auto divide-y divide-gray-100 dark:divide-slate-800">
             {loading ? <div className="p-10 text-center">Carregando...</div> :
               usuariosFiltrados.map(user => (
-                <ItemUsuario key={user.id} user={user} onEdit={(u) => { setUsuarioSelecionado(u); setModalEditarOpen(true); }} onDelete={(u) => { setUsuarioSelecionado(u); setModalExcluirOpen(true); }} onToggleStatus={toggleStatusUsuario} />
+                <ItemUsuario 
+                  key={user.id} 
+                  user={user} 
+                  isCurrentUser={user.email === currentUser?.email}
+                  onEdit={(u) => { setUsuarioSelecionado(u); setModalEditarOpen(true); }} 
+                  onDelete={(u) => { setUsuarioSelecionado(u); setModalExcluirOpen(true); }} 
+                  onToggleStatus={toggleStatusUsuario} 
+                />
               ))
             }
           </div>
