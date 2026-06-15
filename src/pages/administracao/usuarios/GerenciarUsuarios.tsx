@@ -68,6 +68,7 @@ export function GerenciarUsuarios({ onBack }: GerenciarUsuariosProps) {
             roles (nome)
           )
         `)
+        .eq('is_hidden', false) // FILTRO ADICIONADO AQUI
         .order('nome');
 
       if (fetchError) throw fetchError;
