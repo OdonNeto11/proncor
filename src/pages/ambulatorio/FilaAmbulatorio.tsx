@@ -20,7 +20,10 @@ import { Title, Description } from '../../components/ui/Typography';
 // COMPONENTES COMPARTILHADOS E MODAIS
 import { AtendimentoCard } from '../../components/shared/AtendimentoCard';
 import { ModalConfirmacaoCancelamentoLayout } from '../../components/shared/ModalConfirmacaoCancelamentoLayout';
-import { DateRangeFilter } from '../../components/shared/DateRangeFilter'; // NOVO IMPORT
+import { DateRangeFilter } from '../../components/shared/DateRangeFilter'; 
+
+// IMPORT DA TELA GLOBAL DE ACESSO RESTRITO
+import { AcessoRestrito } from '../core/AcessoRestrito';
 
 // IMPORTAÇÃO DOS MODAIS SEPARADOS
 import { ModalEdicaoAmb } from './modais/ModalEdicaoAmb';
@@ -30,7 +33,6 @@ import { ModalDetalhesAmb } from './modais/ModalDetalhesAmb';
 // FUNÇÕES UTILITÁRIAS E PERMISSÕES
 import { usePermissoes } from '../../hooks/usePermissoes';
 import { useFiltrosAmbulatorio } from '../../hooks/useFiltrosAmbulatorio';
-
 
 export function Ambulatorio() {
   const { podeVerAmb, podeCriarAmb, podeGerenciarStatusAmb, podeEditarAmb, podeCancelarAmb } = usePermissoes();
@@ -91,7 +93,7 @@ export function Ambulatorio() {
 
   useEffect(() => { 
     if (podeVerAmb) fetchEncaminhamentos(); 
-  }, [filtroTab, dataInicio, dataFim, podeVerAmb]); // Adicionado datas na dependência
+  }, [filtroTab, dataInicio, dataFim, podeVerAmb]);
 
   const atualizarStatus = async (novoStatusId: number, msg: string) => {
     try {
@@ -111,21 +113,9 @@ export function Ambulatorio() {
     setErrorMsg('');
   };
 
+  // === SOLUÇÃO AQUI: RETORNA O COMPONENTE GLOBAL SE NÃO TIVER PERMISSÃO ===
   if (!podeVerAmb) {
-    return (
-      <div className="max-w-4xl mx-auto text-center py-20 bg-white dark:bg-slate-900 rounded-xl border border-red-100 dark:border-red-900/30 shadow-sm mt-8 animate-in zoom-in-95 duration-300">
-        <div className="w-20 h-20 bg-red-50 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
-          <AlertCircle size={48} className="text-red-400 dark:text-red-500" />
-        </div>
-        <Title className="mb-2">Acesso Negado</Title>
-        <Description className="max-w-sm mx-auto">
-          O seu perfil não tem permissão para visualizar a fila de pendentes do Ambulatório.
-        </Description>
-        <Link to="/" className="inline-block mt-8 px-6 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-          Voltar para Início
-        </Link>
-      </div>
-    );
+    return <AcessoRestrito />;
   }
 
   return (

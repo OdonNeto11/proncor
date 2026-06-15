@@ -13,6 +13,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, Controller } from 'react-hook-form';
 import { zObrigatorio, zCrm, zTelefone, zDataObrigatoria } from '../../utils/validations';
 
+// IMPORT DA TELA GLOBAL DE ACESSO RESTRITO
+import { AcessoRestrito } from '../core/AcessoRestrito';
+
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Textarea } from '../../components/ui/Textarea';
@@ -215,14 +218,9 @@ export function Agendar() {
     setErrorMsg("Por favor, preencha corretamente os campos em vermelho.");
   };
 
+  // === SOLUÇÃO AQUI: RETORNA O COMPONENTE GLOBAL SE NÃO TIVER PERMISSÃO ===
   if (!podeCriarPA) {
-    return (
-      <div className="max-w-4xl mx-auto text-center py-20 bg-white dark:bg-slate-900 rounded-xl border shadow-sm mt-8 animate-in zoom-in-95 duration-300">
-        <AlertCircle size={48} className="text-red-400 mx-auto mb-6" />
-        <Title className="mb-2">Acesso Negado</Title>
-        <Link to="/" className="inline-block mt-8 px-6 py-2 bg-slate-100 rounded-lg font-bold">Voltar para Início</Link>
-      </div>
-    );
+    return <AcessoRestrito />;
   }
 
   return (

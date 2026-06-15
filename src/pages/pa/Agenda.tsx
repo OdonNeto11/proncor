@@ -3,7 +3,7 @@ import {
   Clock, CheckCircle2, Search, AlertTriangle, ListChecks, AlertCircle, 
   Activity, Stethoscope, ArrowRightCircle, HelpCircle
 } from 'lucide-react';
-import { format, addDays } from 'date-fns'; // <-- addDays IMPORTADO AQUI
+import { format, addDays } from 'date-fns';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Agendamento } from '../../types/agendamento';
@@ -26,12 +26,14 @@ import { AtendimentoCard } from '../../components/shared/AtendimentoCard';
 import { usePermissoes } from '../../hooks/usePermissoes';
 import { useFiltrosAgenda } from '../../hooks/useFiltrosAgenda';
 
+// IMPORT DA TELA GLOBAL DE ACESSO RESTRITO
+import { AcessoRestrito } from '../core/AcessoRestrito';
+
 // NOVOS MODAIS COMPONENTIZADOS
 import { ModalDetalhes } from './modais/ModalDetalhes';
 import { ModalEdicao } from './modais/ModalEdicao';
 import { ModalReagendar } from './modais/ModalReagendar';
 import { ModalAtualizaStatus } from './modais/ModalAtualizaStatus';
-
 
 type ModalView = 'details' | 'edit' | 'reschedule' | 'update_status' | 'cancel' | null;
 
@@ -49,15 +51,9 @@ export function Agenda() {
   const [selectedAgendamento, setSelectedAgendamento] = useState<Agendamento | null>(null);
   const [viewMode, setViewMode] = useState<ModalView>(null);
 
+  // === SOLUÇÃO AQUI: RETORNA O COMPONENTE GLOBAL SE NÃO TIVER PERMISSÃO ===
   if (!podeVerPA) {
-    return (
-      <div className="max-w-4xl mx-auto p-12 text-center bg-white dark:bg-slate-900 rounded-2xl border border-dashed mt-10">
-        <AlertCircle size={48} className="text-red-400 mx-auto mb-6" />
-        <Title className="mb-2">Acesso Negado</Title>
-        <Description>Sem permissão para visualizar a agenda do PA.</Description>
-        <Link to="/" className="inline-block mt-6 px-6 py-2 bg-gray-100 rounded-lg font-bold">Voltar para Home</Link>
-      </div>
-    );
+    return <AcessoRestrito />;
   }
 
   const fetchAgendamentos = async () => {
