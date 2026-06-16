@@ -1,8 +1,8 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Mail, Lock, UserPlus, Building2, Shield, Info, CheckCircle2 } from 'lucide-react';
+import { Mail, Lock, UserPlus, Building2, Shield, Info, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import { MedidorForcaSenha } from '../../../components/ui/MedidorForcaSenha';
 
@@ -30,6 +30,8 @@ interface FormularioUsuarioProps {
 }
 
 export function FormularioUsuario({ roles, setores, submitting, onSubmit, setErrorMsg }: FormularioUsuarioProps) {
+  const [mostrarSenha, setMostrarSenha] = useState(false); // NOVO ESTADO
+
   const {
     register, handleSubmit, setValue, watch, reset,
     formState: { errors }
@@ -41,10 +43,8 @@ export function FormularioUsuario({ roles, setores, submitting, onSubmit, setErr
   const formValues = watch();
   const senhaAtual = watch('senha');
 
-  // 1. Identifica o Cargo selecionado
   const roleSelecionada = roles.find(r => r.id.toString() === formValues.roleId);
 
-  // 2. FILTRO INVERTIDO: Descobre quais setores esse Cargo tem acesso
   const setoresExibidos = useMemo(() => {
     if (!roleSelecionada) return setores; 
 
@@ -59,7 +59,6 @@ export function FormularioUsuario({ roles, setores, submitting, onSubmit, setErr
     return setores.filter(s => validSetorIds.has(s.id) || temPermissaoGlobal);
   }, [roleSelecionada, setores]);
 
-  // 3. EFEITO DE LIMPEZA: Se mudar o cargo e o setor antigo não for mais válido, desmarca sozinho
   useEffect(() => {
     const setoresMarcados = formValues.setoresSelecionados || [];
     const validos = setoresMarcados.filter(id => setoresExibidos.some(s => s.id === id));
@@ -69,7 +68,6 @@ export function FormularioUsuario({ roles, setores, submitting, onSubmit, setErr
     }
   }, [formValues.roleId, setoresExibidos, setValue]);
 
-  // Filtro do Card Azul: Mostra tudo se nenhum setor estiver marcado, ou filtra pelos marcados.
   const permissoesExibidas = roleSelecionada?.role_permissoes.filter((rp: any) => {
     const setorIdPermissao = rp.permissoes?.setor_id;
     if (formValues.setoresSelecionados.length === 0) return true; 
@@ -109,7 +107,6 @@ export function FormularioUsuario({ roles, setores, submitting, onSubmit, setErr
             <input type="text" 
               {...register('nome')} 
               onChange={(e) => {
-                // Formatação: Primeira letra de cada palavra em maiúscula
                 const val = e.target.value
                   .split(' ')
                   .map(word => word.charAt(0).toUpperCase() + word.slice(1))
@@ -136,7 +133,23 @@ export function FormularioUsuario({ roles, setores, submitting, onSubmit, setErr
             <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1">Senha <span className="text-red-500">*</span></label>
             <div className="relative">
               <Lock size={16} className="absolute left-3 top-3 text-gray-400" />
-              <input type="text" {...register('senha')} className={`w-full pl-9 bg-slate-50 dark:bg-slate-950 border ${errors.senha ? 'border-red-500 ring-1 ring-red-500/30' : 'border-gray-200 dark:border-slate-700'} rounded-lg px-3 py-2 text-gray-800 dark:text-slate-200 outline-none focus:border-blue-500`} placeholder="Mínimo 6 caracteres" />
+              {/* ALTERADO: type dinâmico e botão para toggle */}
+<input 
+  type={mostrarSenha ? "text" : "password"} 
+  {...register('senha')} 
+  autoComplete="new-password"
+  data-lpignore="true"
+  className={`w-full pl-9 pr-10 bg-slate-50 dark:bg-slate-950 border ${errors.senha ? 'border-red-500 ring-1 ring-red-500/30' : 'border-gray-200 dark:border-slate-700'} rounded-lg px-3 py-2 text-gray-800 dark:text-slate-200 outline-none focus:border-blue-500 dark:[&:-webkit-autofill]:[Webkit-box-shadow:0_0_0_1000px_#0f172a_inset] dark:[&:-webkit-autofill]:[-webkit-text-fill-color:#f1f5f9]`} 
+  placeholder="Mínimo 6 caracteres" 
+/>
+              <button
+                type="button"
+                onClick={() => setMostrarSenha(!mostrarSenha)}
+                className="absolute right-3 top-2.5 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                tabIndex={-1}
+              >
+                {mostrarSenha ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
             </div>
             <MedidorForcaSenha senha={senhaAtual || ''} />
             {errors.senha && <span className="text-xs text-red-500 mt-1 font-bold block">{errors.senha.message}</span>}
@@ -187,7 +200,6 @@ export function FormularioUsuario({ roles, setores, submitting, onSubmit, setErr
           </div>
         </div>
 
-        {/* Removido o bloqueio que exigia array de setores preenchido */}
         {roleSelecionada && permissoesExibidas.length > 0 && (
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg p-4 mt-2 animate-in fade-in">
             <h4 className="text-sm font-bold text-blue-800 dark:text-blue-400 flex items-center gap-2 mb-2">
