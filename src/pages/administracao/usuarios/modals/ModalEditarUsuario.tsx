@@ -4,7 +4,7 @@ import { Button } from '../../../../components/ui/Button';
 import { ToastError } from '../../../../components/ui/ToastError';
 import { Toast } from '../../../../components/ui/Toast';
 
-import { X, Mail, Shield, Building2, User, KeyRound, Info, CheckCircle2 } from 'lucide-react';
+import { X, Mail, Shield, Building2, User, KeyRound, Info, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -16,7 +16,19 @@ const formSchema = z.object({
   setoresSelecionados: z.array(z.number()).min(1, 'O campo "Setores" é obrigatório'),
   crm: z.string().optional().refine(val => !val || (val.length >= 4 && val.length <= 5), {
     message: 'O campo "CRM" deve ter 4 ou 5 dígitos'
-  })
+  }),
+  alterarSenhaManual: z.boolean().optional(),
+  novaSenha: z.string().optional()
+}).superRefine((data, ctx) => {
+  if (data.alterarSenhaManual) {
+    if (!data.novaSenha || data.novaSenha.length < 6) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'A nova senha deve ter no mínimo 6 caracteres',
+        path: ['novaSenha']
+      });
+    }
+  }
 });
 
 type EditarUsuarioFormType = z.infer<typeof formSchema>;
@@ -37,14 +49,17 @@ export function ModalEditarUsuario({ isOpen, onClose, onSuccess, usuario, roles,
   const [enviandoEmail, setEnviandoEmail] = useState(false);
   const [mostrarPermissoes, setMostrarPermissoes] = useState(false);
   const [modalConfirmarSenha, setModalConfirmarSenha] = useState(false);
+  
+  const [mostrarSenha, setMostrarSenha] = useState(false);
 
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<EditarUsuarioFormType>({
     resolver: zodResolver(formSchema),
-    defaultValues: { nome: '', email: '', roleId: '', setoresSelecionados: [], crm: '' }
+    defaultValues: { nome: '', email: '', roleId: '', setoresSelecionados: [], crm: '', alterarSenhaManual: false, novaSenha: '' }
   });
 
   const formValues = watch();
   const roleSelecionada = roles.find(r => r.id.toString() === formValues.roleId);
+  const alterarSenhaManual = watch('alterarSenhaManual');
 
   const setoresExibidos = useMemo(() => {
     if (!roleSelecionada || !roleSelecionada.role_permissoes) return setores; 
@@ -83,11 +98,14 @@ export function ModalEditarUsuario({ isOpen, onClose, onSuccess, usuario, roles,
         email: usuario.email || '',
         roleId: cargoAtual,
         setoresSelecionados: setoresAtuais,
-        crm: usuario.crm || ''
+        crm: usuario.crm || '',
+        alterarSenhaManual: false,
+        novaSenha: ''
       });
       setErrorMsg('');
       setMostrarPermissoes(false);
       setModalConfirmarSenha(false);
+      setMostrarSenha(false);
     }
   }, [isOpen, usuario, reset]);
 
@@ -123,7 +141,7 @@ export function ModalEditarUsuario({ isOpen, onClose, onSuccess, usuario, roles,
     setModalConfirmarSenha(true);
   };
 
-const confirmarResetSenha = async () => {
+  const confirmarResetSenha = async () => {
     setEnviandoEmail(true);
     setErrorMsg('');
     try {
@@ -134,7 +152,6 @@ const confirmarResetSenha = async () => {
       setToastMsg(`Link de redefinição enviado para ${formValues.email}`);
       setModalConfirmarSenha(false);
     } catch (err: any) {
-      // Ignora o err.message técnico do Supabase e força a mensagem genérica
       setErrorMsg('Não foi possível reiniciar a senha do usuário no momento, tente novamente mais tarde.');
       setModalConfirmarSenha(false);
     } finally {
@@ -151,14 +168,20 @@ const confirmarResetSenha = async () => {
         role_id: parseInt(data.roleId)
       }));
 
+      const payload: any = {
+        user_id: usuario.id,
+        nome: data.nome, 
+        email: data.email, 
+        crm: data.crm || null,
+        alocacoes: alocacoes
+      };
+
+      if (data.alterarSenhaManual && data.novaSenha) {
+        payload.novaSenha = data.novaSenha;
+      }
+
       const response = await supabase.functions.invoke('editar-usuario', {
-        body: { 
-          user_id: usuario.id,
-          nome: data.nome, 
-          email: data.email, 
-          crm: data.crm || null,
-          alocacoes: alocacoes
-        }
+        body: payload
       });
 
       if (response.error) throw response.error;
@@ -225,6 +248,48 @@ const confirmarResetSenha = async () => {
                     </Button>
                   </div>
                   {errors.email && <span className="text-xs text-red-500 mt-1 font-bold block">{errors.email.message}</span>}
+                </div>
+
+                <div className="md:col-span-2 flex flex-col gap-3 border border-gray-100 dark:border-slate-800 rounded-xl p-4 bg-slate-50/50 dark:bg-slate-900/30">
+                  <label className="flex items-center gap-2 cursor-pointer text-sm font-semibold text-gray-700 dark:text-slate-300 w-fit">
+                    <input 
+                      type="checkbox" 
+                      {...register('alterarSenhaManual')} 
+                      onChange={(e) => {
+                        setValue('alterarSenhaManual', e.target.checked);
+                        if (!e.target.checked) setValue('novaSenha', '');
+                      }} 
+                      className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500" 
+                    />
+                    Definir nova senha de acesso manualmente
+                  </label>
+
+                  {alterarSenhaManual && (
+                    <div id="modal_novaSenha" className="animate-in fade-in slide-in-from-top-2 duration-300 md:w-1/2">
+                      <div className="relative">
+                        <KeyRound size={16} className="absolute left-3 top-3 text-gray-400 z-10" />
+                        <input 
+                          type={mostrarSenha ? "text" : "password"} 
+                          autoComplete="new-password"
+                          {...register('novaSenha')} 
+                          placeholder="Mínimo 6 caracteres"
+                          className={`w-full pl-9 pr-10 bg-white dark:bg-slate-950 border rounded-lg px-3 py-2 text-gray-800 dark:text-slate-200 outline-none focus:border-blue-500 ${errors.novaSenha ? 'border-red-500 ring-1 ring-red-500/30' : 'border-gray-200 dark:border-slate-700'} [&:-webkit-autofill]:shadow-[0_0_0px_1000px_#ffffff_inset] dark:[&:-webkit-autofill]:shadow-[0_0_0px_1000px_#020617_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:#1e293b] dark:[&:-webkit-autofill]:[-webkit-text-fill-color:#e2e8f0]`} 
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setMostrarSenha(!mostrarSenha)}
+                          className="absolute right-3 top-2.5 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors z-10"
+                          tabIndex={-1}
+                        >
+                          {mostrarSenha ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                      {errors.novaSenha && <span className="text-xs text-red-500 mt-1 font-bold block">{errors.novaSenha.message}</span>}
+                      <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                        <Info size={12}/> O usuário será forçado a trocar esta senha no próximo login.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -344,7 +409,6 @@ const confirmarResetSenha = async () => {
         </div>
       )}
 
-{/* TOASTS GLOBAIS DESTE COMPONENTE (Forçando z-index máximo para não ficar atrás do blur) */}
       <div className="relative z-[9999]">
         <ToastError message={errorMsg} onClose={() => setErrorMsg('')} />
         {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg('')} />}

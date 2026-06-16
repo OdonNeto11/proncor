@@ -11,6 +11,7 @@ import { Button } from '../../../components/ui/Button';
 import { Description } from '../../../components/ui/Typography';
 import { DatePicker } from '../../../components/ui/DatePicker';
 import { ToastError } from '../../../components/ui/ToastError';
+import { Toast } from '../../../components/ui/Toast'; // <-- ADICIONADO O TOAST DE SUCESSO
 
 // === SCHEMA PADRONIZADO PARA O ARRAY DE EXAMES ===
 const formSchema = z.object({
@@ -30,7 +31,7 @@ const formSchema = z.object({
       if (!ex.data_agendamento) {
         ctx.addIssue({ code: 'custom', message: 'O campo "Data" é obrigatório', path: ['exames', index, 'data_agendamento'] });
       } else if (ex.data_agendamento < dataHoje) {
-        ctx.addIssue({ code: 'custom', message: 'O campo "Data" está incompleto', path: ['exames', index, 'data_agendamento'] });
+        ctx.addIssue({ code: 'custom', message: 'A data não pode ser anterior a hoje', path: ['exames', index, 'data_agendamento'] });
       }
     }
     // Regra do Status: obrigatória para todos se for 'Salvar e Concluir'
@@ -53,10 +54,12 @@ interface Props {
 export function ModalStatusExames({ isOpen, onClose, encaminhamento, onSuccess, onSaveProgress }: Props) {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [toastMsg, setToastMsg] = useState(''); // <-- NOVO ESTADO PARA MENSAGEM DE SUCESSO
 
-  const { control, handleSubmit, reset, setValue, formState: { errors } } = useForm<StatusExamesFormType>({
+  const { control, handleSubmit, reset, setValue, trigger, formState: { errors } } = useForm<StatusExamesFormType>({
     resolver: zodResolver(formSchema),
-    defaultValues: { is_concluding: false, exames: [] }
+    defaultValues: { is_concluding: false, exames: [] },
+    mode: 'onChange'
   });
 
   const { fields } = useFieldArray({ control, name: "exames" });
@@ -78,6 +81,7 @@ export function ModalStatusExames({ isOpen, onClose, encaminhamento, onSuccess, 
       };
       fetchExames();
       setErrorMsg('');
+      setToastMsg(''); // Limpa mensagens anteriores ao abrir
     }
   }, [isOpen, encaminhamento, reset]);
 
@@ -85,8 +89,8 @@ export function ModalStatusExames({ isOpen, onClose, encaminhamento, onSuccess, 
     if (!encaminhamento) return;
     setLoading(true);
     setErrorMsg('');
+    setToastMsg('');
     try {
-      // 1. Atualiza cada exame individualmente no banco
       const updates = data.exames
         .filter(ex => typeof ex.id === 'number') 
         .map(ex => ({
@@ -97,13 +101,12 @@ export function ModalStatusExames({ isOpen, onClose, encaminhamento, onSuccess, 
       
       await ambulatorioService.updateEncaminhamentoExames(updates);
 
-      // 2. Se for 'Salvar e Concluir', atualiza o status principal do ticket
       if (data.is_concluding) {
         await ambulatorioService.updateStatus(encaminhamento.id, 14);
-        onSuccess('Exames atualizados e ticket concluído!');
+        onSuccess('Exames atualizados e ticket concluído!'); // O pai lida com o fechamento
       } else {
-        // 3. Se for apenas 'Salvar', avisa a fila para recarregar e fecha
-        onSaveProgress();
+        setToastMsg('Status salvo com sucesso!'); // <-- EXIBE A MENSAGEM LOCALMENTE
+        onSaveProgress(); // Avisa o pai para atualizar os dados em background
       }
       
     } catch (e: any) { 
@@ -131,7 +134,6 @@ export function ModalStatusExames({ isOpen, onClose, encaminhamento, onSuccess, 
     >
       <form onSubmit={handleSubmit(onSubmit, onError)} className="space-y-4 animate-in zoom-in-95 duration-200" noValidate>
         
-        {/* BLOCO DO NOME DO PACIENTE EM EVIDÊNCIA */}
         <div className="text-center mb-2">
           <span className="text-sm text-slate-500 block mb-1">Paciente selecionado:</span>
           <div className="text-xl font-bold text-purple-600 dark:text-purple-400 break-words">
@@ -145,8 +147,8 @@ export function ModalStatusExames({ isOpen, onClose, encaminhamento, onSuccess, 
 
         <div className="space-y-4 min-h-[300px] max-h-[450px] overflow-y-auto pr-1 pb-10">
           {fields.map((field, index) => {
-            const exameErrors = errors.exames?.[index];
-            const hasError = !!exameErrors?.status_id || !!exameErrors?.data_agendamento;
+            const examenErrors = errors.exames?.[index];
+            const hasError = !!examenErrors?.status_id || !!examenErrors?.data_agendamento;
 
             return (
               <div 
@@ -164,7 +166,7 @@ export function ModalStatusExames({ isOpen, onClose, encaminhamento, onSuccess, 
                             f.onChange(e); 
                             setValue(`exames.${index}.data_agendamento`, '', { shouldValidate: true }); 
                         }}
-                        className={`w-full px-3 py-2.5 rounded-lg border bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 text-sm outline-none transition-colors focus:ring-2 focus:ring-purple-500 ${exameErrors?.status_id ? 'border-red-500' : 'border-slate-200 dark:border-slate-700'}`}
+                        className={`w-full px-3 py-2.5 rounded-lg border bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 text-sm outline-none transition-colors focus:ring-2 focus:ring-purple-500 ${examenErrors?.status_id ? 'border-red-500' : 'border-slate-200 dark:border-slate-700'}`}
                       >
                         <option value="">Aguardando tratativa...</option>
                         <option value="9">Agendado</option>
@@ -173,8 +175,8 @@ export function ModalStatusExames({ isOpen, onClose, encaminhamento, onSuccess, 
                         <option value="12">Sem Contato</option>
                       </select>
                     )} />
-                    {exameErrors?.status_id && (
-                      <span className="text-xs text-red-500 font-medium mt-1">{exameErrors.status_id.message as string}</span>
+                    {examenErrors?.status_id && (
+                      <span className="text-xs text-red-500 font-medium mt-1">{examenErrors.status_id.message as string}</span>
                     )}
                   </div>
 
@@ -182,10 +184,16 @@ export function ModalStatusExames({ isOpen, onClose, encaminhamento, onSuccess, 
                     Number(statusField.value) === 9 ? (
                       <div className="flex-1 flex-shrink-0 animate-in fade-in duration-200 flex flex-col">
                         <Controller control={control} name={`exames.${index}.data_agendamento`} render={({ field: f }) => (
-                          <DatePicker value={f.value || ''} onChange={f.onChange} />
+                          <DatePicker 
+                            value={f.value || ''} 
+                            onChange={(val) => {
+                              f.onChange(val);
+                              trigger(`exames.${index}.data_agendamento`);
+                            }} 
+                          />
                         )} />
-                        {exameErrors?.data_agendamento && (
-                          <span className="text-xs text-red-500 font-medium mt-1">{exameErrors.data_agendamento.message as string}</span>
+                        {examenErrors?.data_agendamento && (
+                          <span className="text-xs text-red-500 font-medium mt-1">{examenErrors.data_agendamento.message as string}</span>
                         )}
                       </div>
                     ) : <></>
@@ -196,7 +204,11 @@ export function ModalStatusExames({ isOpen, onClose, encaminhamento, onSuccess, 
           })}
         </div>
 
-        <ToastError message={errorMsg} onClose={() => setErrorMsg('')} />
+        {/* ÁREA DE TOASTS LOCAIS */}
+        <div className="relative z-[9999]">
+          <ToastError message={errorMsg} onClose={() => setErrorMsg('')} />
+          {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg('')} />}
+        </div>
 
         <div className="flex flex-col md:flex-row gap-3 pt-6 border-t border-slate-100 dark:border-slate-800">
           <Button variant="secondary" fullWidth onClick={onClose} type="button" disabled={loading}>Voltar</Button>

@@ -225,26 +225,27 @@ export function Ambulatorio() {
         />
       )}
 
-      {/* MODAL DE STATUS DE EXAMES */}
-      {selectedEnc && viewMode === 'agendar_exames' && (
-        <ModalStatusExames
-          isOpen={true}
-          onClose={() => setViewMode('details')}
-          encaminhamento={selectedEnc}
-          onSuccess={(message?: string) => {
-            if (message) setShowToast({ visible: true, message });
-            setViewMode('list');
-            setSelectedEnc(null);
-            fetchEncaminhamentos();
-          }}
-          onSaveProgress={() => {
-            setShowToast({ visible: true, message: 'Progresso salvo!' });
-            setViewMode('list');
-            setSelectedEnc(null);
-            fetchEncaminhamentos();
-          }}
-        />
-      )}
+{/* MODAL DE STATUS DE EXAMES */}
+{selectedEnc && viewMode === 'agendar_exames' && (
+  <ModalStatusExames
+    isOpen={true}
+    onClose={() => setViewMode('details')}
+    encaminhamento={selectedEnc}
+    onSuccess={(message?: string) => {
+      // Este encerra o fluxo completo, mantemos o comportamento original
+      if (message) setShowToast({ visible: true, message });
+      setViewMode('list'); 
+      setSelectedEnc(null);
+      fetchEncaminhamentos();
+    }}
+    onSaveProgress={() => {
+      // MANTEMOS O MODAL ABERTO:
+      // Apenas atualizamos a lista de dados silenciosamente
+      fetchEncaminhamentos(); 
+      // O Toast de sucesso aparecerá via componente filho (ModalStatusExames)
+    }}
+  />
+)}
 
       {/* MODAL DE CANCELAMENTO */}
       {selectedEnc && viewMode === 'confirm_cancel' && (
