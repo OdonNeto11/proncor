@@ -24,4 +24,8 @@ export type Agendamento = {
   anexos: Anexo[] | null;
   medico_id: number | null;
   crm_responsavel?: string;
+  usuario_id?: string;
+  profiles?: {
+    nome: string;
+  };
 };

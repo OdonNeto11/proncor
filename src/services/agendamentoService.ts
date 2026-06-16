@@ -5,7 +5,9 @@ export const agendamentoService = {
   async fetchAgendamentos(dataInicioStr: string, dataFimStr: string): Promise<Agendamento[]> {
     let query = supabase
       .from('agendamentos')
-      .select('*, status:status_id(*)')
+      // ADICIONADO O JOIN COM PROFILES: profiles:usuario_id(nome)
+      // Isso força a busca do "nome" na tabela profiles baseando-se na FK usuario_id
+      .select('*, status:status_id(*), profiles:usuario_id(nome)') 
       .order('data_agendamento', { ascending: true })
       .order('hora_agendamento', { ascending: true });
 

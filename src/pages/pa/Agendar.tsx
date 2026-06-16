@@ -36,7 +36,7 @@ import { useHorarios } from '../../hooks/useHorarios';
 registerLocale('pt-BR', ptBR);
 const OPCOES_PROCEDIMENTOS = ["Exames", "RX", "Tomografia"];
 
-// === SCHEMA DE VALIDAÇÃO COMPONENTIZADO ===
+// === SCHEMA DE VALIDAÇÃO COMPONENTIZADO E AJUSTADO ===
 const formSchema = z.object({
   data_agendamento: zDataObrigatoria('Data'),
   hora_agendamento: zDataObrigatoria('Horário'),
@@ -47,6 +47,23 @@ const formSchema = z.object({
   plano_saude: z.string().optional(),
   diagnostico: z.string().optional(),
   procedimentos: z.array(z.string()).optional(), 
+}).superRefine((data, ctx) => {
+  if (data.data_agendamento) {
+    const dataSelecionada = new Date(data.data_agendamento);
+    dataSelecionada.setHours(0, 0, 0, 0); // Zera as horas para comparar apenas os dias
+
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    // Validação que avisa se a data é anterior a hoje
+    if (dataSelecionada < hoje) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Data inválida: não pode ser anterior à data atual.',
+        path: ['data_agendamento']
+      });
+    }
+  }
 });
 
 type AgendamentoFormType = z.infer<typeof formSchema>;
@@ -64,6 +81,20 @@ export function Agendar() {
   const { podeCriarPA } = usePermissoes(); 
   const rascunho = carregarRascunho();
   
+  // Lógica para impedir que o rascunho puxe datas passadas (como ontem)
+  const hojeParaRascunho = new Date();
+  hojeParaRascunho.setHours(0, 0, 0, 0);
+  
+  let dataInicialPadrao = new Date();
+  if (rascunho?.selectedDate) {
+    const dataRascunho = new Date(rascunho.selectedDate);
+    dataRascunho.setHours(0, 0, 0, 0);
+    // Só aproveita a data do rascunho se for hoje ou no futuro
+    if (dataRascunho >= hojeParaRascunho) {
+      dataInicialPadrao = new Date(rascunho.selectedDate);
+    }
+  }
+
   const {
     register,
     handleSubmit,
@@ -82,7 +113,7 @@ export function Agendar() {
       diagnostico: rascunho?.formData?.diagnostico || '',
       procedimentos: rascunho?.formData?.procedimentos || [],
       crm_responsavel: rascunho?.formData?.crm_responsavel || '',
-      data_agendamento: rascunho?.selectedDate ? new Date(rascunho.selectedDate) : new Date(),
+      data_agendamento: dataInicialPadrao,
       hora_agendamento: rascunho?.selectedTime ? new Date(rascunho.selectedTime) : undefined,
     }
   });
@@ -218,7 +249,6 @@ export function Agendar() {
     setErrorMsg("Por favor, preencha corretamente os campos em vermelho.");
   };
 
-  // === SOLUÇÃO AQUI: RETORNA O COMPONENTE GLOBAL SE NÃO TIVER PERMISSÃO ===
   if (!podeCriarPA) {
     return <AcessoRestrito />;
   }
@@ -257,7 +287,7 @@ export function Agendar() {
                                field.onChange(date);
                                setValue('hora_agendamento', undefined as any); 
                             }}
-                            minDate={new Date()}
+                            minDate={new Date()} // Trava visualmente as datas antigas no calendário
                             locale="pt-BR"
                             dateFormat="dd/MM/yyyy"
                             placeholderText="Selecione o dia"

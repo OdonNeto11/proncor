@@ -25,12 +25,13 @@ interface ModalDetalhesLayoutProps {
   obsFooter?: ReactNode; 
   actionButtons?: ReactNode;
   footerButtons?: ReactNode;
+  createdBy?: string; // <-- ADICIONADO AQUI
 }
 
 export function ModalDetalhesLayout({
   isOpen, onClose, title, infoBoxes, statusLabel, statusClasses,
   tagsLabel, tags, customContent, phoneForWhats, obsLabel, obsText, obsFooter,
-  actionButtons, footerButtons
+  actionButtons, footerButtons, createdBy // <-- ADICIONADO AQUI
 }: ModalDetalhesLayoutProps) {
 
   // Função ajustada para não quebrar com os espaços das classes dark:
@@ -116,6 +117,15 @@ export function ModalDetalhesLayout({
         {footerButtons && (
           <div className="mt-2">
             {footerButtons}
+          </div>
+        )}
+
+        {/* <-- ADICIONADO AQUI: Rodapé de auditoria sutil --> */}
+        {createdBy && (
+          <div className="text-center pt-2">
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-bold">
+              Aberto por: {createdBy}
+            </span>
           </div>
         )}
         

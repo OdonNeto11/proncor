@@ -6,6 +6,7 @@ import { ModalDetalhesLayout } from '../../../components/shared/ModalDetalhesLay
 
 import { STATUS_CONFIG } from '../../../constants/status';
 import { Agendamento } from '../../../types/agendamento';
+
 interface ModalDetalhesProps {
   isOpen: boolean;
   onClose: () => void;
@@ -25,6 +26,9 @@ export function ModalDetalhes({
 
   const statusInfo = STATUS_CONFIG[agendamento.status_id || 1];
   const isPendente = !agendamento.status_id || agendamento.status_id === 1 || agendamento.status_id === 2 || agendamento.status?.agrupamento === 'pendente';
+
+  // Extrai o nome do usuário da query do Supabase (ajuste caso o seu JOIN use outro nome de objeto)
+  const nomeUsuario = (agendamento as any).profiles?.nome || (agendamento as any).usuario?.nome || 'Usuário não identificado';
 
   return (
     <ModalDetalhesLayout 
@@ -65,6 +69,7 @@ export function ModalDetalhes({
           <Button variant="textDanger" size="sm" fullWidth className="mt-1" onClick={() => onAction('cancel')}>Cancelar agendamento</Button>
         ) : undefined
       }
+      createdBy={nomeUsuario} // <-- PROPRIEDADE INSERIDA AQUI
     />
   );
 }
