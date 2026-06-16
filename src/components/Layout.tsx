@@ -200,7 +200,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <div className="h-4 w-px bg-gray-200 dark:bg-slate-800"></div>
               
               <Description className="!text-[10px] !font-mono text-slate-300 dark:text-slate-700 m-0">
-                v2.0.0
+                v2.2.0
               </Description>
             </div>
           </div>
