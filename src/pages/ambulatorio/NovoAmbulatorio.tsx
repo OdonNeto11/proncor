@@ -28,7 +28,7 @@ import { ambulatorioService } from '../../services/ambulatorioService';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePermissoes } from '../../hooks/usePermissoes';
 
-// === 1. SCHEMA DE VALIDAÇÃO DINÂMICO COM PADRÃO DE MENSAGENS ===
+// === 1. SCHEMA DE VALIDAÇÃO DINÂMICO ===
 const formSchema = z.object({
   atendido_proncor: z.any().refine((val) => typeof val === 'boolean', {
     message: 'O campo "Paciente foi atendido no Proncor?" é obrigatório'
@@ -39,6 +39,7 @@ const formSchema = z.object({
   plano_saude: z.string().optional(),
   observacoes: z.string().optional(),
   crm_solicitante: z.string().optional(),
+  numero_atendimento: z.string().optional(), // <-- [HOTFIX] Novo Campo no Schema
   exames: z.array(z.object({ value: z.string() })),
   especialidades: z.array(z.object({ value: z.string() })),
   exames_especialidades: z.string().optional(),
@@ -60,12 +61,14 @@ const formSchema = z.object({
     }
   }
 
+  // [HOTFIX] Ajuste na validação quando Sim: Apenas CRM é obrigatório no Zod agora.
   if (data.atendido_proncor === true) {
     if (!data.crm_solicitante) {
       ctx.addIssue({ code: 'custom', message: 'O campo "Seu CRM" é obrigatório', path: ['crm_solicitante'] });
     } else if (data.crm_solicitante.length < 4) {
       ctx.addIssue({ code: 'custom', message: 'O campo "Seu CRM" está incompleto', path: ['crm_solicitante'] });
     }
+    // A validação de "Número OU Foto" será feita no onSubmit, pois envolve o estado 'anexo' externo ao form.
   }
   
   const temExame = data.exames.some(e => e.value.trim() !== "");
@@ -91,6 +94,8 @@ export function NovoAmbulatorio() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       atendido_proncor: undefined,
+      crm_solicitante: '', // Inicializando
+      numero_atendimento: '', // <-- [HOTFIX] Inicializando campo novo
       exames: [{ value: '' }],
       especialidades: [{ value: '' }]
     }
@@ -113,7 +118,6 @@ export function NovoAmbulatorio() {
     fetchExames();
   }, []);
 
-  // === SOLUÇÃO: RETORNA O SEU COMPONENTE GLOBAL SE NÃO TIVER PERMISSÃO ===
   if (!podeCriarAmb) {
     return <AcessoRestrito />;
   }
@@ -128,9 +132,19 @@ export function NovoAmbulatorio() {
   };
 
   const onSubmit = async (data: AmbulatorioFormType) => {
-    if (data.atendido_proncor === true && !anexo) {
-        setErrorMsg('O campo "Anexo" é obrigatório para pacientes atendidos no Proncor.');
-        return;
+    // === [HOTFIX] NOVA LÓGICA DE VALIDAÇÃO DE NEGÓCIO ===
+    if (data.atendido_proncor === true) {
+        // CRM já foi validado pelo Zod.
+        // Validação: Número de Atendimento OU Foto (Anexo) - Pelo menos um deve existir
+        const temNumero = data.numero_atendimento && data.numero_atendimento.trim().length > 0;
+        const temFoto = !!anexo;
+
+        if (!temNumero && !temFoto) {
+            setErrorMsg('Para pacientes atendidos no Proncor, é obrigatório informar o "Número do Atendimento" OU anexar a "Foto do Pedido".');
+            // Scroll para a área roxa para alertar visualmente
+            document.getElementById('atendido_proncor_fields')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return;
+        }
     }
 
     setLoading(true);
@@ -146,8 +160,10 @@ export function NovoAmbulatorio() {
 
       const todosItens = [...data.exames, ...data.especialidades].map(i => i.value).filter(v => v.trim() !== "");
 
+      // === [HOTFIX] Passando o novo campo para o banco ===
       const novoEnc = await ambulatorioService.createEncaminhamento({
         atendido_proncor: data.atendido_proncor,
+        numero_atendimento: data.numero_atendimento || null, // <-- CAMPO NOVO AQUI
         cpf: data.cpf || null,
         nome_paciente: data.nome_paciente || null,
         telefone_paciente: data.telefone_paciente || null,
@@ -182,8 +198,11 @@ export function NovoAmbulatorio() {
   };
 
   const onError = (erros: any) => {
+    // Ajuste para pegar erro de campos dinâmicos se houver
     const firstError = Object.keys(erros)[0];
-    document.getElementById(firstError)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (firstError) {
+        document.getElementById(firstError)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
     setErrorMsg('Por favor, preencha corretamente os campos em vermelho.');
   };
 
@@ -215,30 +234,70 @@ export function NovoAmbulatorio() {
           </div>
 
           {atendidoProncor !== undefined && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
+            <div id="atendido_proncor_fields" className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
               
-              {atendidoProncor === true && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-5 bg-purple-50/50 dark:bg-purple-900/10 rounded-2xl border border-dashed border-purple-200 dark:border-purple-800">
-                  <div className="space-y-2" id="anexo">
-                    <label className="text-sm font-bold text-purple-900 dark:text-purple-300 flex items-center gap-2"><Upload size={18} /> Anexo (Imagem ou PDF) <span className="text-red-500">*</span></label>
-                    <div className="relative group">
-                      <input type="file" accept="image/*,.pdf" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
-                      <div className={`h-11 flex items-center px-4 rounded-xl border-2 border-dashed transition-all ${anexo ? 'border-green-500 bg-green-50 dark:bg-green-900/10' : 'border-purple-200 dark:border-purple-800 bg-white dark:bg-slate-900'}`}>
-                        <span className="text-xs font-medium truncate flex-1">{anexo ? anexo.name : 'Clique para anexar arquivo'}</span>
-                        {anexo && <X size={18} className="text-red-500 cursor-pointer z-20 relative" onClick={(e) => { e.stopPropagation(); setAnexo(null); }} />}
+{atendidoProncor === true && (
+                <div className="space-y-6">
+                  {/* BLOCO ROXO: Regra Foto OU Número */}
+                  <div className="p-5 bg-purple-50/50 dark:bg-purple-900/10 rounded-2xl border border-dashed border-purple-200 dark:border-purple-800 space-y-4">
+                    
+                    {/* TÍTULO DO BLOCO AGRUPADOR COM ASTERISCO */}
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm font-bold text-purple-900 dark:text-purple-300">
+                        Informação do Atendimento
+                      </span>
+                      <span className="text-red-500 font-bold">*</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* COLUNA 1: ANEXO */}
+                      <div className="space-y-2" id="anexo">
+                        {/* Asterisco individual removido daqui */}
+                        <label className="text-sm font-bold text-purple-900 dark:text-purple-300 flex items-center gap-2">
+                          <Upload size={18} /> Foto do Pedido
+                        </label>
+                        <div className="relative group">
+                          <input type="file" accept="image/*,.pdf" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                          <div className={`h-11 flex items-center px-4 rounded-xl border-2 border-dashed transition-all ${anexo ? 'border-green-500 bg-green-50 dark:bg-green-900/10' : 'border-purple-200 dark:border-purple-800 bg-white dark:bg-slate-900'}`}>
+                            <span className="text-xs font-medium truncate flex-1">{anexo ? anexo.name : 'Clique para anexar'}</span>
+                            {anexo && <X size={18} className="text-red-500 cursor-pointer z-20 relative" onClick={(e) => { e.stopPropagation(); setAnexo(null); }} />}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* COLUNA 2: NÚMERO ATENDIMENTO */}
+                      <div id="numero_atendimento">
+                        <Input 
+                          label="Nº Atendimento" 
+                          icon={<Hash size={20} />} 
+                          placeholder="Apenas números"
+                          maxLength={15} 
+                          error={errors.numero_atendimento?.message || ''} 
+                          {...register('numero_atendimento')} 
+                          onChange={e => setValue('numero_atendimento', e.target.value.replace(/\D/g, ''), { shouldValidate: true })} 
+                        />
                       </div>
                     </div>
+                    
+                    {/* Texto explicativo */}
+                    <p className="text-[11px] text-purple-700 dark:text-purple-400 m-0 bg-purple-100 dark:bg-purple-900/50 p-2 rounded-lg border border-purple-200 dark:border-purple-800/50">
+                        <strong>Regra:</strong> É obrigatório anexar a <strong>Foto do Pedido</strong> <span className='font-normal'>OU</span> informar o <strong>Nº do Atendimento</strong> para prosseguir.
+                    </p>
                   </div>
-                  <div id="crm_solicitante">
-                    <Input 
-                      label="Seu CRM" 
-                      icon={<Hash size={20} />} 
-                      maxLength={5} 
-                      required={true}
-                      error={errors.crm_solicitante?.message || ''} 
-                      {...register('crm_solicitante')} 
-                      onChange={e => setValue('crm_solicitante', e.target.value.replace(/\D/g, ''), { shouldValidate: true })} 
-                    />
+
+                  {/* CRM SEPARADO: Fora do bloco roxo (Layout padrão) */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div id="crm_solicitante">
+                      <Input 
+                        label="Seu CRM" 
+                        icon={<Hash size={20} />} 
+                        maxLength={5} 
+                        required={true}
+                        error={errors.crm_solicitante?.message || ''} 
+                        {...register('crm_solicitante')} 
+                        onChange={e => setValue('crm_solicitante', e.target.value.replace(/\D/g, ''), { shouldValidate: true })} 
+                      />
+                    </div>
                   </div>
                 </div>
               )}
