@@ -1,19 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { Navigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { Clock, LayoutDashboard, Settings, ChevronRight, Home, Users } from 'lucide-react';
+import { Clock, LayoutDashboard, Settings, ChevronRight, Home, Users, ClipboardList } from 'lucide-react'; // <-- NOVO ÍCONE AQUI
 
 import { DashboardHub } from './dashboards/DashboardHub'; 
 import { GerenciarHorarios } from './GerenciarHorarios';
 import { GerenciarUsuarios } from './usuarios/GerenciarUsuarios';
+import { GerenciarPerguntas } from './pesquisa/GerenciarPerguntas'; // <-- IMPORT DA NOVA TELA
 
 import { Card } from '../../components/ui/Card';
 import { Title, Description } from '../../components/ui/Typography';
 
-type AdminView = 'hub' | 'horarios' | 'dashboard' | 'usuarios';
+// 1. TIPO ATUALIZADO
+type AdminView = 'hub' | 'horarios' | 'dashboard' | 'usuarios' | 'perguntas';
 
 export function Admin() {
-  // 1. Trocamos roleId por permissoes
   const { permissoes, loading: authLoading } = useAuth();
   const location = useLocation();
   
@@ -37,8 +38,6 @@ export function Admin() {
 
   if (authLoading) return null;
 
-  // 2. NOVA TRAVA: Verifica se o usuário tem a permissão administrativa global
-  // 'adm_gerenciar_usuarios' é uma das chaves que vimos no seu banco
   const isAdmin = permissoes.includes('adm_gerenciar_usuarios');
   
   if (!isAdmin) return <Navigate to="/" replace />;
@@ -99,17 +98,36 @@ export function Admin() {
                <Title className="text-lg mb-2">Gestão de Usuários</Title>
                <Description className="text-sm">Crie contas e gerencie os acessos do sistema.</Description>
             </Card>
+
+            {/* <-- NOVO CARD DE PESQUISA --> */}
+            <Card hoverable onClick={() => {
+              sessionStorage.removeItem('hubCurrentDash');
+              setView('perguntas');
+            }} className="group">
+               <div className="w-12 h-12 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <ClipboardList size={24} />
+               </div>
+               <Title className="text-lg mb-2">Pesquisa de Satisfação</Title>
+               <Description className="text-sm">Gerencie as perguntas do formulário de pacientes.</Description>
+            </Card>
           </div>
         </>
       )}
 
       {view === 'dashboard' && <DashboardHub />}
+      
       {view === 'horarios' && <GerenciarHorarios onBack={() => {
         setView('hub');
         sessionStorage.removeItem('adminCurrentView');
       }} />}
       
       {view === 'usuarios' && <GerenciarUsuarios onBack={() => {
+        setView('hub');
+        sessionStorage.removeItem('adminCurrentView');
+      }} />}
+
+      {/* <-- CHAMADA DA NOVA TELA COM FUNÇÃO DE VOLTAR --> */}
+      {view === 'perguntas' && <GerenciarPerguntas onBack={() => {
         setView('hub');
         sessionStorage.removeItem('adminCurrentView');
       }} />}

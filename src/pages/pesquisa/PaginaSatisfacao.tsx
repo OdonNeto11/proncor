@@ -2,13 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { Button } from '../../components/ui/Button';
-import { CheckCircle2, Loader2, Star } from 'lucide-react';
-import { AuthLayout } from '../../components/AuthLayout'; // <-- IMPORT DO SEU COMPONENTE DE BASE
+import { CheckCircle2, Loader2, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { AuthLayout } from '../../components/AuthLayout';
 
 interface Pergunta {
   id: number;
   texto: string;
-  tipo: 'escala' | 'texto';
+  tipo: 'escala' | 'texto' | 'sim_nao';
   obrigatoria: boolean;
 }
 
@@ -29,7 +29,8 @@ export function PaginaSatisfacao() {
           .from('satisfacao_perguntas')
           .select('id, texto, tipo, obrigatoria')
           .eq('ativa', true)
-          .order('id', { ascending: true });
+          .eq('bloqueada', false) // <-- AJUSTE 1: Filtra as bloqueadas
+          .order('ordem', { ascending: true });
 
         if (error) throw error;
         setPerguntas(data || []);
@@ -42,12 +43,8 @@ export function PaginaSatisfacao() {
     loadPerguntas();
   }, []);
 
-  const handleSetNota = (perguntaId: number, nota: number) => {
-    setRespostas(prev => ({ ...prev, [perguntaId]: String(nota) }));
-  };
-
-  const handleSetTexto = (perguntaId: number, texto: string) => {
-    setRespostas(prev => ({ ...prev, [perguntaId]: texto }));
+  const handleSetResposta = (perguntaId: number, valor: string) => {
+    setRespostas(prev => ({ ...prev, [perguntaId]: valor }));
   };
 
   const handleSubmitPesquisa = async (e: React.FormEvent) => {
@@ -133,25 +130,48 @@ export function PaginaSatisfacao() {
 
         <form onSubmit={handleSubmitPesquisa} className="space-y-6">
           {perguntas.map((p) => (
-            <div key={p.id} className="space-y-3 pt-2">
+            <div key={p.id} className="space-y-4 pt-2">
               <label className="block text-sm font-bold text-slate-800 dark:text-slate-200">
                 {p.texto} {p.obrigatoria && <span className="text-red-500">*</span>}
               </label>
 
-              {p.tipo === 'escala' ? (
-                <div className="flex justify-between gap-1 max-w-sm mx-auto">
-                  {[1, 2, 3, 4, 5].map((nota) => {
+{p.tipo === 'escala' ? (
+                <div className="grid grid-cols-5 gap-2 md:gap-3 w-fit mx-auto">
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((nota) => {
                     const ativo = respostas[p.id] === String(nota);
                     return (
-                      <button type="button" key={nota} onClick={() => handleSetNota(p.id, nota)} className={`flex-1 py-3 rounded-xl border font-bold transition-all flex flex-col items-center gap-1 ${ativo ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-500/20 scale-105' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100'}`}>
-                        <Star size={16} className={ativo ? 'fill-white' : 'text-slate-400'} />
-                        <span className="text-xs">{nota}</span>
+                      <button 
+                        type="button" 
+                        key={nota} 
+                        onClick={() => handleSetResposta(p.id, String(nota))} 
+                        className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-xl border font-bold transition-all ${ativo ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-500/20 scale-110 z-10' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100'}`}
+                      >
+                        <span className="text-sm md:text-base">{nota}</span>
                       </button>
                     );
                   })}
                 </div>
+              ) : p.tipo === 'sim_nao' ? (
+                <div className="flex gap-3 max-w-sm mx-auto">
+                  <button 
+                    type="button" 
+                    onClick={() => handleSetResposta(p.id, 'Sim')} 
+                    className={`flex-1 py-3 rounded-xl border font-bold transition-all flex items-center justify-center gap-2 ${respostas[p.id] === 'Sim' ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-500/20 scale-105' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100'}`}
+                  >
+                    <ThumbsUp size={16} className={respostas[p.id] === 'Sim' ? 'text-white' : 'text-slate-400'} />
+                    Sim
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => handleSetResposta(p.id, 'Não')} 
+                    className={`flex-1 py-3 rounded-xl border font-bold transition-all flex items-center justify-center gap-2 ${respostas[p.id] === 'Não' ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-500/20 scale-105' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100'}`}
+                  >
+                    <ThumbsDown size={16} className={respostas[p.id] === 'Não' ? 'text-white' : 'text-slate-400'} />
+                    Não
+                  </button>
+                </div>
               ) : (
-                <textarea rows={3} value={respostas[p.id] || ''} onChange={(e) => handleSetTexto(p.id, e.target.value)} placeholder="Digite sua resposta aqui..." className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none" />
+                <textarea rows={3} value={respostas[p.id] || ''} onChange={(e) => handleSetResposta(p.id, e.target.value)} placeholder="Digite sua resposta aqui..." className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none" />
               )}
             </div>
           ))}
