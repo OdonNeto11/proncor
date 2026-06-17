@@ -119,6 +119,7 @@ export function ModalDetalhesAmb({
           )}
         </div>
       }
+      createdBy={(encaminhamento as any).profiles?.nome || 'Usuário não identificado'}
     />
   );
 }

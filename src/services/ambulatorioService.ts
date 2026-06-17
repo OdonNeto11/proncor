@@ -15,7 +15,7 @@ export const ambulatorioService = {
   ): Promise<EncaminhamentoAmbulatorio[]> {
     let query = supabase
       .from('encaminhamentos_ambulatorio')
-      .select('*, status:status_id(*)')
+      .select('*, status:status_id(*), profiles:criado_por(nome)')
       .order('created_at', { ascending: false });
 
     if (statusIds && statusIds.length > 0) {

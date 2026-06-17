@@ -27,4 +27,8 @@ export type EncaminhamentoAmbulatorio = {
   anexo_url?: string | null;
   status_exames?: Record<string, StatusExame>; // Assuming there might be a JSONB field for this, based on ModalStatusExames
   cpf?: string | null;
+  usuario_id?: string;
+  profiles?: {
+    nome: string;
+  };
 };

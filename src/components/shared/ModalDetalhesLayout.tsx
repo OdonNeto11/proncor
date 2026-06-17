@@ -124,7 +124,7 @@ export function ModalDetalhesLayout({
         {createdBy && (
           <div className="text-center pt-2">
             <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-bold">
-              Aberto por: {createdBy}
+              Criado por: {createdBy}
             </span>
           </div>
         )}
