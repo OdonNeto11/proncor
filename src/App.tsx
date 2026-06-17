@@ -16,6 +16,7 @@ import { Agenda } from './pages/pa/Agenda';
 import { Agendar } from './pages/pa/Agendar';
 import { Ambulatorio as FilaAmbulatorio } from './pages/ambulatorio/FilaAmbulatorio'; 
 import { NovoAmbulatorio } from './pages/ambulatorio/NovoAmbulatorio';
+import { PaginaSatisfacao } from './pages/pesquisa/PaginaSatisfacao'; // <-- NOVO IMPORT
 
 // CONTEXTOS E UI
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -117,6 +118,9 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/esqueci-senha" element={<EsqueciSenha />} />
           <Route path="/link-expirado" element={<LinkExpirado />} />
+          
+          {/* <-- NOVA ROTA PÚBLICA DE SATISFAÇÃO --> */}
+          <Route path="/satisfacao/:agendamentoId" element={<PaginaSatisfacao />} />
 
           {/* ROTAS PROTEGIDAS PELO AUTHGUARD */}
           <Route path="/" element={

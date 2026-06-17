@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle2, ArrowRightCircle, Stethoscope, AlertCircle, ChevronLeft } from 'lucide-react';
+import { CheckCircle2, ArrowRightCircle, Stethoscope, AlertCircle, ChevronLeft, ExternalLink } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../contexts/AuthContext';
 
@@ -114,9 +114,15 @@ export function ModalAtualizaStatus({ isOpen, onClose, agendamento, onSuccess, s
   };
 
   const handleCrmChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Apenas números e limita a 5 dígitos
     const val = e.target.value.replace(/\D/g, '').slice(0, 5);
     setValue('crm', val, { shouldValidate: true });
+  };
+
+  // Fluxo temporário de teste para abrir a página de satisfação externamente
+  const handleSimularSatisfacao = () => {
+    if (!agendamento) return;
+    const urlPublica = `${window.location.origin}/satisfacao/${agendamento.id}`;
+    window.open(urlPublica, '_blank');
   };
 
   if (!isOpen || !agendamento) return null;
@@ -129,7 +135,6 @@ export function ModalAtualizaStatus({ isOpen, onClose, agendamento, onSuccess, s
     >
       <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
         
-        {/* BLOCO DO NOME DO PACIENTE EM EVIDÊNCIA */}
         <div className="text-center mb-6">
           <span className="text-sm text-slate-500 block mb-1">Paciente selecionado:</span>
           <div className="text-xl font-bold text-blue-600 dark:text-blue-400 break-words">
@@ -156,6 +161,13 @@ export function ModalAtualizaStatus({ isOpen, onClose, agendamento, onSuccess, s
                 Não respondeu após reagendamento
               </Button>
             )}
+
+            {/* BOTÃO TEMPORÁRIO PARA DESENVOLVIMENTO/TESTES */}
+            <div className="mt-4 pt-4 border-t border-dashed border-slate-200 dark:border-slate-700">
+              <Button variant="secondary" fullWidth justify="center" onClick={handleSimularSatisfacao} icon={<ExternalLink size={16}/>} className="text-xs border-amber-300 bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400">
+                [Dev] Testar Tela de Satisfação
+              </Button>
+            </div>
           </div>
         )}
 
