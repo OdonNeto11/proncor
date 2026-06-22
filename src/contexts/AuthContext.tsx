@@ -62,7 +62,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+    // Removido o underline de _event para podermos ler o evento do Supabase
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, currentSession) => {
+      
+      // TRAVA DE RECUPERAÇÃO DE SENHA
+      if (event === 'PASSWORD_RECOVERY') {
+        window.location.href = '/trocar-senha';
+        return; // Interrompe o fluxo aqui
+      }
+
       setSession(currentSession);
       if (!currentSession?.user) {
         resetState();
@@ -161,7 +169,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
 
           // Regra 2: Validação Estrita (Local).
-          // O usuário só herda a permissão se a sua alocação ativa bater com o setor exigido pela permissão.
           const hasValidAllocation = formatadas.some(
             aloc => aloc.role_id === rp.role_id && aloc.setor_id === permissao.setor_id
           );
