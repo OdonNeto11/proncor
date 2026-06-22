@@ -11,6 +11,9 @@ import { useForm } from 'react-hook-form';
 // IMPORT DAS REGRAS PADRONIZADAS
 import { zCrm } from '../../../utils/validations';
 
+// IMPORT DA FUNÇÃO DO WHATSAPP (NOVO)
+import { abrirWhatsAppPesquisa } from '../../../utils/whatsapp';
+
 // Componentes
 import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
@@ -20,7 +23,6 @@ import { ToastError } from '../../../components/ui/ToastError';
 import { STATUS_CONFIG } from '../../../constants/status';
 import { Agendamento } from '../../../types/agendamento';
 
-// === 1. SCHEMA UTILIZANDO A REGRA COMPONENTIZADA ===
 const formSchema = z.object({
   crm: zCrm('Seu CRM'),
 });
@@ -105,6 +107,15 @@ export function ModalAtualizaStatus({ isOpen, onClose, agendamento, onSuccess, s
         }]);
       }
 
+      // ---> LÓGICA DE ENVIO DO WHATSAPP DO PACIENTE <---
+      if (statusSelecionado === 5) {
+        abrirWhatsAppPesquisa(
+          agendamento.telefone_paciente,
+          agendamento.nome_paciente,
+          agendamento.id
+        );
+      }
+
       onSuccess();
     } catch (e: any) {
       setErrorMsg('Erro de comunicação com o banco de dados: ' + e.message);
@@ -118,7 +129,6 @@ export function ModalAtualizaStatus({ isOpen, onClose, agendamento, onSuccess, s
     setValue('crm', val, { shouldValidate: true });
   };
 
-  // Fluxo temporário de teste para abrir a página de satisfação externamente
   const handleSimularSatisfacao = () => {
     if (!agendamento) return;
     const urlPublica = `${window.location.origin}/satisfacao/${agendamento.id}`;
@@ -162,7 +172,6 @@ export function ModalAtualizaStatus({ isOpen, onClose, agendamento, onSuccess, s
               </Button>
             )}
 
-            {/* BOTÃO TEMPORÁRIO PARA DESENVOLVIMENTO/TESTES */}
             <div className="mt-4 pt-4 border-t border-dashed border-slate-200 dark:border-slate-700">
               <Button variant="secondary" fullWidth justify="center" onClick={handleSimularSatisfacao} icon={<ExternalLink size={16}/>} className="text-xs border-amber-300 bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400">
                 [Dev] Testar Tela de Satisfação
