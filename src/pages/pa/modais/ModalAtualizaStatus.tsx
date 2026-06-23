@@ -11,9 +11,6 @@ import { useForm } from 'react-hook-form';
 // IMPORT DAS REGRAS PADRONIZADAS
 import { zCrm } from '../../../utils/validations';
 
-// IMPORT DA FUNÇÃO DO WHATSAPP (NOVO)
-import { abrirWhatsAppPesquisa } from '../../../utils/whatsapp';
-
 // Componentes
 import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
@@ -108,13 +105,13 @@ export function ModalAtualizaStatus({ isOpen, onClose, agendamento, onSuccess, s
       }
 
       // ---> LÓGICA DE ENVIO DO WHATSAPP DO PACIENTE <---
-      if (statusSelecionado === 5) {
-        abrirWhatsAppPesquisa(
-          agendamento.telefone_paciente,
-          agendamento.nome_paciente,
-          agendamento.id
-        );
-      }
+   //   if (statusSelecionado === 5) {
+   //     abrirWhatsAppPesquisa(
+   //       agendamento.telefone_paciente,
+   //       agendamento.nome_paciente,
+   //       agendamento.id
+   //     );
+   //   }
 
       onSuccess();
     } catch (e: any) {
