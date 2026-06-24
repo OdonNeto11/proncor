@@ -1,19 +1,23 @@
+// @ts-ignore
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
+// 1. Defina as duas URLs
+const URL_HML = 'http://3.235.136.208:5678/webhook-test/enviar-pesquisa';
+const URL_PRD = 'http://3.235.136.208:5678/webhook/enviar-pesquisa';
+
+// 2. Chave de controle: mude para 'false' quando for publicar
+const IS_HML = true;
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Garante que só aceita POST
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  // 3. O sistema escolhe a URL automaticamente baseado na chave acima
+  const targetUrl = IS_HML ? URL_HML : URL_PRD;
 
   try {
-    // Repassa o Payload que chegou do Supabase para o IP do seu n8n
-    const n8nResponse = await fetch('http://3.235.136.208:5678/webhook/enviar-pesquisa', {
+    // Exemplo de como seu fetch deve ficar, usando a variável targetUrl
+    const n8nResponse = await fetch(targetUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(req.body),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req.body)
     });
 
     if (!n8nResponse.ok) {
