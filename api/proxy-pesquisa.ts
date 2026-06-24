@@ -8,7 +8,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     // Repassa o Payload que chegou do Supabase para o IP do seu n8n
-    const n8nResponse = await fetch('http://3.235.136.208:5678/webhook-test/enviar-pesquisa', {
+    const n8nResponse = await fetch('http://3.235.136.208:5678/webhook/enviar-pesquisa', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
