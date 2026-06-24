@@ -6,7 +6,7 @@ const URL_HML = 'http://3.235.136.208:5678/webhook-test/enviar-pesquisa';
 const URL_PRD = 'http://3.235.136.208:5678/webhook/enviar-pesquisa';
 
 // 2. Chave de controle: mude para 'false' quando for publicar
-const IS_HML = true;
+const IS_HML = false;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // 3. O sistema escolhe a URL automaticamente baseado na chave acima
